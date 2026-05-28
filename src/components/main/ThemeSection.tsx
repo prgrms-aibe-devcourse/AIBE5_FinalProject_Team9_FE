@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import ThemeCarousel from './ThemeCarousel';
-import { Theme } from '@/types/theme';
+import Link from "next/link";
+import ThemeCarousel from "./ThemeCarousel";
+import { Theme } from "@/types/theme";
 
 interface ThemeSectionProps {
   title: string;
@@ -9,21 +9,38 @@ interface ThemeSectionProps {
   href?: string;
 }
 
-export default function ThemeSection({ title, subtitle, themes, href }: ThemeSectionProps) {
+export default function ThemeSection({
+  title,
+  subtitle,
+  themes,
+  href,
+}: ThemeSectionProps) {
   return (
-    <section className="py-12">
-      <div className="flex items-end justify-between mb-6">
+    <div>
+      <div className="mb-8 flex items-end justify-between gap-6">
         <div>
-          <h2 className="text-xl font-bold text-[#f5f5f5]">{title}</h2>
-          {subtitle && <p className="text-sm text-[#888] mt-1">{subtitle}</p>}
+          <h2 className="text-[23px] font-black leading-none text-[#f4f4f4]">
+            {title}
+          </h2>
+
+          {subtitle && (
+            <p className="mt-2.5 text-[13px] leading-6 text-[#777]">
+              {subtitle}
+            </p>
+          )}
         </div>
+
         {href && (
-          <Link href={href} className="text-xs text-[#888] hover:text-[#e63946] transition-colors">
-            전체 보기 ›
+          <Link
+            href={href}
+            className="pb-1 text-[12px] font-bold text-[#777] transition-colors hover:text-[#cc2222]"
+          >
+            전체보기 ›
           </Link>
         )}
       </div>
-      <ThemeCarousel themes={themes} />
-    </section>
+
+      <ThemeCarousel themes={themes.slice(0, 4)} />
+    </div>
   );
 }

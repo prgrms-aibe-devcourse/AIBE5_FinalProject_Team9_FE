@@ -7,58 +7,49 @@ export default function Header() {
   const { isLoggedIn, user, logout } = useAuthStore();
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#0d0d0d]/95 border-b border-[#2a2a2a] backdrop-blur">
-      <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/" className="text-white font-black tracking-wider text-lg">
+    <header className="sticky top-0 z-40 w-full border-b border-[#241414] bg-[#0c0c0c]/96 backdrop-blur">
+      <div className="gg-container grid h-[52px] grid-cols-[1fr_auto_1fr] items-center">
+        <Link href="/" className="justify-self-start text-[15px] font-black tracking-[0.16em] text-white transition-colors hover:text-[#cc2222]">
           GRIMGATE
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8 text-sm text-[#f5f5f5]">
-          <Link href="/themes" className="hover:text-[#e63946] transition-colors">
+        <nav className="hidden items-center gap-9 justify-self-center text-[12px] font-bold text-[#cfcfcf] md:flex">
+          <Link href="/themes" className="transition-colors hover:text-[#cc2222]">
             GATE 소개
           </Link>
-          <Link href="/reservation" className="hover:text-[#e63946] transition-colors">
+          <Link href="/reservation" className="transition-colors hover:text-[#cc2222]">
             빠른예약
           </Link>
-          <Link href="/mate" className="hover:text-[#e63946] transition-colors">
+          <Link href="/mate" className="transition-colors hover:text-[#cc2222]">
             메이트 모집
           </Link>
-          <Link href="/ai-recommend" className="hover:text-[#e63946] transition-colors">
+          <Link href="/ai-recommend" className="transition-colors hover:text-[#cc2222]">
             AI 추천
           </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-self-end gap-3 text-[12px] font-bold">
           {isLoggedIn ? (
             <>
               <Link href="/mypage" title={user?.nickname}>
-                <div className="w-8 h-8 rounded-full bg-[#2a2a2a] flex items-center justify-center text-xs text-[#f5f5f5] overflow-hidden">
-                  {user?.profileImageUrl ? (
-                    <img src={user.profileImageUrl} alt={user.nickname} className="w-full h-full object-cover" />
-                  ) : (
-                    user?.nickname?.[0]?.toUpperCase() ?? 'U'
-                  )}
+                <div
+                  className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1a1a] bg-cover bg-center text-[11px] text-[#f5f5f5]"
+                  style={user?.profileImageUrl ? { backgroundImage: `url('${user.profileImageUrl}')` } : undefined}
+                  aria-label={user?.nickname}
+                >
+                  {user?.profileImageUrl ? <span className="sr-only">{user.nickname}</span> : user?.nickname?.[0]?.toUpperCase() ?? 'U'}
                 </div>
               </Link>
-              <button
-                onClick={logout}
-                className="text-[#888] hover:text-[#f5f5f5] text-sm transition-colors"
-              >
+              <button onClick={logout} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">
                 로그아웃
               </button>
             </>
           ) : (
             <>
-              <Link
-                href="/login"
-                className="text-sm text-[#f5f5f5] hover:text-[#e63946] transition-colors"
-              >
+              <Link href="/login" className="text-[#dedede] transition-colors hover:text-[#cc2222]">
                 로그인
               </Link>
-              <Link
-                href="/signup"
-                className="text-sm bg-[#e63946] hover:bg-[#c1121f] text-white px-3 py-1.5 rounded transition-colors"
-              >
+              <Link href="/signup" className="bg-[#cc2222] px-2 py-1 text-white transition-colors hover:bg-[#a91d1d]">
                 회원가입
               </Link>
             </>
