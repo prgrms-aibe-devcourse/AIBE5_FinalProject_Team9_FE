@@ -127,7 +127,7 @@ export default function ReservationCompletePage() {
           <div className="w-20 h-20 rounded-full border-2 border-[#2ecc71] flex items-center justify-center mx-auto mb-4 text-3xl bg-[#1a1a1a]">
             👻
           </div>
-          <p className="text-xs text-[#e63946] tracking-widest mb-2">// 예약이 확정되었습니다 //</p>
+          <p className="text-xs text-[#e63946] tracking-widest mb-2">{'// 예약이 확정되었습니다 //'}</p>
           <h1 className="text-3xl font-black text-[#f5f5f5] mb-1">
             공포의 문이 <span className="text-[#e63946]">열렸습니다.</span>
           </h1>
