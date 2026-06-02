@@ -6,6 +6,7 @@ import BrandSection from "@/components/main/BrandSection";
 import FeaturesSection from "@/components/main/FeaturesSection";
 import OfflineSection from "@/components/main/OfflineSection";
 import FooterCTA from "@/components/main/FooterCTA";
+import FloatingSectionNav from "@/components/main/FloatingSectionNav";
 import { Theme } from "@/types/theme";
 import { MatePost } from "@/types/mate";
 
@@ -154,12 +155,21 @@ const matePosts: MatePost[] = [
 export default function HomePage() {
   return (
     <>
-      <HeroBanner />
+      <div id="hero" className="scroll-mt-20">
+        <HeroBanner />
+      </div>
 
       <main className="bg-[#0d0d0d]">
-        <AiRecommendSection />
+        <FloatingSectionNav />
 
-        <section className="bg-[#0d0d0d] pt-[96px] pb-[112px]">
+        <div id="ai-recommend" className="scroll-mt-20">
+          <AiRecommendSection />
+        </div>
+
+        <section
+          id="popular-themes"
+          className="scroll-mt-20 bg-[#0d0d0d] pt-[96px] pb-[112px]"
+        >
           <div className="gg-container">
             <ThemeSection
               title="🔥 인기 테마"
@@ -170,17 +180,28 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="border-t border-[#252525] bg-[#171717] pt-[96px] pb-[112px]">
+        <section
+          id="mate-section"
+          className="scroll-mt-20 border-t border-[#252525] bg-[#171717] pt-[96px] pb-[112px]"
+        >
           <div className="gg-container">
             <MateSection posts={matePosts} />
           </div>
         </section>
 
-        <BrandSection />
-        <OfflineSection />
-        <FeaturesSection />
+        <div id="brand-section" className="scroll-mt-20">
+          <BrandSection />
+        </div>
+        <div id="how-to-use" className="scroll-mt-20">
+          <OfflineSection />
+        </div>
+        <div id="features-section" className="scroll-mt-20">
+          <FeaturesSection />
+        </div>
 
-        <FooterCTA />
+        <div id="quick-reservation" className="scroll-mt-20">
+          <FooterCTA />
+        </div>
       </main>
     </>
   );
