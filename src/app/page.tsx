@@ -1,4 +1,5 @@
 import HeroBanner from "@/components/main/HeroBanner";
+import AiRecommendSection from "@/components/main/AiRecommendSection";
 import ThemeSection from "@/components/main/ThemeSection";
 import MateSection from "@/components/main/MateSection";
 import BrandSection from "@/components/main/BrandSection";
@@ -156,6 +157,8 @@ export default function HomePage() {
       <HeroBanner />
 
       <main className="bg-[#0d0d0d]">
+        <AiRecommendSection />
+
         <section className="bg-[#0d0d0d] pt-[96px] pb-[112px]">
           <div className="gg-container">
             <ThemeSection
@@ -174,8 +177,9 @@ export default function HomePage() {
         </section>
 
         <BrandSection />
-        <FeaturesSection />
         <OfflineSection />
+        <FeaturesSection />
+
         <FooterCTA />
       </main>
     </>

@@ -9,7 +9,7 @@ export default function HeroBanner() {
         <div
           className="absolute inset-y-[3%] right-0 w-full bg-cover bg-[center_center] brightness-110 contrast-110 saturate-110 lg:bg-[center_center]"
           style={{
-            backgroundImage: "url('/images/horror/정지.png')",
+            backgroundImage: "url('/images/horror/grimgate_hero_highres.webp')",
             maskImage:
               "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 9%, black 20%, black 78%, rgba(0,0,0,0.58) 91%, transparent 100%)",
             WebkitMaskImage:
@@ -59,10 +59,10 @@ export default function HeroBanner() {
               </span>
             </Link>
             <Link
-              href="/ai-recommend"
+              href="/mate"
               className="group inline-flex h-14 w-full items-center justify-center gap-4 border border-[#cc2222] bg-[#0d0d0d]/30 px-6 text-[14px] font-bold text-[#f5f5f5] backdrop-blur-[1px] transition-all duration-200 hover:bg-[#cc2222]/14 hover:shadow-[0_0_18px_rgba(204,34,34,0.18)] sm:w-auto sm:min-w-[266px]"
             >
-              <span className="whitespace-nowrap pl-2">AI 테마 추천 받기</span>
+              <span className="whitespace-nowrap pl-2">메이트 모집하기</span>
               <span className="shrink-0 pr-2 text-base transition-transform group-hover:translate-x-1">
                 →
               </span>

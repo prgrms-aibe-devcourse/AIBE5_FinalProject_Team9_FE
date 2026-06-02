@@ -61,12 +61,12 @@ select {
 }
 
 .gg-container {
-  width: min(calc(100% - 48px), 1240px);
+  width: min(calc(100% - 48px), 1280px);
   margin-inline: auto;
 }
 
 @media (max-width: 640px) {
   .gg-container {
-    width: min(calc(100% - 32px), 1240px);
+    width: min(calc(100% - 32px), 1280px);
   }
 }
