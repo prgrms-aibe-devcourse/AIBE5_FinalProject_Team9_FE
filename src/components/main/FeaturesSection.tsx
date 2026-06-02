@@ -17,7 +17,7 @@ const FEATURES = [
   {
     icon: "⊘",
     label: "스포 방지",
-    description: "후기 작성 시 스포일러가 있을 경우 가릴 수 있습니다.",
+    description: "후기 작성 시 스포일러를 가릴 수 있습니다.",
   },
 ];
 
@@ -40,13 +40,13 @@ export default function FeaturesSection() {
           {FEATURES.map(({ icon, label, description }) => (
             <article
               key={label}
-              className="group min-h-[168px] rounded-[14px] border border-white/[0.08] bg-[#1b1b1b] p-5 shadow-[0_14px_34px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:border-[#cc2222]/55 hover:bg-[#1f1f1f] hover:shadow-[0_18px_44px_rgba(204,34,34,0.12)]"
+              className="group min-h-[154px] rounded-[14px] border border-white/[0.08] bg-[#1b1b1b] p-4.5 shadow-[0_14px_34px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:border-[#cc2222]/65 hover:bg-[#1f1f1f] hover:shadow-[0_18px_46px_rgba(204,34,34,0.16)]"
             >
-              <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.1] bg-[#111] text-[21px] text-[#d8d8d8] transition-colors group-hover:border-[#cc2222]/50 group-hover:text-white">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/[0.1] bg-[#111] text-[21px] text-[#d8d8d8] transition-colors group-hover:border-[#cc2222]/55 group-hover:text-white">
                 {icon}
               </div>
-              <h3 className="text-[16px] font-black text-[#f4f4f4]">{label}</h3>
-              <p className="mt-3 text-[13px] leading-6 text-[#8d8d8d]">
+              <h3 className="text-[16px] font-black text-white">{label}</h3>
+              <p className="mt-2.5 text-[13px] font-medium leading-6 text-[#a0a0a0]">
                 {description}
               </p>
             </article>
