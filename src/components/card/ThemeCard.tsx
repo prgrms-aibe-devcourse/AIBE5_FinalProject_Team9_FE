@@ -1,9 +1,14 @@
+﻿"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Theme } from "@/types/theme";
 
 interface ThemeCardProps {
   theme: Theme;
+  showRank?: boolean;
+  showPrice?: boolean;
+  onAction?: (theme: Theme) => void;
 }
 
 function SkullIcon({ className }: { className?: string }) {
@@ -72,7 +77,15 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-export default function ThemeCard({ theme }: ThemeCardProps) {
+export default function ThemeCard({
+  theme,
+  showRank = true,
+  showPrice = false,
+  onAction,
+}: ThemeCardProps) {
+  const actionClassName =
+    "mt-6 block h-12 w-full rounded-[8px] border border-[#e23b3b]/75 bg-transparent text-center text-[15px] font-black leading-[48px] text-[#e23b3b] transition-all duration-300 hover:bg-[#e23b3b]/10 hover:text-white hover:shadow-[0_0_18px_rgba(204,34,34,0.18)]";
+
   return (
     <article className="group overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#171717] shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition-all duration-500 hover:-translate-y-1 hover:border-[#cc2222]/70 hover:bg-[#1b1b1b] hover:shadow-[0_18px_48px_rgba(204,34,34,0.16)]">
       <div className="relative mb-[-1px] block h-[230px] overflow-hidden bg-[#171717] leading-none lg:h-[248px]">
@@ -86,7 +99,7 @@ export default function ThemeCard({ theme }: ThemeCardProps) {
           />
         )}
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.24)_0%,rgba(0,0,0,0.1)_42%,rgba(23,23,23,0.97)_100%)] opacity-95 transition-opacity duration-700 group-hover:opacity-[0.82]" />
-        {theme.rank && theme.rank <= 3 && (
+        {showRank && theme.rank && theme.rank <= 3 && (
           <RankBadge rank={theme.rank} />
         )}
       </div>
@@ -116,14 +129,29 @@ export default function ThemeCard({ theme }: ThemeCardProps) {
             <span className="text-[#777]">📍 {theme.locationName}</span>
           </div>
 
-          <div className="text-[12px] leading-5 text-[#666]">
+          <div
+            className={[
+              "gap-3 text-[12px] leading-5 text-[#666]",
+              showPrice ? "flex flex-wrap items-center justify-between" : "",
+            ].join(" ")}
+          >
             {theme.minPlayers}~{theme.maxPlayers}인 · {theme.duration}분
+            {showPrice && (
+              <span className="font-black text-[#d8d8d8]">
+                {theme.price.toLocaleString()}원
+              </span>
+            )}
           </div>
         </div>
 
         <Link
           href={`/themes/${theme.id}`}
-          className="mt-6 block h-12 w-full rounded-[8px] border border-[#e23b3b]/75 bg-transparent text-center text-[15px] font-black leading-[48px] text-[#e23b3b] transition-all duration-300 hover:bg-[#e23b3b]/10 hover:text-white hover:shadow-[0_0_18px_rgba(204,34,34,0.18)]"
+          onClick={(event) => {
+            if (!onAction) return;
+            event.preventDefault();
+            onAction(theme);
+          }}
+          className={actionClassName}
         >
           예약하기
         </Link>

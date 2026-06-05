@@ -9,7 +9,7 @@ const SECTION_ITEMS = [
   { id: "mate-section", label: "메이트 모집" },
   { id: "brand-section", label: "GrimGate란" },
   { id: "how-to-use", label: "이용방법" },
-  { id: "features-section", label: "플레이 전 안내" },
+  { id: "features-section", label: "안내사항" },
   { id: "quick-reservation", label: "빠른예약" },
 ];
 
@@ -30,8 +30,8 @@ export default function FloatingSectionNav() {
 
       const viewportHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
-      const detectionTop = viewportHeight * 0.2;
-      const detectionBottom = viewportHeight * 0.72;
+      const detectionTop = viewportHeight * 0.18;
+      const detectionBottom = viewportHeight * 0.86;
 
       const sectionBounds = sections.map((section) => ({
         id: section.id,
@@ -54,7 +54,7 @@ export default function FloatingSectionNav() {
         return;
       }
 
-      if (window.scrollY + viewportHeight >= documentHeight - 16) {
+      if (window.scrollY + viewportHeight >= documentHeight - 4) {
         setActiveId(SECTION_ITEMS[SECTION_ITEMS.length - 1].id);
         return;
       }
