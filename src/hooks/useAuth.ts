@@ -1,16 +1,41 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
-import { loginUser, logoutUser } from '@/services/authService';
-import { LoginRequest } from '@/types/user';
+import {
+  extractAuthPayload,
+  loginUser,
+  logoutUser,
+} from '@/services/authService';
+import { AuthRole, LoginRequest, User } from '@/types/user';
 
 export const useAuth = () => {
+  const router = useRouter();
   const { user, isLoggedIn, login, logout, setUser } = useAuthStore();
 
-  const handleLogin = async (credentials: LoginRequest) => {
-    const { user: userData, token } = await loginUser(credentials);
-    login(userData, token);
-    return userData;
+  const handleLogin = async (
+    credentials: LoginRequest,
+    role: AuthRole = 'member'
+  ) => {
+    const response = await loginUser(credentials, role);
+    const { accessToken, refreshToken, user: userData } =
+      extractAuthPayload(response);
+
+    if (!accessToken || !refreshToken) {
+      throw new Error('로그인 응답에 토큰이 없습니다.');
+    }
+
+    const fallbackUser: User = {
+      id: 0,
+      email: credentials.email,
+      nickname: credentials.email.split('@')[0],
+      role: role === 'manager' ? 'OWNER' : 'USER',
+    };
+
+    login(userData ?? fallbackUser, accessToken, refreshToken);
+    router.push('/');
+
+    return userData ?? fallbackUser;
   };
 
   const handleLogout = async () => {
@@ -18,6 +43,7 @@ export const useAuth = () => {
       await logoutUser();
     } finally {
       logout();
+      router.push('/login');
     }
   };
 

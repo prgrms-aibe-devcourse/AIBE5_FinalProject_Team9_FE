@@ -3,12 +3,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types/user';
-import { setToken, removeToken } from '@/lib/token';
+import { removeToken, setAuthTokens } from '@/lib/token';
 
 interface AuthState {
   user: User | null;
   isLoggedIn: boolean;
-  login: (user: User, token: string) => void;
+  login: (user: User | null, accessToken: string, refreshToken: string) => void;
   logout: () => void;
   setUser: (user: User) => void;
 }
@@ -18,8 +18,8 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isLoggedIn: false,
-      login: (user, token) => {
-        setToken(token);
+      login: (user, accessToken, refreshToken) => {
+        setAuthTokens({ accessToken, refreshToken });
         set({ user, isLoggedIn: true });
       },
       logout: () => {

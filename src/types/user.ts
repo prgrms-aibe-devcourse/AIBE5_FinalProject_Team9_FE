@@ -16,15 +16,32 @@ export interface User {
 export interface LoginRequest {
   email: string;
   password: string;
+  rememberMe?: boolean;
 }
 
 export interface SignupRequest {
+  nickname: string;
   email: string;
   password: string;
-  nickname: string;
+  passwordConfirm: string;
   phone: string;
-  gender?: string;
+  gender?: 'MALE' | 'FEMALE';
   age?: number;
+  termsAgreed: boolean;
+  marketingAgreed?: boolean;
+}
+
+export type AuthRole = 'member' | 'manager';
+
+export interface AuthResponse {
+  user?: User;
+  accessToken?: string;
+  refreshToken?: string;
+  data?: {
+    user?: User;
+    accessToken?: string;
+    refreshToken?: string;
+  };
 }
 
 export interface UpdateProfileRequest {

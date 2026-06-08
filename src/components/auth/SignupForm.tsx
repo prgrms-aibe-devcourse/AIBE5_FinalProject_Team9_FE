@@ -2,12 +2,12 @@
 
 import { useState, FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Button from '@/components/common/Button';
-import { signupUser } from '@/services/authService';
-import { useAuth } from '@/hooks/useAuth';
+import { getAuthErrorMessage, signupUser } from '@/services/authService';
 
 export default function SignupForm() {
-  const { handleLogin } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState<'user' | 'owner'>('user');
   const [form, setForm] = useState({
     nickname: '', email: '', password: '', passwordConfirm: '',
@@ -20,30 +20,60 @@ export default function SignupForm() {
   const set = (key: string, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const validateForm = () => {
+    if (form.nickname.length < 2 || form.nickname.length > 20) {
+      return '닉네임은 2자 이상 20자 이하로 입력해주세요.';
+    }
+    if (form.password.length < 8) {
+      return '비밀번호는 8자 이상이어야 합니다.';
+    }
+    if (!/\d/.test(form.password)) {
+      return '비밀번호에는 숫자가 1개 이상 포함되어야 합니다.';
+    }
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(form.password)) {
+      return '비밀번호에는 특수문자가 1개 이상 포함되어야 합니다.';
+    }
+    if (form.password !== form.passwordConfirm) {
+      return '비밀번호가 일치하지 않습니다.';
+    }
+    if (!/^010\d{8}$/.test(form.phone)) {
+      return '전화번호는 01012345678 형식으로 입력해주세요.';
+    }
+    if (!form.agreeTerms) {
+      return '필수 약관에 동의해주세요.';
+    }
+    return '';
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    if (form.password !== form.passwordConfirm) {
-      setError('비밀번호가 일치하지 않습니다.');
+
+    const validationMessage = validateForm();
+    if (validationMessage) {
+      setError(validationMessage);
       return;
     }
-    if (!form.agreeTerms) {
-      setError('이용약관에 동의해주세요.');
-      return;
-    }
+
     setLoading(true);
     try {
       await signupUser({
+        nickname: form.nickname,
         email: form.email,
         password: form.password,
-        nickname: form.nickname,
+        passwordConfirm: form.passwordConfirm,
         phone: form.phone,
-        gender: form.gender || undefined,
+        gender: form.gender as 'MALE' | 'FEMALE' | undefined,
         age: form.age ? Number(form.age) : undefined,
-      });
-      await handleLogin({ email: form.email, password: form.password });
-    } catch {
-      setError('회원가입 중 오류가 발생했습니다.');
+        termsAgreed: form.agreeTerms,
+        marketingAgreed: form.agreeMarketing,
+      }, tab === 'owner' ? 'manager' : 'member');
+      alert('회원가입이 완료되었습니다. 로그인해주세요.');
+      router.push('/login');
+    } catch (signupError) {
+      setError(
+        getAuthErrorMessage(signupError, '회원가입에 실패했습니다.')
+      );
     } finally {
       setLoading(false);
     }
@@ -133,8 +163,8 @@ export default function SignupForm() {
               className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#f5f5f5] focus:outline-none focus:border-[#e63946]"
             >
               <option value="">성별</option>
-              <option value="남자">남자</option>
-              <option value="여자">여자</option>
+              <option value="MALE">남자</option>
+              <option value="FEMALE">여자</option>
             </select>
           </div>
           <div className="flex-1">

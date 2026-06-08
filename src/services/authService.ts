@@ -1,36 +1,84 @@
+import axios from 'axios';
 import axiosInstance from '@/lib/axios';
-import { User, LoginRequest, SignupRequest } from '@/types/user';
+import { getRefreshToken } from '@/lib/token';
+import {
+  AuthResponse,
+  AuthRole,
+  LoginRequest,
+  SignupRequest,
+  User,
+} from '@/types/user';
 
-interface AuthResponse {
-  user: User;
-  token: string;
-}
+export const getAuthErrorMessage = (
+  error: unknown,
+  fallbackMessage: string
+): string => {
+  if (axios.isAxiosError(error)) {
+    const responseData = error.response?.data as
+      | {
+          message?: string;
+          error?: string;
+          data?: { message?: string; error?: string };
+        }
+      | undefined;
 
-// TODO: POST /api/auth/login
-export const loginUser = async (credentials: LoginRequest): Promise<AuthResponse> => {
-  const { data } = await axiosInstance.post('/auth/login', credentials);
+    return (
+      responseData?.message ??
+      responseData?.error ??
+      responseData?.data?.message ??
+      responseData?.data?.error ??
+      fallbackMessage
+    );
+  }
+
+  return fallbackMessage;
+};
+
+export const extractAuthPayload = (response: AuthResponse) => {
+  const accessToken = response.accessToken ?? response.data?.accessToken;
+  const refreshToken = response.refreshToken ?? response.data?.refreshToken;
+  const user = response.user ?? response.data?.user;
+
+  return { accessToken, refreshToken, user };
+};
+
+export const loginUser = async (
+  credentials: LoginRequest,
+  role: AuthRole = 'member'
+): Promise<AuthResponse> => {
+  const { data } = await axiosInstance.post<AuthResponse>(
+    `/api/auth/login/${role}`,
+    credentials
+  );
+  console.log(data);
   return data;
 };
 
-// TODO: POST /api/auth/signup
-export const signupUser = async (payload: SignupRequest): Promise<AuthResponse> => {
-  const { data } = await axiosInstance.post('/auth/signup', payload);
+export const signupUser = async (
+  payload: SignupRequest,
+  role: AuthRole = 'member'
+): Promise<AuthResponse> => {
+  const { data } = await axiosInstance.post<AuthResponse>(
+    `/api/auth/register/${role}`,
+    payload
+  );
   return data;
 };
 
-// TODO: POST /api/auth/logout
 export const logoutUser = async (): Promise<void> => {
-  await axiosInstance.post('/auth/logout');
+  await axiosInstance.post('/api/auth/logout', {
+    refreshToken: getRefreshToken(),
+  });
 };
 
-// TODO: GET /api/auth/me
 export const getMe = async (): Promise<User> => {
-  const { data } = await axiosInstance.get('/auth/me');
+  const { data } = await axiosInstance.get<User>('/api/auth/me');
   return data;
 };
 
-// TODO: POST /api/auth/google
 export const loginWithGoogle = async (code: string): Promise<AuthResponse> => {
-  const { data } = await axiosInstance.post('/auth/google', { code });
+  const { data } = await axiosInstance.post<AuthResponse>('/api/auth/google', {
+    code,
+  });
   return data;
 };

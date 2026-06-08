@@ -4,11 +4,15 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import Button from '@/components/common/Button';
 import { useAuth } from '@/hooks/useAuth';
+import { getAuthErrorMessage } from '@/services/authService';
+import { AuthRole } from '@/types/user';
 
 export default function LoginForm() {
   const { handleLogin } = useAuth();
+  const [role, setRole] = useState<AuthRole>('member');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -17,9 +21,14 @@ export default function LoginForm() {
     setError('');
     setLoading(true);
     try {
-      await handleLogin({ email, password });
-    } catch {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.');
+      await handleLogin({ email, password, rememberMe }, role);
+    } catch (loginError) {
+      setError(
+        getAuthErrorMessage(
+          loginError,
+          '이메일 또는 비밀번호를 확인해주세요.'
+        )
+      );
     } finally {
       setLoading(false);
     }
@@ -27,6 +36,24 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex border-b border-[#2a2a2a]">
+        {(['member', 'manager'] as const).map((authRole) => (
+          <button
+            key={authRole}
+            type="button"
+            onClick={() => setRole(authRole)}
+            className={[
+              'flex-1 py-2.5 text-sm font-medium transition-colors',
+              role === authRole
+                ? 'border-b-2 border-[#e63946] text-[#e63946]'
+                : 'text-[#888] hover:text-[#f5f5f5]',
+            ].join(' ')}
+          >
+            {authRole === 'member' ? '일반 회원' : '매니저'}
+          </button>
+        ))}
+      </div>
+
       <div>
         <label className="block text-sm text-[#888] mb-1">이메일</label>
         <input
@@ -50,6 +77,16 @@ export default function LoginForm() {
           className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-2.5 text-sm text-[#f5f5f5] placeholder-[#555] focus:outline-none focus:border-[#e63946]"
         />
       </div>
+
+      <label className="flex items-center gap-2 text-sm text-[#888] cursor-pointer">
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="accent-[#e63946]"
+        />
+        로그인 상태 유지
+      </label>
 
       {error && <p className="text-xs text-[#e63946]">{error}</p>}
 
