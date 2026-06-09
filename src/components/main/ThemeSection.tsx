@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import ThemeCarousel from "./ThemeCarousel";
+import ThemeDetailDrawer from "@/components/theme/ThemeDetailDrawer";
 import { Theme } from "@/types/theme";
 
 interface ThemeSectionProps {
@@ -15,6 +19,26 @@ export default function ThemeSection({
   themes,
   href,
 }: ThemeSectionProps) {
+  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
+
+  useEffect(() => {
+    if (!selectedTheme) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedTheme(null);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedTheme]);
+
   return (
     <div>
       <div className="mb-8 flex items-end justify-between gap-6">
@@ -40,7 +64,10 @@ export default function ThemeSection({
         )}
       </div>
 
-      <ThemeCarousel themes={themes.slice(0, 4)} />
+      <ThemeCarousel themes={themes.slice(0, 4)} onThemeAction={setSelectedTheme} />
+      {selectedTheme && (
+        <ThemeDetailDrawer theme={selectedTheme} onClose={() => setSelectedTheme(null)} />
+      )}
     </div>
   );
 }
