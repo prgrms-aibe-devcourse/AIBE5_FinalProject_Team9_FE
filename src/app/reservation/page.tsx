@@ -246,10 +246,10 @@ function ThemeListRow({
       <div className="grid min-h-[360px] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_380px]">
         <div className="relative min-h-[300px] shrink-0 overflow-hidden bg-[#111] lg:min-h-0">
           {theme.isHot && (
-            <span className="absolute right-4 top-8 z-10 flex h-6 min-w-[54px] items-center justify-center rounded-full border border-[#cc2222]/45 bg-[#cc2222]/90 px-3 text-[11px] font-black text-white">HOT</span>
+            <span className="absolute right-4 top-8 z-10 flex h-5 min-w-[44px] items-center justify-center rounded-full border border-[#cc2222]/30 bg-[#cc2222]/55 px-2 text-[10px] font-bold text-white/85">HOT</span>
           )}
           {theme.isBest && (
-            <span className="absolute right-4 top-8 z-10 flex h-6 min-w-[54px] items-center justify-center rounded-full border border-[#d7b46a]/45 bg-[#d7b46a]/90 px-3 text-[11px] font-black text-white">BEST</span>
+            <span className="absolute right-4 top-8 z-10 flex h-5 min-w-[44px] items-center justify-center rounded-full border border-[#d7b46a]/30 bg-[#d7b46a]/55 px-2 text-[10px] font-bold text-white/85">BEST</span>
           )}
           <Image
             src={theme.imageUrl || 'https://picsum.photos/seed/default/400/300'}
