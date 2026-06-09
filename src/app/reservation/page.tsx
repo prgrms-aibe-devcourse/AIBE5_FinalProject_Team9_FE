@@ -141,15 +141,19 @@ function ReservationRatingIcons({
 }) {
   const Icon = type === 'horror' ? ReservationSkullIcon : ReservationLockIcon;
   const activeColor = type === 'horror' ? 'text-[#c94a4a]' : 'text-[#d7b46a]';
+  const activeShadow =
+    type === 'horror'
+      ? 'drop-shadow-[0_0_5px_rgba(204,34,34,0.16)]'
+      : 'drop-shadow-[0_0_5px_rgba(215,180,106,0.2)]';
 
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-1.5">
       {Array.from({ length: 5 }).map((_, index) => (
         <Icon
           key={index}
           className={[
-            'h-[15px] w-[15px]',
-            index < level ? activeColor : 'text-[#343434] opacity-55',
+            'h-4 w-4 transition-all',
+            index < level ? `${activeColor} ${activeShadow} opacity-100` : 'text-[#303030] opacity-45',
           ].join(' ')}
         />
       ))}
@@ -225,7 +229,8 @@ function ThemeListRow({
   onQuickBook: (theme: Theme, date: string, time: string) => void;
 }) {
   const [activeDateIdx, setActiveDateIdx] = useState(0);
-  const [selectedTime, setSelectedTime] = useState('17:00');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [showTimeNotice, setShowTimeNotice] = useState(false);
 
   const slots = getSlots(theme.id, activeDateIdx);
   const showcaseDescription =
@@ -237,20 +242,17 @@ function ThemeListRow({
 시간이 흐를수록 탈출의 기회는 사라진다.`;
 
   const handleBook = () => {
-    if (!selectedTime) return;
+    if (!selectedTime) {
+      setShowTimeNotice(true);
+      return;
+    }
     onQuickBook(theme, dates[activeDateIdx].dateStr, selectedTime);
   };
 
   return (
     <div className="mx-auto w-full max-w-[1120px] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#171717] shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition-all duration-300 hover:border-[#cc2222]/70 hover:bg-[#1b1b1b] hover:shadow-[0_18px_48px_rgba(204,34,34,0.16)]">
-      <div className="grid min-h-[360px] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_380px]">
+      <div className="grid min-h-[308px] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_380px]">
         <div className="relative min-h-[300px] shrink-0 overflow-hidden bg-[#111] lg:min-h-0">
-          {theme.isHot && (
-            <span className="absolute right-4 top-8 z-10 flex h-5 min-w-[44px] items-center justify-center rounded-full border border-[#cc2222]/30 bg-[#cc2222]/55 px-2 text-[10px] font-bold text-white/85">HOT</span>
-          )}
-          {theme.isBest && (
-            <span className="absolute right-4 top-8 z-10 flex h-5 min-w-[44px] items-center justify-center rounded-full border border-[#d7b46a]/30 bg-[#d7b46a]/55 px-2 text-[10px] font-bold text-white/85">BEST</span>
-          )}
           <Image
             src={theme.imageUrl || 'https://picsum.photos/seed/default/400/300'}
             alt={theme.title}
@@ -263,37 +265,43 @@ function ThemeListRow({
 
         <div className="contents">
           <div className="flex min-w-0 flex-col justify-center border-y border-white/[0.08] px-[28px] py-7 lg:border-x lg:border-y-0">
-            <p className="text-[12px] leading-none text-[#555]">11:00</p>
-            <p className="mt-1 text-[12px] font-medium leading-none text-[#9a9a9a]">{theme.branchName}</p>
-            <h3 className="mt-4 text-[20px] font-black leading-tight text-[#f5f5f5]">{theme.title}</h3>
+            <h3 className="flex min-w-0 items-baseline gap-2 text-[22px] font-black leading-tight text-white">
+              <span className="min-w-0 shrink truncate">{theme.title}</span>
+              <span className="min-w-0 truncate text-[12px] font-bold text-[#8a8a8a]">· {theme.branchName}</span>
+            </h3>
 
-            <div className="mt-5 grid grid-cols-[48px_1fr] gap-y-2 text-[12px] leading-none text-[#888]">
-              <span>별점</span>
-              <span className="flex items-center gap-3">
-                <span className="text-[15px] tracking-[0.08em] text-[#f39c12]">★★★★★</span>
-                <strong className="text-[14px] font-black text-[#f5f5f5]">{theme.rating?.toFixed(1)}</strong>
-                <span className="text-[#5f5f5f]">({theme.reviewCount})</span>
-              </span>
-              <span>난이도</span>
-              <span className="flex items-center gap-1.5">
-                <ReservationRatingIcons level={theme.difficulty} type="difficulty" />
-              </span>
-              <span>공포도</span>
-              <span className="flex items-center gap-1.5">
-                <ReservationRatingIcons level={theme.horrorLevel} type="horror" />
-              </span>
-              <span>인원</span>
-              <span className="text-[#7f8791]">{theme.minPlayers}~{theme.maxPlayers}명</span>
-              <span>시간</span>
-              <span className="text-[#7f8791]">{theme.duration}분</span>
+            <div className="mt-4 space-y-2.5 text-[12px] leading-none text-[#888]">
+              <div className="grid grid-cols-[48px_1fr]">
+                <span>별점</span>
+                <span className="flex items-center gap-3">
+                  <span className="text-[15px] tracking-[0.08em] text-[#f39c12]">★★★★★</span>
+                  <strong className="text-[14px] font-black text-[#f5f5f5]">{theme.rating?.toFixed(1)}</strong>
+                  <span className="text-[#5f5f5f]">({theme.reviewCount})</span>
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <span className="inline-flex items-center gap-3">
+                  <span>난이도</span>
+                  <ReservationRatingIcons level={theme.difficulty} type="difficulty" />
+                </span>
+                <span className="inline-flex items-center gap-3">
+                  <span>공포도</span>
+                  <ReservationRatingIcons level={theme.horrorLevel} type="horror" />
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[#7f8791]">
+                <span>인원 {theme.minPlayers}~{theme.maxPlayers}명</span>
+                <span>시간 {theme.duration}분</span>
+                <span className="font-bold text-[#c6c6c6]">가격 {theme.price.toLocaleString('ko-KR')}원</span>
+              </div>
             </div>
 
-            <p className="mt-6 max-w-[320px] whitespace-pre-line text-[13px] font-medium leading-[1.62] text-[#a8a8a8]">
+            <p className="mt-[22px] max-w-[320px] overflow-hidden whitespace-pre-line text-[13px] font-medium leading-[1.72] text-[#b0b0b0] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
               {showcaseDescription}
             </p>
           </div>
 
-          <div className="flex min-h-[360px] min-w-0 flex-col px-6 py-6">
+          <div className="flex min-h-[308px] min-w-0 flex-col justify-center px-5 py-5">
             <div className="grid grid-cols-3 border-b border-white/[0.08]">
               {dates.map((date, index) => {
                 const isActive = activeDateIdx === index;
@@ -304,9 +312,10 @@ function ThemeListRow({
                     onClick={() => {
                       setActiveDateIdx(index);
                       setSelectedTime('');
+                      setShowTimeNotice(false);
                     }}
                     className={[
-                      'relative h-9 text-center text-[12px] font-bold transition-colors',
+                      'relative h-8 text-center text-[12px] font-bold transition-colors',
                       isActive ? 'text-[#e72a2d]' : 'text-[#d9d9d9] hover:text-white',
                     ].join(' ')}
                   >
@@ -317,14 +326,18 @@ function ThemeListRow({
               })}
             </div>
 
-            <div className="mt-3.5 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
               {slots.map((slot) => (
                 <button
                   key={slot.time}
                   disabled={slot.soldOut}
-                  onClick={() => !slot.soldOut && setSelectedTime(slot.time)}
+                  onClick={() => {
+                    if (slot.soldOut) return;
+                    setSelectedTime(slot.time);
+                    setShowTimeNotice(false);
+                  }}
                   className={[
-                    'h-[42px] min-w-0 rounded-[7px] border text-[12px] font-bold transition-colors',
+                    'h-[38px] min-w-0 rounded-[7px] border text-[12px] font-bold transition-colors',
                     slot.soldOut
                       ? 'cursor-not-allowed border-transparent bg-[#222] text-[#686868] line-through opacity-70'
                       : selectedTime === slot.time
@@ -340,7 +353,7 @@ function ThemeListRow({
             <button
               onClick={handleBook}
               className={[
-                'mt-7 h-10 w-full rounded-[8px] text-[13px] font-black transition-colors',
+                'mt-6 h-10 w-full rounded-[8px] text-[13px] font-black transition-colors',
                 selectedTime
                   ? 'bg-[#cc2222] text-white hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]'
                   : 'cursor-not-allowed bg-[#cc2222]/55 text-white/60',
@@ -348,6 +361,11 @@ function ThemeListRow({
             >
               빠른 예약하기
             </button>
+            {showTimeNotice && (
+              <p className="mt-2 text-center text-[12px] font-bold text-[#ef5353]">
+                예약 시간을 선택해주세요.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -643,7 +661,7 @@ function BrowseStep({ onBook }: { onBook: (theme: Theme, date: string, time: str
         />
 
         <div className="min-w-0">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-3 flex h-11 items-center justify-between rounded-[14px] border border-white/[0.08] bg-[#171717]/72 px-4">
             <span className="text-sm text-[#888]">
               <span className="font-bold text-[#f5f5f5]">{filtered.length}</span>개의 테마
             </span>

@@ -1,0 +1,3 @@
+module.exports=[23953,a=>{"use strict";a.s(["default",()=>c]);var b=a.i(87924);function c({error:a,reset:c}){return(0,b.jsxs)("div",{className:"flex flex-col items-center justify-center min-h-[60vh] gap-4",children:[(0,b.jsx)("h1",{className:"text-4xl font-black text-[#e63946]",children:"오류 발생"}),(0,b.jsx)("p",{className:"text-[#888]",children:a.message||"알 수 없는 오류가 발생했습니다."}),(0,b.jsx)("button",{onClick:c,className:"bg-[#e63946] hover:bg-[#c1121f] text-white px-5 py-2.5 rounded text-sm transition-colors",children:"다시 시도"})]})}}];
+
+//# sourceMappingURL=src_app_error_tsx_22278d09._.js.map

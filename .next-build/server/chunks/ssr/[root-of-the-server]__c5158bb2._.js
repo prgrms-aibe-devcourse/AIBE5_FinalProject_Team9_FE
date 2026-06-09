@@ -1,0 +1,3 @@
+module.exports=[93695,(a,b,c)=>{b.exports=a.x("next/dist/shared/lib/no-fallback-error.external.js",()=>require("next/dist/shared/lib/no-fallback-error.external.js"))},62212,a=>{a.n(a.i(66114))},64240,(a,b,c)=>{},26351,a=>{"use strict";a.s(["default",()=>c]);var b=a.i(7997);function c(){return(0,b.jsxs)("div",{className:"max-w-4xl mx-auto px-4 py-10",children:[(0,b.jsx)("h1",{className:"text-2xl font-bold text-[#f5f5f5]",children:"후기"}),(0,b.jsx)("p",{className:"text-[#888] mt-2",children:"GrimGate 방탈출 후기 목록"})]})}}];
+
+//# sourceMappingURL=%5Broot-of-the-server%5D__c5158bb2._.js.map

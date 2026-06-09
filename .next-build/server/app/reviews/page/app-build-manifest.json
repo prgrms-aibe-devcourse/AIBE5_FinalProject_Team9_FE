@@ -1,0 +1,16 @@
+{
+  "pages": {
+    "/reviews/page": [
+      "static/chunks/ff1a16fafef87110.js",
+      "static/chunks/7dd66bdf8a7e5707.js",
+      "static/chunks/be41585ec2284d88.css",
+      "static/chunks/f868329a221342f0.js",
+      "static/chunks/564f47776bcffce3.js",
+      "static/chunks/be0181a504c3dd6f.js",
+      "static/chunks/475395bf1b7ea74b.js",
+      "static/chunks/b36a1c15a8ed94f9.js",
+      "static/chunks/8082ab48faca5ea1.js",
+      "static/chunks/turbopack-12726808166375c8.js"
+    ]
+  }
+}
