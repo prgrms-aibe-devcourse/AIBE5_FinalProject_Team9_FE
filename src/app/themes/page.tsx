@@ -634,10 +634,8 @@ function ThemeDetailDrawer({
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<DrawerTab>("info");
-  const [selectedDate, setSelectedDate] = useState(() =>
-    getDateValue(new Date()),
-  );
-  const [selectedTime, setSelectedTime] = useState("");
+  const [selectedDate, setSelectedDate] = useState("2026-05-22");
+  const [selectedTime, setSelectedTime] = useState("17b");
   const [calendarMonth, setCalendarMonth] = useState(() =>
     getMonthStart(new Date()),
   );
@@ -701,6 +699,201 @@ function ThemeDetailDrawer({
     setIsVisible(false);
     window.setTimeout(onClose, 220);
   };
+
+  const quickDateTabs = [
+    { value: "2026-05-21", label: "5.21 (수)" },
+    { value: "2026-05-22", label: "5.22 (목)" },
+    { value: "2026-05-23", label: "5.23 (금)" },
+  ];
+  const quickTimeSlots = [
+    { id: "13", label: "13:00", disabled: false },
+    { id: "11", label: "11:00", disabled: false },
+    { id: "17a", label: "17:00", disabled: false },
+    { id: "15", label: "15:00", disabled: false },
+    { id: "21", label: "21:00", disabled: false },
+    { id: "17b", label: "17:00", disabled: false },
+    { id: "19", label: "19:00", disabled: true },
+  ];
+  const selectedTimeLabel =
+    quickTimeSlots.find((slot) => slot.id === selectedTime)?.label ?? "";
+  const badgeLabel = theme.isHot
+    ? "HOT"
+    : theme.isBest
+      ? "BEST"
+      : theme.isNew
+        ? "NEW"
+        : "";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <button
+        type="button"
+        aria-label="닫기"
+        onClick={requestClose}
+        className={[
+          "absolute inset-0 bg-black/82 transition-opacity duration-200",
+          isVisible ? "opacity-100" : "opacity-0",
+        ].join(" ")}
+      />
+
+      <article
+        className={[
+          "relative grid w-full max-w-[1128px] overflow-hidden rounded-[12px] border border-white/[0.12] bg-[#151515] shadow-[0_28px_80px_rgba(0,0,0,0.56)] transition-all duration-300 ease-out hover:border-[#cc2222]/45 hover:shadow-[0_30px_86px_rgba(0,0,0,0.58),0_0_34px_rgba(204,34,34,0.16)] lg:h-[360px] lg:grid-cols-[330px_330px_468px]",
+          isVisible ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+        ].join(" ")}
+      >
+        <div className="relative min-h-[280px] overflow-hidden bg-black lg:min-h-0">
+          {theme.imageUrl ? (
+            <Image
+              src={theme.imageUrl}
+              alt={theme.title}
+              fill
+              sizes="330px"
+              className="object-cover object-center brightness-[0.72] contrast-125 saturate-[0.72]"
+              priority
+            />
+          ) : (
+            <div className="h-full w-full bg-[#050505]" />
+          )}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.04)_0%,rgba(0,0,0,0)_42%,rgba(0,0,0,0.38)_82%,#151515_100%)]" />
+          {badgeLabel && (
+            <span
+              className={[
+                "absolute right-6 top-9 flex h-6 min-w-[56px] items-center justify-center rounded-[4px] px-4 text-[11px] font-bold leading-none text-white",
+                badgeLabel === "BEST" ? "bg-[#d7a820]" : "bg-[#df2024]",
+              ].join(" ")}
+            >
+              {badgeLabel}
+            </span>
+          )}
+        </div>
+
+        <section className="flex flex-col justify-center border-y border-white/[0.08] px-8 py-9 lg:border-x lg:border-y-0 lg:px-[27px] lg:py-[34px]">
+          <p className="text-[12px] leading-none text-[#777]">11:00</p>
+          <p className="mt-1 text-[12px] font-medium leading-none text-[#9b9b9b]">
+            {theme.branchName}
+          </p>
+
+          <h2 className="mt-3.5 text-[20px] font-black leading-tight text-[#f0f0f0]">
+            {theme.title}
+          </h2>
+
+          <div className="mt-5 grid max-w-[286px] grid-cols-[43px_1fr] gap-y-2.5 text-[12px] leading-none">
+            <span className="text-[#777]">별점</span>
+            <span className="flex items-center gap-3">
+              <span className="text-[15px] tracking-[0.08em] text-[#f1b51c]">
+                ★★★★★
+              </span>
+              <strong className="text-[14px] font-black text-white">
+                {theme.rating.toFixed(1)}
+              </strong>
+              <span className="text-[#646464]">({theme.reviewCount})</span>
+            </span>
+
+            <span className="text-[#777]">난이도</span>
+            <span className="flex items-center gap-1.5">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <span
+                  key={index}
+                  className={[
+                    "h-[10px] w-[13px] rounded-full",
+                    index < theme.difficulty ? "bg-[#eeeeee]" : "bg-[#2c3040]",
+                  ].join(" ")}
+                />
+              ))}
+              <span className="ml-4 text-[#7f8791]">
+                👥 {theme.minPlayers}~{theme.maxPlayers}명
+              </span>
+              <span className="ml-4 text-[#7f8791]">⏱ {theme.duration}분</span>
+            </span>
+
+            <span className="text-[#777]">공포도</span>
+            <span className="flex items-center gap-1.5">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <span
+                  key={index}
+                  className={[
+                    "h-[10px] w-[13px] rounded-full",
+                    index < theme.horrorLevel ? "bg-[#df2427]" : "bg-[#2c3040]",
+                  ].join(" ")}
+                />
+              ))}
+            </span>
+          </div>
+
+          <p className="mt-7 max-w-[274px] overflow-hidden text-[13px] font-medium leading-[1.65] text-[#a8a8a8] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4]">
+            {theme.description}
+          </p>
+        </section>
+
+        <section className="flex flex-col px-8 py-9 lg:px-[30px] lg:py-[34px]">
+          <div className="grid grid-cols-3 border-b border-white/[0.07]">
+            {quickDateTabs.map((date) => {
+              const isSelected = selectedDate === date.value;
+
+              return (
+                <button
+                  key={date.value}
+                  type="button"
+                  onClick={() => setSelectedDate(date.value)}
+                  className={[
+                    "relative h-[36px] text-center text-[12px] font-medium transition-colors",
+                    isSelected ? "text-[#e72a2d]" : "text-[#d9d9d9]",
+                  ].join(" ")}
+                >
+                  {date.label}
+                  {isSelected && (
+                    <span className="absolute inset-x-0 bottom-[-1px] h-[2px] bg-[#e12225]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-[18px] grid grid-cols-4 gap-x-[18px] gap-y-[13px]">
+            {quickTimeSlots.map((slot) => {
+              const isSelected = selectedTime === slot.id;
+
+              return (
+                <button
+                  key={slot.id}
+                  type="button"
+                  disabled={slot.disabled}
+                  onClick={() => setSelectedTime(slot.id)}
+                  className={[
+                    "h-12 rounded-[7px] border text-[14px] font-medium transition-all",
+                    slot.disabled
+                      ? "cursor-not-allowed border-transparent bg-[#222] text-[#686868] line-through opacity-70"
+                      : isSelected
+                        ? "border-[#e12225] bg-[#e12225] text-white"
+                        : "border-white/[0.07] bg-[#202020] text-[#e4e4e4] hover:border-[#e12225]/70",
+                  ].join(" ")}
+                >
+                  {slot.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <Link
+            href={`/reservation?themeId=${theme.id}&date=${selectedDate}${selectedTimeLabel ? `&time=${selectedTimeLabel}` : ""}`}
+            className="mt-auto flex h-[43px] w-full items-center justify-center rounded-[4px] bg-[#df2024] text-[13px] font-black text-white transition-colors hover:bg-[#ef3033]"
+          >
+            빠른 예약하기
+          </Link>
+        </section>
+
+        <button
+          type="button"
+          onClick={requestClose}
+          aria-label="닫기"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/35 text-[18px] font-bold text-white/70 transition-colors hover:bg-black/55 hover:text-white"
+        >
+          ×
+        </button>
+      </article>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-50">
@@ -880,14 +1073,16 @@ function ThemeDetailDrawer({
                       </span>
                     </div>
 
-                    <div className="mb-4 grid gap-2 rounded-[12px] border border-white/[0.06] bg-[#101010]/65 p-3 sm:grid-cols-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-bold text-[#888]">공포도</span>
+                    <div className="mb-4">
+                      <div className="inline-flex max-w-full flex-wrap items-center justify-start gap-x-8 gap-y-2 rounded-[12px] border border-white/[0.06] bg-[#101010]/65 px-3 py-2 text-xs">
+                      <div className="inline-flex flex-none items-center gap-2">
+                        <span className="font-black text-[#b8b8b8]">공포도</span>
                         <DrawerRatingIcons level={review.horrorLevel} type="horror" />
                       </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-bold text-[#888]">난이도</span>
+                      <div className="inline-flex flex-none items-center gap-2">
+                        <span className="font-black text-[#b8b8b8]">난이도</span>
                         <DrawerRatingIcons level={review.difficulty} type="difficulty" />
+                      </div>
                       </div>
                     </div>
 

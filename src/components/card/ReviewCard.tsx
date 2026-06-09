@@ -70,14 +70,16 @@ export default function ReviewCard({ review, onReport }: ReviewCardProps) {
         <StarScore value={review.rating} />
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 text-xs">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
-          <span className="font-bold text-[#aaa]">공포도</span>
+      <div className="mt-4">
+        <div className="inline-flex max-w-full flex-wrap items-center justify-start gap-x-8 gap-y-2 rounded-[12px] border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs">
+        <div className="inline-flex flex-none items-center gap-2">
+          <span className="font-black text-[#b8b8b8]">공포도</span>
           <RatingGlyphs level={review.horrorLevel} type="horror" />
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1.5">
-          <span className="font-bold text-[#aaa]">난이도</span>
+        <div className="inline-flex flex-none items-center gap-2">
+          <span className="font-black text-[#b8b8b8]">난이도</span>
           <RatingGlyphs level={review.difficulty} type="difficulty" />
+        </div>
         </div>
       </div>
 
