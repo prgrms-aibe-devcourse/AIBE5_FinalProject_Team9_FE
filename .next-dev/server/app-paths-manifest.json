@@ -1,12 +1,1 @@
-{
-  "/ai-recommend/page": "app/ai-recommend/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/login/page": "app/login/page.js",
-  "/mate/[mateId]/page": "app/mate/[mateId]/page.js",
-  "/mate/page": "app/mate/page.js",
-  "/mypage/page": "app/mypage/page.js",
-  "/page": "app/page.js",
-  "/reservation/page": "app/reservation/page.js",
-  "/signup/page": "app/signup/page.js",
-  "/themes/page": "app/themes/page.js"
-}
+{}

@@ -1,687 +1,330 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { getDDay } from '@/lib/formatDate';
+import Image from "next/image";
+import Link from "next/link";
+import { type ReactNode, useState } from "react";
 
-// ── Types ─────────────────────────────────────────────────────────
-interface MockReservation {
+type TabKey = "reservation" | "achievement" | "activity";
+type ReservationStatus = "upcoming" | "cleared" | "failed";
+
+type Reservation = {
   id: number;
   themeTitle: string;
-  difficulty: number;
   date: string;
+  day: string;
   time: string;
   location: string;
-  status: 'upcoming' | 'cleared' | 'failed';
-  clearTime?: string;
-  hasReview?: boolean;
-}
-
-interface MockAchievement {
-  id: number;
-  icon: string;
-  title: string;
-  desc: string;
-  earnedAt?: string;
-  isEarned: boolean;
-}
-
-interface MockReview {
-  id: number;
-  themeTitle: string;
-  rating: number;
-  difficulty: number;
   horrorLevel: number;
-  content: string;
-  tags: string[];
-  createdAt: string;
+  difficulty: number;
+  status: ReservationStatus;
+  imageUrl: string;
+  clearTime?: string;
+  dday?: string;
+  hasReview?: boolean;
+};
+
+const K = {
+  home: "\ud648",
+  mypage: "\ub9c8\uc774\ud398\uc774\uc9c0",
+  reservation: "\uc608\uc57d",
+  achievement: "\uc5c5\uc801",
+  activity: "\ub0b4 \ud65c\ub3d9",
+  titleLead: "\ub9c8\uc774",
+  titleRest: "\ud398\uc774\uc9c0",
+  subtitle: "\ub098\uc758 \uc608\uc57d \ud604\ud669\uacfc \uc608\uc57d \uae30\ub85d\uc744 \ud655\uc778\ud558\uc138\uc694.",
+  name: "\uae40\uacf5\ud3ec",
+  branch: "\uac15\ub0a8\uc810",
+  gender: "\uc131\ubcc4 \uc5ec\uc790",
+  age: "\ub098\uc774 24",
+  totalPlay: "\ucd1d \ud50c\ub808\uc774",
+  successRate: "\uc131\uacf5\ub960",
+  bestClear: "\ucd5c\ub2e8 \ud074\ub9ac\uc5b4",
+  achievements: "\ud68d\ub4dd \uc5c5\uc801",
+  rankLabel: "\ud604\uc7ac \ub4f1\uae09",
+  rank: "\uac15\uc2ec\uc7a5",
+  topRank: "\uc0c1\uc704 25%",
+  rankRule: "\uc131\uacf5\ub960 75% \uc774\uc0c1",
+  upcoming: "\uc608\uc815\ub41c \uc608\uc57d",
+  past: "\uc9c0\ub09c \uc608\uc57d",
+  horror: "\uacf5\ud3ec\ub3c4",
+  difficulty: "\ub09c\uc774\ub3c4",
+  scheduled: "\uc608\uc815",
+  cleared: "\ud074\ub9ac\uc5b4",
+  failed: "\uc2e4\ud328",
+  change: "\uc608\uc57d \ubcc0\uacbd",
+  reviewView: "\ud6c4\uae30 \ubcf4\uae30",
+  reviewWrite: "\ud6c4\uae30 \uc4f0\uae30",
+  clearTime: "\ud074\ub9ac\uc5b4 \ud0c0\uc784",
+  nextStep: "\ud0ed\uc740 \ub2e4\uc74c \ub2e8\uacc4\uc5d0\uc11c \uc815\ub9ac\ub429\ub2c8\ub2e4.",
+};
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "reservation", label: K.reservation },
+  { key: "achievement", label: K.achievement },
+  { key: "activity", label: K.activity },
+];
+
+const STATS = [
+  { label: K.totalPlay, value: "12", accent: "text-[#f5f5f5]", icon: "\ud83c\udfae" },
+  { label: K.successRate, value: "75%", accent: "text-[#2ecc71]", icon: "\ud83c\udfaf" },
+  { label: K.bestClear, value: "38:24", accent: "text-[#3498db]", icon: "\u23f1" },
+  { label: K.achievements, value: "17", accent: "text-[#b66ae0]", icon: "\ud83c\udfc6" },
+];
+
+const UPCOMING_RESERVATIONS: Reservation[] = [
+  { id: 1, themeTitle: "\ud3d0\ubcd1\uc6d0\uc758 \uc800\uc8fc", date: "2026-06-02", day: "\ud654", time: "20:00", location: K.branch, horrorLevel: 5, difficulty: 4, status: "upcoming", imageUrl: "/images/horror/%EC%A0%95%EC%A7%80.png" },
+  { id: 2, themeTitle: "\ubb18\uc9c0\uc758 \uc800\uc8fc", date: "2026-06-17", day: "\uc218", time: "17:00", location: "\uc2e0\ucd0c\uc810", horrorLevel: 4, difficulty: 4, status: "upcoming", imageUrl: "/images/horror/theme-smoke.png", dday: "D-7" },
+];
+
+const PAST_RESERVATIONS: Reservation[] = [
+  { id: 3, themeTitle: "\uc880\ube44 \uc544\ud3ec\uce7c\ub9bd\uc2a4", date: "2026-04-30", day: "\ubaa9", time: "16:00", location: K.branch, horrorLevel: 5, difficulty: 4, status: "cleared", clearTime: "47:32", imageUrl: "/images/horror/theme-pumpkin.png", hasReview: true },
+  { id: 4, themeTitle: "\uc545\ub9c8\uc758 \uc81c\ub2e8", date: "2026-04-05", day: "\uc77c", time: "21:00", location: "\uc2e0\ucd0c\uc810", horrorLevel: 3, difficulty: 3, status: "failed", imageUrl: "/images/horror/theme-clown.png" },
+  { id: 5, themeTitle: "\uc720\ub839 \ud559\uad50", date: "2026-03-22", day: "\uc77c", time: "19:00", location: "\ud64d\ub300\uc810", horrorLevel: 4, difficulty: 4, status: "cleared", clearTime: "52:18", imageUrl: "/images/horror/theme-zebra.png" },
+  { id: 6, themeTitle: "\ubc84\ub824\uc9c4 \uc720\ub78c\uc120", date: "2026-02-14", day: "\ud1a0", time: "15:00", location: K.branch, horrorLevel: 4, difficulty: 3, status: "cleared", clearTime: "49:05", imageUrl: "/images/horror/hero-door.png", hasReview: true },
+];
+
+function SkullIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
+      <path fill="currentColor" d="M8 1.7c-3.1 0-5.2 2.1-5.2 5.1 0 1.8.8 3.2 2 4v2.1c0 .8.6 1.4 1.4 1.4h3.6c.8 0 1.4-.6 1.4-1.4v-2.1c1.2-.8 2-2.2 2-4 0-3-2.1-5.1-5.2-5.1Zm-2.1 7.6c-.8 0-1.4-.6-1.4-1.4s.6-1.4 1.4-1.4 1.4.6 1.4 1.4-.6 1.4-1.4 1.4Zm2.1 1.5c-.4 0-.8-.3-.8-.7 0-.3.5-1.2.8-1.7.3.5.8 1.4.8 1.7 0 .4-.4.7-.8.7Zm2.1-1.5c-.8 0-1.4-.6-1.4-1.4s.6-1.4 1.4-1.4 1.4.6 1.4 1.4-.6 1.4-1.4 1.4ZM6.1 12.1h.8v1h-.8v-1Zm1.5 0h.8v1h-.8v-1Zm1.5 0h.8v1h-.8v-1Z" />
+    </svg>
+  );
 }
 
-// ── Mock Data ──────────────────────────────────────────────────────
-const MOCK_UPCOMING: MockReservation[] = [
-  { id: 1, themeTitle: '폐병원 공포탈출', difficulty: 5, date: '2026-06-02', time: '20:00', location: '강남점', status: 'upcoming' },
-  { id: 2, themeTitle: '묘지의 저주', difficulty: 4, date: '2026-06-17', time: '17:00', location: '신촌점', status: 'upcoming' },
-];
-
-const MOCK_PAST: MockReservation[] = [
-  { id: 3, themeTitle: '좀비 아포칼립스', difficulty: 5, date: '2026-04-30', time: '16:00', location: '강남점', status: 'cleared', clearTime: '47:32', hasReview: true },
-  { id: 4, themeTitle: '악마의 제단', difficulty: 5, date: '2026-04-05', time: '21:00', location: '신촌점', status: 'failed', hasReview: false },
-  { id: 5, themeTitle: '유령 학교', difficulty: 4, date: '2026-03-22', time: '19:30', location: '홍대점', status: 'cleared', clearTime: '52:18', hasReview: false },
-];
-
-const MOCK_ACHIEVEMENTS: MockAchievement[] = [
-  { id: 1, icon: '🎯', title: '첫 발걸음', desc: '첫 방탈출 클리어', earnedAt: '2026-02-10', isEarned: true },
-  { id: 2, icon: '👻', title: '공포 정복자', desc: '난이도 5 방탈출 3개 성공', earnedAt: '2026-04-01', isEarned: true },
-  { id: 3, icon: '⚡', title: '스피드 러너', desc: '40분 내 클리어', earnedAt: '2026-03-15', isEarned: true },
-  { id: 4, icon: '🏆', title: '팀워크 마스터', desc: '같은 팀원과 5회 플레이', earnedAt: '2026-04-20', isEarned: true },
-  { id: 5, icon: '🔥', title: '연속 성공', desc: '5회 연속 클리어', isEarned: false },
-  { id: 6, icon: '🎨', title: '공포 수집가', desc: '모든 테마 한번씩 플레이', isEarned: false },
-];
-
-const MOCK_REVIEWS: MockReview[] = [
-  { id: 1, themeTitle: '좀비 아포칼립스', rating: 5, difficulty: 5, horrorLevel: 5, content: '퍼즐 구성이 정말 탄탄하고 좀비 분장이 리얼해서 소름 돋았어요. 팀원들이랑 같이 가면 훨씬 재미있을 것 같아요. 추천합니다!', tags: ['무서워요', '퍼즐이 좋아요', '팀워크 필요'], createdAt: '2026-04-22' },
-  { id: 2, themeTitle: '유령 학교', rating: 4, difficulty: 4, horrorLevel: 4, content: '학교 테마가 익숙해서 더 무서웠어요. 초반 단서가 살짝 어려웠지만 그게 또 재미였어요. 난이도 조절이 잘 됐어요.', tags: ['스토리가 좋아요', '난이도 추천'], createdAt: '2026-03-24' },
-];
-
-const MOCK_POSTS = [
-  { id: 1, type: '모집' as const, title: '이번 주말 강남점 폐병원 같이 가실 분?', date: '2026-05-03', commentCount: 0 },
-  { id: 2, type: '정보' as const, title: '좀비 아포칼립스 공략 팁 공유합니다', date: '2026-04-21', commentCount: 6 },
-];
-
-// ── Constants ─────────────────────────────────────────────────────
-const LEVEL_STAGES = [
-  { icon: '🌱', label: '초심자', desc: '성공률 50% 미만' },
-  { icon: '💪', label: '몸보', desc: '성공률 50~74%' },
-  { icon: '🧠', label: '중수', desc: '성공률 55~74%' },
-  { icon: '🔥', label: '강심장', desc: '성공률 75% 이상' },
-  { icon: '👑', label: '공포의 왕', desc: '플레이어 30회 이상' },
-  { icon: '⭐', label: '전설', desc: '성공률 80%+' },
-];
-const CURRENT_LEVEL_IDX = 3; // 강심장
-
-const REVIEW_TAGS = ['무서워요', '퍼즐이 좋아요', '스토리가 좋아요', '팀워크 필요', '스피디해요', '연출이 좋아요', '전문가 추천', '남자 추천'];
-const DIFFICULTY_LABELS = ['', '매우 쉬움', '쉬움', '보통', '높음', '매우 높음'];
-const STAR_LABELS = ['', '별로예요', '그저 그래요', '괜찮아요', '좋아요', '최고예요'];
-
-// ── Helper Components ──────────────────────────────────────────────
-function DotRating({ level, max = 5, color = '#e63946' }: { level: number; max?: number; color?: string }) {
+function LockIcon({ className }: { className?: string }) {
   return (
-    <span className="flex gap-0.5">
-      {Array.from({ length: max }).map((_, i) => (
-        <span
-          key={i}
-          className={['w-2.5 h-2.5 rounded-full shrink-0', i < level ? '' : 'bg-[#2a2a2a]'].join(' ')}
-          style={i < level ? { backgroundColor: color } : undefined}
-        />
+    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
+      <path fill="currentColor" d="M4.2 6.7V5.2C4.2 3 5.8 1.5 8 1.5s3.8 1.5 3.8 3.7v1.5h.4c.8 0 1.3.6 1.3 1.3v5.1c0 .8-.6 1.4-1.4 1.4H3.9c-.8 0-1.4-.6-1.4-1.4V8c0-.8.6-1.3 1.3-1.3h.4Zm1.7 0h4.2V5.2c0-1.2-.8-2-2.1-2s-2.1.8-2.1 2v1.5Z" />
+    </svg>
+  );
+}
+
+function MetaIcon({ type }: { type: "date" | "time" | "location" | "gender" | "age" }) {
+  const common = "h-3.5 w-3.5 text-[#8c8c8c]";
+  if (type === "date") {
+    return <svg viewBox="0 0 16 16" className={common} aria-hidden="true"><path fill="currentColor" d="M4 2h1v1h6V2h1v1h1.2c.7 0 1.3.6 1.3 1.3v8.9c0 .7-.6 1.3-1.3 1.3H2.8c-.7 0-1.3-.6-1.3-1.3V4.3C1.5 3.6 2.1 3 2.8 3H4V2Zm9 4H3v7h10V6Z" /></svg>;
+  }
+  if (type === "time") {
+    return <svg viewBox="0 0 16 16" className={common} aria-hidden="true"><path fill="currentColor" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm.6 3.2v3l2.2 1.3-.7 1.1-2.9-1.7V4.7h1.4Z" /></svg>;
+  }
+  if (type === "location") {
+    return <svg viewBox="0 0 16 16" className={common} aria-hidden="true"><path fill="currentColor" d="M8 1.5A4.7 4.7 0 0 0 3.3 6.2c0 3.6 4.7 8.3 4.7 8.3s4.7-4.7 4.7-8.3A4.7 4.7 0 0 0 8 1.5Zm0 6.3A1.6 1.6 0 1 1 8 4.6a1.6 1.6 0 0 1 0 3.2Z" /></svg>;
+  }
+  if (type === "gender") {
+    return <svg viewBox="0 0 16 16" className={common} aria-hidden="true"><path fill="currentColor" d="M8 8.2a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2Zm-5 6.1c.4-2.5 2.3-4.2 5-4.2s4.6 1.7 5 4.2H3Z" /></svg>;
+  }
+  return <svg viewBox="0 0 16 16" className={common} aria-hidden="true"><path fill="currentColor" d="M3 4.2h10v8.5H3V4.2Zm2-2h1.2v1.2H5V2.2Zm4.8 0H11v1.2H9.8V2.2ZM4.4 6.5v1.2h7.2V6.5H4.4Z" /></svg>;
+}
+
+function RatingIcons({ level, type }: { level: number; type: "horror" | "difficulty" }) {
+  const Icon = type === "horror" ? SkullIcon : LockIcon;
+  const active = type === "horror" ? "text-[#ef4a4a] drop-shadow-[0_0_5px_rgba(239,74,74,0.2)]" : "text-[#e2bd63] drop-shadow-[0_0_5px_rgba(226,189,99,0.18)]";
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Icon key={index} className={["h-[15px] w-[15px] transition-all", index < level ? `${active} opacity-100` : "text-[#292929] opacity-75"].join(" ")} />
       ))}
     </span>
   );
 }
 
-function StarRating({ value, onChange }: { value: number; onChange?: (v: number) => void }) {
+function ProfileSummaryCard() {
+  const [avatarSrc, setAvatarSrc] = useState("/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png");
+
   return (
-    <div className="flex gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <button key={i} type="button" onClick={() => onChange?.(i + 1)}
-          className={['text-xl leading-none transition-colors', onChange ? 'cursor-pointer' : 'cursor-default', i < value ? 'text-[#f39c12]' : 'text-[#333]'].join(' ')}>
-          ★
+    <section className="overflow-hidden rounded-[17px] border border-white/[0.075] bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.055),transparent_36%),linear-gradient(112deg,rgba(24,24,24,0.96),rgba(18,18,18,0.92)_48%,rgba(20,12,12,0.94)),rgba(18,18,18,0.9)] shadow-[0_28px_95px_rgba(0,0,0,0.52),0_0_34px_rgba(204,34,34,0.04)] backdrop-blur-md">
+      <div className="grid min-h-[156px] items-stretch lg:grid-cols-[350px_1fr_222px]">
+        <div className="flex items-center gap-5 border-b border-white/[0.035] px-7 py-6 lg:border-b-0 lg:border-r lg:border-white/[0.035]">
+          <div className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-white/[0.1] bg-[#1b1b1b] shadow-[inset_0_0_32px_rgba(255,255,255,0.045),0_14px_32px_rgba(0,0,0,0.42)]">
+            <Image src={avatarSrc} alt="" fill sizes="98px" className="object-cover p-3" onError={() => setAvatarSrc("/images/%EB%A0%B9%EB%83%A52_%ED%88%AC%EB%AA%85.png")} />
+          </div>
+          <div className="min-w-0">
+            <div className="mb-3 flex items-center gap-3">
+              <h2 className="text-[30px] font-black leading-none text-[#f5f5f5]">{K.name}</h2>
+              <span className="rounded-md border border-[#cc2222]/58 bg-[#101010]/60 px-2.5 py-1 text-xs font-black text-[#ef5353] shadow-[0_0_14px_rgba(204,34,34,0.08)]">{K.branch}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-bold text-[#aaa]">
+              <span className="inline-flex items-center gap-1.5"><MetaIcon type="gender" />{K.gender}</span>
+              <span className="text-[#4d4d4d]">|</span>
+              <span className="inline-flex items-center gap-1.5"><MetaIcon type="age" />{K.age}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 divide-x divide-y divide-white/[0.032] sm:grid-cols-4 sm:divide-y-0">
+          {STATS.map((stat) => (
+            <div key={stat.label} className="flex min-h-[156px] flex-col items-center justify-center px-4 text-center">
+              <p className="mb-3 flex items-center justify-center gap-2 text-[12px] font-black text-[#7d7d7d]"><span className="text-[20px]">{stat.icon}</span>{stat.label}</p>
+              <p className={["text-[30px] font-black leading-none tracking-[0.01em]", stat.accent].join(" ")}>{stat.value}</p>
+            </div>
+          ))}
+        </div>
+
+        <RankBadgeCard />
+      </div>
+    </section>
+  );
+}
+
+function RankBadgeCard() {
+  return (
+    <div className="m-4 flex min-h-[126px] flex-col items-center justify-center rounded-[14px] border border-[#cc2222]/58 bg-[radial-gradient(circle_at_50%_0%,rgba(204,34,34,0.2),transparent_66%),linear-gradient(180deg,rgba(204,34,34,0.038),rgba(0,0,0,0.15)),#161111] px-5 text-center shadow-[0_0_30px_rgba(204,34,34,0.12),inset_0_0_22px_rgba(204,34,34,0.026)]">
+      <p className="mb-3 text-[11px] font-black tracking-[0.16em] text-[#9c8e8e]">{K.rankLabel}</p>
+      <div className="mb-2 flex items-center justify-center gap-2.5">
+        <span className="text-[34px] leading-none">{"\ud83d\udd25"}</span>
+        <span className="text-[22px] font-black text-[#f5f5f5]">{K.rank}</span>
+      </div>
+      <p className="text-sm font-black text-[#ef5353]">{K.topRank}</p>
+      <p className="mt-1 text-xs font-black text-[#d58a80]">{K.rankRule}</p>
+    </div>
+  );
+}
+
+function ReservationTabs({ active, onChange }: { active: TabKey; onChange: (tab: TabKey) => void }) {
+  return (
+    <div className="mt-7 flex border-b border-white/[0.085]">
+      {TABS.map((tab) => (
+        <button key={tab.key} type="button" onClick={() => onChange(tab.key)} className={["relative mr-7 px-0 py-4 text-sm font-black transition-colors", active === tab.key ? "text-[#ef5353]" : "text-[#777] hover:text-[#d8d8d8]"].join(" ")}>
+          {tab.label}
+          {active === tab.key && <span className="absolute bottom-[-1px] left-0 h-0.5 w-full bg-[#cc2222] shadow-[0_0_16px_rgba(204,34,34,0.65)]" />}
         </button>
       ))}
     </div>
   );
 }
 
-function InteractiveDots({ value, onChange, max = 5, color = '#e63946' }: { value: number; onChange: (v: number) => void; max?: number; color?: string }) {
+function ReservationSection({ title, count, tone, reservations }: { title: string; count: number; tone: "upcoming" | "past"; reservations: Reservation[] }) {
   return (
-    <div className="flex gap-1.5">
-      {Array.from({ length: max }).map((_, i) => (
-        <button key={i} type="button" onClick={() => onChange(i + 1)}
-          className={['w-4 h-4 rounded-full border-2 transition-colors shrink-0', i < value ? 'border-0' : 'border-[#333] bg-transparent'].join(' ')}
-          style={i < value ? { backgroundColor: color } : undefined}
-        />
-      ))}
-    </div>
-  );
-}
-
-function getDDayBadge(dateStr: string) {
-  const d = getDDay(dateStr);
-  if (d < 0) return null;
-  if (d === 0) return { text: 'D-Day', cls: 'bg-[#e63946] text-white' };
-  return { text: `D-${d}`, cls: 'bg-[#f39c12]/20 text-[#f39c12] border border-[#f39c12]/40' };
-}
-
-// ── Settings Modal ─────────────────────────────────────────────────
-function SettingsModal({ onClose }: { onClose: () => void }) {
-  const [nickname, setNickname] = useState('김공포');
-  const [currentPw, setCurrentPw] = useState('');
-  const [newPw, setNewPw] = useState('');
-  const [newPwConfirm, setNewPwConfirm] = useState('');
-  const [emailPrivate, setEmailPrivate] = useState(true);
-  const [agePrivate, setAgePrivate] = useState(false);
-  const [genderPrivate, setGenderPrivate] = useState(false);
-  const [age, setAge] = useState('24');
-  const [gender, setGender] = useState('여자');
-
-  function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-    return (
-      <button onClick={onToggle}
-        className={['relative w-10 h-5 rounded-full transition-colors shrink-0', on ? 'bg-[#e63946]' : 'bg-[#333]'].join(' ')}>
-        <span className={['absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all', on ? 'left-5.5' : 'left-0.5'].join(' ')} />
-      </button>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl w-full max-w-sm max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f1f1f]">
-          <h2 className="text-sm font-bold text-[#f5f5f5] flex items-center gap-2">⚙ 설정</h2>
-          <button onClick={onClose} className="text-[#555] hover:text-[#888] text-xl leading-none">×</button>
-        </div>
-
-        <div className="px-5 py-5 space-y-5">
-          {/* 닉네임 */}
-          <div>
-            <label className="text-xs text-[#888] mb-1.5 block">닉네임</label>
-            <input value={nickname} onChange={e => setNickname(e.target.value)}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946]" />
-          </div>
-
-          <div className="border-t border-[#1a1a1a]" />
-
-          {/* 비밀번호 */}
-          <div>
-            <label className="text-xs text-[#888] mb-1.5 block">비밀번호 변경</label>
-            <div className="space-y-2">
-              {[
-                { ph: '현재 비밀번호', v: currentPw, s: setCurrentPw },
-                { ph: '새 비밀번호', v: newPw, s: setNewPw },
-                { ph: '새 비밀번호 확인', v: newPwConfirm, s: setNewPwConfirm },
-              ].map(f => (
-                <input key={f.ph} type="password" placeholder={f.ph} value={f.v} onChange={e => f.s(e.target.value)}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946] placeholder-[#555]" />
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t border-[#1a1a1a]" />
-
-          {/* 이메일 */}
-          <div>
-            <label className="text-xs text-[#888] mb-1.5 block">이메일</label>
-            <p className="text-xs text-[#555] mb-1.5">현재 이메일</p>
-            <input value="kimgongpo@gmail.com" readOnly
-              className="w-full bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] text-sm rounded-lg px-3 py-2.5 outline-none cursor-not-allowed mb-2" />
-            <div className="flex items-center justify-between bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5">
-              <span className="text-sm text-[#888] flex items-center gap-1.5"><span className="text-xs">🔒</span>이메일 비공개</span>
-              <Toggle on={emailPrivate} onToggle={() => setEmailPrivate(p => !p)} />
-            </div>
-          </div>
-
-          <div className="border-t border-[#1a1a1a]" />
-
-          {/* 나이 · 성별 */}
-          <div>
-            <label className="text-xs text-[#888] mb-2 block">나이 · 성별</label>
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              <div>
-                <p className="text-xs text-[#555] mb-1">나이</p>
-                <input value={age} onChange={e => setAge(e.target.value)}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946]" />
-              </div>
-              <div>
-                <p className="text-xs text-[#555] mb-1">성별</p>
-                <select value={gender} onChange={e => setGender(e.target.value)}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946]">
-                  <option value="여자">여자</option>
-                  <option value="남자">남자</option>
-                  <option value="기타">기타</option>
-                </select>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              {[
-                { label: '나이 비공개', v: agePrivate, toggle: () => setAgePrivate(p => !p) },
-                { label: '성별 비공개', v: genderPrivate, toggle: () => setGenderPrivate(p => !p) },
-              ].map(f => (
-                <div key={f.label} className="flex items-center justify-between bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5">
-                  <span className="text-sm text-[#888] flex items-center gap-1.5"><span className="text-xs">🔒</span>{f.label}</span>
-                  <Toggle on={f.v} onToggle={f.toggle} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="px-5 py-4 border-t border-[#1a1a1a] flex items-center justify-between">
-          <button className="text-xs text-[#555] hover:text-[#e63946] transition-colors">탈퇴하기</button>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-[#888] text-sm hover:border-[#444] transition-colors">취소</button>
-            <button onClick={onClose} className="px-4 py-2 rounded-lg bg-[#e63946] hover:bg-[#c1121f] text-white text-sm font-medium transition-colors">저장하기</button>
-          </div>
-        </div>
+    <section className={tone === "upcoming" ? "mt-5" : "mt-8"}>
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="flex items-center gap-2.5 text-[17px] font-black text-[#f5f5f5]">
+          <span className={["h-2 w-2 rounded-full", tone === "upcoming" ? "bg-[#e53939] shadow-[0_0_12px_rgba(229,57,57,0.58)]" : "bg-[#828282]"].join(" ")} />
+          {title}
+        </h3>
+        <span className="rounded-md border border-white/[0.08] bg-[#151515]/88 px-2.5 py-1 text-xs font-bold text-[#8a8a8a]">{count}{"\uac74"}</span>
       </div>
-    </div>
-  );
-}
-
-// ── Review Write Modal ─────────────────────────────────────────────
-function ReviewWriteModal({ reservation, onClose }: { reservation: MockReservation; onClose: () => void }) {
-  const [rating, setRating] = useState(4);
-  const [difficulty, setDifficulty] = useState(4);
-  const [horrorLevel, setHorrorLevel] = useState(4);
-  const [tags, setTags] = useState<string[]>([]);
-  const [content, setContent] = useState('');
-  const [hasSpoiler, setHasSpoiler] = useState(false);
-
-  const toggleTag = (t: string) => setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
-
-  return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f1f1f]">
-          <h2 className="text-sm font-bold text-[#f5f5f5]">🌤 후기 작성</h2>
-          <button onClick={onClose} className="text-[#555] hover:text-[#888] text-xl leading-none">×</button>
-        </div>
-
-        {/* Theme info */}
-        <div className="px-5 py-3.5 bg-[#0f0f0f] border-b border-[#1a1a1a] flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#1a1a1a] flex items-center justify-center text-xl shrink-0">🏚</div>
-          <div>
-            <p className="text-sm font-medium text-[#f5f5f5]">{reservation.themeTitle}</p>
-            <p className="text-xs text-[#888]">{reservation.date} · {reservation.location}</p>
-          </div>
-        </div>
-
-        <div className="px-5 py-5 space-y-4">
-          {/* 별점 */}
-          <div className="flex items-center gap-4">
-            <label className="text-xs text-[#888] w-12 shrink-0">별점</label>
-            <StarRating value={rating} onChange={setRating} />
-            <span className="text-xs text-[#f39c12]">{STAR_LABELS[rating]}</span>
-          </div>
-
-          {/* 난이도 */}
-          <div className="flex items-center gap-4">
-            <label className="text-xs text-[#888] w-12 shrink-0">난이도</label>
-            <InteractiveDots value={difficulty} onChange={setDifficulty} color="#3498db" />
-            <span className="text-xs text-[#3498db]">{DIFFICULTY_LABELS[difficulty]}</span>
-          </div>
-
-          {/* 공포도 */}
-          <div className="flex items-center gap-4">
-            <label className="text-xs text-[#888] w-12 shrink-0">공포도</label>
-            <InteractiveDots value={horrorLevel} onChange={setHorrorLevel} color="#e63946" />
-            <span className="text-xs text-[#e63946]">{DIFFICULTY_LABELS[horrorLevel]}</span>
-          </div>
-
-          {/* 느낌 태그 */}
-          <div>
-            <label className="text-xs text-[#888] mb-2 block">느낌 태그 <span className="text-[#555]">(복수 선택)</span></label>
-            <div className="flex flex-wrap gap-1.5">
-              {REVIEW_TAGS.map(tag => (
-                <button key={tag} type="button" onClick={() => toggleTag(tag)}
-                  className={['text-xs px-2.5 py-1 rounded-full border transition-colors',
-                    tags.includes(tag) ? 'border-[#e63946] text-[#e63946] bg-[#e63946]/10' : 'border-[#2a2a2a] text-[#888] hover:border-[#444]'
-                  ].join(' ')}>
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 내용 */}
-          <div>
-            <textarea value={content} onChange={e => setContent(e.target.value)}
-              placeholder="테마 후기를 작성해주세요..." rows={5} maxLength={500}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946] resize-none placeholder-[#555]" />
-            <p className="text-xs text-[#555] text-right mt-1">{content.length}/500</p>
-          </div>
-
-          {/* 스포일러 */}
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={hasSpoiler} onChange={e => setHasSpoiler(e.target.checked)} className="accent-[#e63946] w-3.5 h-3.5" />
-            <span className="text-xs text-[#888]">이 후기에는 스포일러가 포함되어 있습니다.</span>
-          </label>
-
-          {/* 사진 첨부 */}
-          <div className="border-2 border-dashed border-[#2a2a2a] rounded-lg py-4 px-3 text-center hover:border-[#333] transition-colors cursor-pointer">
-            <p className="text-xs text-[#888] mb-0.5">📷 사진 첨부 <span className="text-[#555]">(선택 · 최대 3장)</span></p>
-            <p className="text-xs text-[#555]">클릭하거나 드래그앤드롭으로 첨부하세요</p>
-          </div>
-        </div>
-
-        <div className="px-5 py-4 border-t border-[#1a1a1a] flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-[#888] text-sm hover:border-[#444] transition-colors">취소</button>
-          <button onClick={onClose} disabled={!content.trim()}
-            className="px-5 py-2 rounded-lg bg-[#e63946] hover:bg-[#c1121f] text-white text-sm font-bold transition-colors disabled:opacity-30">
-            후기 등록
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Tab: 예약 ─────────────────────────────────────────────────────
-function ReservationTab({ onWriteReview }: { onWriteReview: (r: MockReservation) => void }) {
-  return (
-    <div className="space-y-7">
-      {/* 예정된 예약 */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-[#f5f5f5] flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#2ecc71] shrink-0" />
-            예정된 예약
-          </h3>
-          <span className="text-xs bg-[#1a1a1a] text-[#888] px-2 py-0.5 rounded">{MOCK_UPCOMING.length}건</span>
-        </div>
-        <div className="space-y-2">
-          {MOCK_UPCOMING.map(r => {
-            const badge = getDDayBadge(r.date);
-            return (
-              <div key={r.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3.5 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#111] flex items-center justify-center text-xl shrink-0">🏚</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="text-sm font-semibold text-[#f5f5f5]">{r.themeTitle}</span>
-                    {badge && <span className={['text-xs px-1.5 py-0.5 rounded font-bold', badge.cls].join(' ')}>{badge.text}</span>}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <DotRating level={r.difficulty} />
-                    <span className="text-xs text-[#888]">📅 {r.date}</span>
-                    <span className="text-xs text-[#888]">🕐 {r.time}</span>
-                    <span className="text-xs text-[#888]">📍 {r.location}</span>
-                  </div>
-                </div>
-                <button className="shrink-0 text-xs bg-[#e63946] hover:bg-[#c1121f] text-white px-3 py-1.5 rounded-lg transition-colors">
-                  예약 취소
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 지난 예약 */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-[#f5f5f5] flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#555] shrink-0" />
-            지난 예약
-          </h3>
-          <span className="text-xs bg-[#1a1a1a] text-[#888] px-2 py-0.5 rounded">{MOCK_PAST.length}건</span>
-        </div>
-        <div className="space-y-2">
-          {MOCK_PAST.map(r => (
-            <div key={r.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#111] flex items-center justify-center text-xl shrink-0 opacity-50">🏚</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="text-sm font-semibold text-[#f5f5f5]">{r.themeTitle}</span>
-                  <span className={['text-xs px-1.5 py-0.5 rounded font-medium',
-                    r.status === 'cleared' ? 'bg-[#2ecc71]/15 text-[#2ecc71]' : 'bg-[#e63946]/15 text-[#e63946]'
-                  ].join(' ')}>
-                    {r.status === 'cleared' ? '✓ 클리어' : '✗ 실패'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <DotRating level={r.difficulty} />
-                  <span className="text-xs text-[#888]">📅 {r.date}</span>
-                  <span className="text-xs text-[#888]">🕐 {r.time}</span>
-                  <span className="text-xs text-[#888]">📍 {r.location}</span>
-                  {r.clearTime && <span className="text-xs text-[#2ecc71]">⏱ 클리어 타임 {r.clearTime}</span>}
-                </div>
-              </div>
-              <div className="shrink-0">
-                {r.hasReview ? (
-                  <span className="text-xs text-[#555] px-2">후기 작성됨</span>
-                ) : (
-                  <button onClick={() => onWriteReview(r)}
-                    className="text-xs bg-[#e63946] hover:bg-[#c1121f] text-white px-3 py-1.5 rounded-lg transition-colors">
-                    후기 쓰기
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// ── Tab: 업적 ─────────────────────────────────────────────────────
-function AchievementTab() {
-  const earned = MOCK_ACHIEVEMENTS.filter(a => a.isEarned).length;
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-5">
-        <h3 className="text-sm font-bold text-[#f5f5f5]">나의 업적</h3>
-        <span className="text-xs text-[#888]"><span className="text-[#9b59b6] font-bold">{earned}</span>/{MOCK_ACHIEVEMENTS.length} 획득</span>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        {MOCK_ACHIEVEMENTS.map(a => (
-          <div key={a.id}
-            className={['relative bg-[#1a1a1a] border rounded-xl p-4 transition-colors',
-              a.isEarned ? 'border-[#2a2a2a]' : 'border-[#1f1f1f] opacity-60'
-            ].join(' ')}>
-            <div className="flex items-start gap-3">
-              <div className={['w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0',
-                a.isEarned ? 'bg-[#2a2a2a]' : 'bg-[#111]'
-              ].join(' ')}>
-                {a.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={['text-sm font-semibold', a.isEarned ? 'text-[#f5f5f5]' : 'text-[#555]'].join(' ')}>{a.title}</p>
-                <p className="text-xs text-[#555] leading-snug mt-0.5">{a.desc}</p>
-                {a.isEarned && a.earnedAt && (
-                  <p className="text-xs text-[#888] mt-1.5">획득일: <span className="text-[#f39c12]">{a.earnedAt}</span></p>
-                )}
-                {!a.isEarned && (
-                  <p className="text-xs text-[#444] mt-1.5">미획득</p>
-                )}
-              </div>
-            </div>
-            {/* Indicator */}
-            <div className="absolute top-3 right-3">
-              {a.isEarned
-                ? <span className="text-[#f39c12] text-sm">📌</span>
-                : <span className="text-[#444] text-sm">🔒</span>
-              }
-            </div>
-          </div>
+      <div className="overflow-hidden rounded-[13px] border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_20px_58px_rgba(0,0,0,0.38),0_0_28px_rgba(204,34,34,0.025)]">
+        {reservations.map((reservation, index) => (
+          <ReservationRowCard key={reservation.id} reservation={reservation} isLast={index === reservations.length - 1} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
-// ── Tab: 내 활동 ──────────────────────────────────────────────────
-function ActivityTab({ onEditReview }: { onEditReview: (r: MockReview) => void }) {
+function ReservationRowCard({ reservation, isLast }: { reservation: Reservation; isLast?: boolean }) {
+  const status = getStatusStyle(reservation);
+  const action = getActionText(reservation);
   return (
-    <div className="space-y-8">
-      {/* 내 후기 */}
-      <section>
-        <h3 className="text-sm font-bold text-[#f5f5f5] flex items-center gap-2 mb-4">
-          🌤 내 후기
-        </h3>
-        <div className="space-y-3">
-          {MOCK_REVIEWS.map(r => (
-            <div key={r.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[#111] flex items-center justify-center text-base shrink-0">🏚</div>
-                  <div>
-                    <p className="text-sm font-semibold text-[#f5f5f5]">{r.themeTitle}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-[#555]">{r.createdAt}</span>
-                  <button onClick={() => onEditReview(r)}
-                    className="text-xs border border-[#2a2a2a] text-[#888] hover:border-[#444] hover:text-[#f5f5f5] px-2 py-1 rounded transition-colors">
-                    수정
-                  </button>
-                  <button className="text-xs border border-[#e63946]/40 text-[#e63946] hover:bg-[#e63946]/10 px-2 py-1 rounded transition-colors">
-                    삭제
-                  </button>
-                </div>
-              </div>
-
-              {/* Ratings row */}
-              <div className="flex items-center gap-5 mb-2">
-                <div className="flex items-center gap-1.5">
-                  <StarRating value={r.rating} />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <DotRating level={r.horrorLevel} color="#e63946" />
-                  <span className="text-xs text-[#555]">공포도</span>
-                </div>
-                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-[#2ecc71]/15 text-[#2ecc71]">
-                  {r.difficulty === 5 ? '클리어 획득' : '클리어 높음'}
-                </span>
-              </div>
-
-              <p className="text-xs text-[#aaa] leading-relaxed mb-3 line-clamp-2">{r.content}</p>
-
-              <div className="flex flex-wrap gap-1.5">
-                {r.tags.map(tag => (
-                  <span key={tag} className="text-xs bg-[#0d0d0d] border border-[#2a2a2a] rounded-full px-2 py-0.5 text-[#888]">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 내가 쓴 글 */}
-      <section>
-        <h3 className="text-sm font-bold text-[#f5f5f5] flex items-center gap-2 mb-4">
-          📋 내가 쓴 글
-        </h3>
-        <div className="space-y-2">
-          {MOCK_POSTS.map(p => (
-            <div key={p.id} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 flex items-center gap-3">
-              <span className={['text-xs font-bold px-2 py-1 rounded shrink-0', p.type === '모집' ? 'bg-[#e63946]/20 text-[#e63946]' : 'bg-[#3498db]/20 text-[#3498db]'].join(' ')}>
-                {p.type}
-              </span>
-              <span className="text-xs text-[#555] shrink-0">{p.date}</span>
-              <span className="text-sm text-[#f5f5f5] flex-1 min-w-0 truncate">{p.title}</span>
-              <span className="text-xs text-[#555] shrink-0 ml-auto">💬 {p.commentCount}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-// ── Main Page ──────────────────────────────────────────────────────
-export default function MyPage() {
-  const [tab, setTab] = useState<'reservation' | 'achievement' | 'activity'>('reservation');
-  const [showSettings, setShowSettings] = useState(false);
-  const [reviewTarget, setReviewTarget] = useState<MockReservation | null>(null);
-
-  const TABS = [
-    { key: 'reservation' as const, label: '예약' },
-    { key: 'achievement' as const, label: '업적' },
-    { key: 'activity' as const, label: '내 활동' },
-  ];
-
-  return (
-    <div className="min-h-screen bg-[#0d0d0d]">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-
-        {/* ── Profile ── */}
-        <div className="flex items-start gap-5 mb-8 relative">
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            <div className="w-20 h-20 rounded-full border-2 border-[#2a2a2a] bg-[#1a1a1a] flex items-center justify-center text-4xl overflow-hidden">
-              👻
-            </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#e63946] border-2 border-[#0d0d0d] flex items-center justify-center">
-              <span className="text-white text-xs font-bold leading-none">3</span>
-            </div>
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-black text-[#f5f5f5] mb-1.5">김공포</h1>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs bg-[#e63946] text-white px-2.5 py-1 rounded-md font-bold flex items-center gap-1">
-                🔥 강심장
-              </span>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-[#666] flex-wrap">
-              <span>🏆 {MOCK_PAST.filter(r => r.status === 'cleared').length + 9}개 클리어</span>
-              <span>★ 성공률 75%</span>
-              <span>🎖 업적 4/6</span>
-            </div>
-            <div className="flex items-center gap-3 text-xs text-[#555] mt-1">
-              <span>성별 여자</span>
-              <span>·</span>
-              <span>나이 24</span>
-            </div>
-          </div>
-
-          {/* Settings gear */}
-          <button onClick={() => setShowSettings(true)}
-            className="text-[#555] hover:text-[#888] transition-colors text-xl p-1 shrink-0">
-            ⚙
-          </button>
-        </div>
-
-        {/* ── Level Bar ── */}
-        <div className="mb-6 overflow-x-auto pb-1">
-          <div className="flex gap-1 min-w-max sm:min-w-0 sm:grid sm:grid-cols-6">
-            {LEVEL_STAGES.map((stage, i) => {
-              const isPast = i < CURRENT_LEVEL_IDX;
-              const isCurrent = i === CURRENT_LEVEL_IDX;
-              const isFuture = i > CURRENT_LEVEL_IDX;
-              return (
-                <div key={stage.label}
-                  className={[
-                    'flex flex-col items-center px-3 py-2.5 rounded-xl border text-center min-w-22.5 sm:min-w-0 transition-colors',
-                    isCurrent ? 'bg-[#e63946]/10 border-[#e63946] text-[#e63946]' : '',
-                    isPast ? 'bg-[#1a1a1a] border-[#2a2a2a] text-[#888]' : '',
-                    isFuture ? 'bg-[#111] border-[#1a1a1a] text-[#444]' : '',
-                  ].join(' ')}>
-                  <span className="text-lg mb-0.5">{stage.icon}</span>
-                  <p className={['text-xs font-bold', isCurrent ? 'text-[#e63946]' : isPast ? 'text-[#888]' : 'text-[#444]'].join(' ')}>
-                    {stage.label}
-                  </p>
-                  <p className={['text-xs mt-0.5 leading-tight', isCurrent ? 'text-[#e63946]/70' : 'text-[#444]'].join(' ')}>
-                    {stage.desc}
-                  </p>
-                  {isCurrent && <span className="text-xs text-[#e63946] font-bold mt-1">현재 등급</span>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── Stats Grid ── */}
-        <div className="grid grid-cols-4 gap-px bg-[#2a2a2a] rounded-xl overflow-hidden mb-7">
-          {[
-            { label: '총 플레이', value: '12', color: 'text-[#f5f5f5]' },
-            { label: '성공률', value: '75%', color: 'text-[#2ecc71]' },
-            { label: '최단 클리어', value: '38:24', color: 'text-[#3498db]' },
-            { label: '획득한 업적', value: '17', color: 'text-[#9b59b6]' },
-          ].map(s => (
-            <div key={s.label} className="bg-[#1a1a1a] px-3 py-4 flex flex-col items-center gap-1">
-              <p className="text-xs text-[#555] text-center leading-tight">{s.label}</p>
-              <p className={['text-xl sm:text-2xl font-black', s.color].join(' ')}>{s.value}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Tab Bar ── */}
-        <div className="flex border-b border-[#2a2a2a] mb-6">
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={[
-                'px-5 py-3 text-sm font-medium transition-colors',
-                tab === t.key ? 'text-[#e63946] border-b-2 border-[#e63946]' : 'text-[#888] hover:text-[#f5f5f5]',
-              ].join(' ')}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Tab Content ── */}
-        {tab === 'reservation' && <ReservationTab onWriteReview={setReviewTarget} />}
-        {tab === 'achievement' && <AchievementTab />}
-        {tab === 'activity' && <ActivityTab onEditReview={r => {
-          const fake: MockReservation = { id: r.id, themeTitle: r.themeTitle, difficulty: r.difficulty, date: r.createdAt, time: '', location: '', status: 'cleared' };
-          setReviewTarget(fake);
-        }} />}
+    <div className={["grid min-h-[108px] items-center gap-4 px-4.5 py-4 transition-all hover:bg-white/[0.026] hover:shadow-[inset_0_0_28px_rgba(204,34,34,0.025)] md:grid-cols-[138px_1fr_178px_178px_112px_136px]", !isLast ? "border-b border-white/[0.042]" : ""].join(" ")}>
+      <div className="relative h-[86px] overflow-hidden rounded-[8px] border border-white/[0.065] bg-[#101010]">
+        <Image src={reservation.imageUrl} alt={reservation.themeTitle} fill sizes="138px" className="object-cover brightness-[0.9] contrast-[1.16] saturate-[0.96]" />
       </div>
 
-      {/* ── Modals ── */}
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      {reviewTarget && <ReviewWriteModal reservation={reviewTarget} onClose={() => setReviewTarget(null)} />}
+      <div className="min-w-0">
+        <div className="mb-2 flex items-center gap-2">
+          <h4 className="truncate text-[20px] font-black leading-tight text-[#f5f5f5]">{reservation.themeTitle}</h4>
+          {reservation.dday && <span className="rounded-md border border-[#d7b46a]/35 bg-[#d7b46a]/10 px-2 py-0.5 text-xs font-black text-[#d7b46a]">{reservation.dday}</span>}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-bold text-[#8e8e8e]">
+          <span className="inline-flex items-center gap-1.5"><MetaIcon type="date" />{reservation.date} ({reservation.day})</span>
+          <span className="inline-flex items-center gap-1.5"><MetaIcon type="time" />{reservation.time}</span>
+          <span className="inline-flex items-center gap-1.5"><MetaIcon type="location" />{reservation.location}</span>
+          {reservation.clearTime && <span className="font-black text-[#2ecc71]">{K.clearTime} {reservation.clearTime}</span>}
+        </div>
+      </div>
+
+      <MetricBlock label={K.horror}><RatingIcons level={reservation.horrorLevel} type="horror" /></MetricBlock>
+      <MetricBlock label={K.difficulty}><RatingIcons level={reservation.difficulty} type="difficulty" /></MetricBlock>
+
+      <div className="flex justify-start md:justify-center">
+        <span className={["inline-flex h-8 min-w-[58px] items-center justify-center rounded-md border px-3 text-xs font-black", status].join(" ")}>{getStatusText(reservation.status)}</span>
+      </div>
+
+      <div className="flex justify-start md:justify-end">
+        <button type="button" className="h-9 min-w-[104px] rounded-md border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white">
+          {action}
+        </button>
+      </div>
     </div>
+  );
+}
+
+function MetricBlock({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="hidden border-l border-white/[0.038] pl-5 md:block">
+      <p className="mb-2 text-xs font-black text-[#747474]">{label}</p>
+      {children}
+    </div>
+  );
+}
+
+function getStatusText(status: ReservationStatus) {
+  if (status === "upcoming") return K.scheduled;
+  if (status === "cleared") return K.cleared;
+  return K.failed;
+}
+
+function getStatusStyle(reservation: Reservation) {
+  if (reservation.status === "upcoming") return "border-[#cc2222]/52 bg-[#cc2222]/6 text-[#ef5353]";
+  if (reservation.status === "cleared") return "border-[#2ecc71]/36 bg-[#2ecc71]/10 text-[#2ecc71]";
+  return "border-white/[0.14] bg-white/[0.035] text-[#b8b8b8]";
+}
+
+function getActionText(reservation: Reservation) {
+  if (reservation.status === "upcoming") return K.change;
+  if (reservation.status === "cleared") return reservation.hasReview ? K.reviewView : K.reviewWrite;
+  return K.reviewWrite;
+}
+
+function ReservationTabContent() {
+  return (
+    <div>
+      <ReservationSection title={K.upcoming} count={UPCOMING_RESERVATIONS.length} tone="upcoming" reservations={UPCOMING_RESERVATIONS} />
+      <ReservationSection title={K.past} count={PAST_RESERVATIONS.length} tone="past" reservations={PAST_RESERVATIONS} />
+    </div>
+  );
+}
+
+function PlaceholderTab({ title }: { title: string }) {
+  return (
+    <div className="mt-6 rounded-[14px] border border-white/[0.08] bg-[#171717]/72 px-6 py-16 text-center text-[#777]">
+      <p className="text-sm font-bold">{title} {K.nextStep}</p>
+    </div>
+  );
+}
+
+export default function MyPage() {
+  const [tab, setTab] = useState<TabKey>("reservation");
+  return (
+    <main className="min-h-screen overflow-hidden bg-[#0b0b0b] text-[#f5f5f5]">
+      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_86%_9%,rgba(150,20,20,0.42),transparent_30%),radial-gradient(circle_at_2%_82%,rgba(150,24,24,0.34),transparent_28%),radial-gradient(circle_at_24%_14%,rgba(204,34,34,0.105),transparent_32%),linear-gradient(180deg,#0b0b0b_0%,#101010_46%,#090909_100%)]" />
+      <div className="pointer-events-none fixed inset-0 opacity-[0.035] [background-image:radial-gradient(circle_at_82%_13%,rgba(255,70,70,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_9%_78%,rgba(255,60,60,0.5)_0_1px,transparent_1px)] [background-size:34px_34px,46px_46px] blur-[0.5px]" />
+      <div className="relative mx-auto max-w-[1380px] px-5 py-8 sm:px-8 lg:py-10">
+        <nav className="mb-7 flex items-center gap-2 text-xs font-bold text-[#777]">
+          <Link href="/" className="transition-colors hover:text-[#f5f5f5]">{K.home}</Link>
+          <span>&gt;</span>
+          <span>{K.mypage}</span>
+          <span>&gt;</span>
+          <span className="text-[#f5f5f5]">{K.reservation}</span>
+        </nav>
+
+        <header className="mb-6">
+          <p className="mb-3 text-[10px] font-black tracking-[0.32em] text-[#cc2222]">{"// MY PAGE"}</p>
+          <h1 className="flex items-center gap-3 text-[38px] font-black leading-tight md:text-[50px]">
+            <span className="text-[46px] leading-none">{"\ud83d\udd25"}</span>
+            <span><span className="text-[#e63946]">{K.titleLead}</span>{K.titleRest}</span>
+          </h1>
+          <p className="mt-3 text-sm font-bold text-[#aaa]">{K.subtitle}</p>
+        </header>
+
+        <ProfileSummaryCard />
+        <ReservationTabs active={tab} onChange={setTab} />
+
+        {tab === "reservation" && <ReservationTabContent />}
+        {tab === "achievement" && <PlaceholderTab title={K.achievement} />}
+        {tab === "activity" && <PlaceholderTab title={K.activity} />}
+      </div>
+    </main>
   );
 }
