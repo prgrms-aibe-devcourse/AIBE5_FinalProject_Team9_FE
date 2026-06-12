@@ -250,10 +250,47 @@ const getAuthErrorMessage = (error, fallbackMessage)=>{
     }
     return fallbackMessage;
 };
+const normalizeRole = (role)=>{
+    if (role === 'MANAGER' || role === 'OWNER') return 'OWNER';
+    if (role === 'ADMIN') return 'ADMIN';
+    return 'USER';
+};
+const createUserFromPayload = (payload)=>{
+    if (!payload?.id || !payload.email || !payload.nickname) return undefined;
+    return {
+        id: payload.id,
+        email: payload.email,
+        nickname: payload.nickname,
+        role: normalizeRole(payload.role),
+        profileImageUrl: payload.profileImageUrl,
+        gender: payload.gender,
+        age: payload.age,
+        phone: payload.phone,
+        isEmailPublic: payload.isEmailPublic ?? payload.emailVisible,
+        isAgePublic: payload.isAgePublic ?? payload.ageVisible,
+        isGenderPublic: payload.isGenderPublic ?? payload.genderVisible
+    };
+};
+const createPartialUserFromPayload = (payload)=>{
+    if (!payload) return {};
+    return {
+        id: payload.id,
+        email: payload.email,
+        nickname: payload.nickname,
+        role: payload.role ? normalizeRole(payload.role) : undefined,
+        profileImageUrl: payload.profileImageUrl,
+        gender: payload.gender,
+        age: payload.age,
+        phone: payload.phone,
+        isEmailPublic: payload.isEmailPublic ?? payload.emailVisible,
+        isAgePublic: payload.isAgePublic ?? payload.ageVisible,
+        isGenderPublic: payload.isGenderPublic ?? payload.genderVisible
+    };
+};
 const extractAuthPayload = (response)=>{
     const accessToken = response.accessToken ?? response.data?.accessToken;
     const refreshToken = response.refreshToken ?? response.data?.refreshToken;
-    const user = response.user ?? response.data?.user;
+    const user = response.user ?? response.data?.user ?? createUserFromPayload(response.data) ?? createUserFromPayload(response);
     return {
         accessToken,
         refreshToken,
@@ -276,7 +313,8 @@ const logoutUser = async ()=>{
 };
 const getMe = async ()=>{
     const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$axios$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].get('/api/auth/me');
-    return data;
+    const payload = data.data ?? data;
+    return createPartialUserFromPayload(payload);
 };
 const loginWithGoogle = async (code)=>{
     const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$axios$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["default"].post('/api/auth/google', {

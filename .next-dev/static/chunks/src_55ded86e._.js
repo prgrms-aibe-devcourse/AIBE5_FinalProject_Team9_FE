@@ -172,14 +172,53 @@ const getAuthErrorMessage = (error, fallbackMessage)=>{
     }
     return fallbackMessage;
 };
+const normalizeRole = (role)=>{
+    if (role === 'MANAGER' || role === 'OWNER') return 'OWNER';
+    if (role === 'ADMIN') return 'ADMIN';
+    return 'USER';
+};
+const createUserFromPayload = (payload)=>{
+    if (!(payload === null || payload === void 0 ? void 0 : payload.id) || !payload.email || !payload.nickname) return undefined;
+    var _payload_isEmailPublic, _payload_isAgePublic, _payload_isGenderPublic;
+    return {
+        id: payload.id,
+        email: payload.email,
+        nickname: payload.nickname,
+        role: normalizeRole(payload.role),
+        profileImageUrl: payload.profileImageUrl,
+        gender: payload.gender,
+        age: payload.age,
+        phone: payload.phone,
+        isEmailPublic: (_payload_isEmailPublic = payload.isEmailPublic) !== null && _payload_isEmailPublic !== void 0 ? _payload_isEmailPublic : payload.emailVisible,
+        isAgePublic: (_payload_isAgePublic = payload.isAgePublic) !== null && _payload_isAgePublic !== void 0 ? _payload_isAgePublic : payload.ageVisible,
+        isGenderPublic: (_payload_isGenderPublic = payload.isGenderPublic) !== null && _payload_isGenderPublic !== void 0 ? _payload_isGenderPublic : payload.genderVisible
+    };
+};
+const createPartialUserFromPayload = (payload)=>{
+    if (!payload) return {};
+    var _payload_isEmailPublic, _payload_isAgePublic, _payload_isGenderPublic;
+    return {
+        id: payload.id,
+        email: payload.email,
+        nickname: payload.nickname,
+        role: payload.role ? normalizeRole(payload.role) : undefined,
+        profileImageUrl: payload.profileImageUrl,
+        gender: payload.gender,
+        age: payload.age,
+        phone: payload.phone,
+        isEmailPublic: (_payload_isEmailPublic = payload.isEmailPublic) !== null && _payload_isEmailPublic !== void 0 ? _payload_isEmailPublic : payload.emailVisible,
+        isAgePublic: (_payload_isAgePublic = payload.isAgePublic) !== null && _payload_isAgePublic !== void 0 ? _payload_isAgePublic : payload.ageVisible,
+        isGenderPublic: (_payload_isGenderPublic = payload.isGenderPublic) !== null && _payload_isGenderPublic !== void 0 ? _payload_isGenderPublic : payload.genderVisible
+    };
+};
 const extractAuthPayload = (response)=>{
     var _response_data, _response_data1, _response_data2;
     var _response_accessToken;
     const accessToken = (_response_accessToken = response.accessToken) !== null && _response_accessToken !== void 0 ? _response_accessToken : (_response_data = response.data) === null || _response_data === void 0 ? void 0 : _response_data.accessToken;
     var _response_refreshToken;
     const refreshToken = (_response_refreshToken = response.refreshToken) !== null && _response_refreshToken !== void 0 ? _response_refreshToken : (_response_data1 = response.data) === null || _response_data1 === void 0 ? void 0 : _response_data1.refreshToken;
-    var _response_user;
-    const user = (_response_user = response.user) !== null && _response_user !== void 0 ? _response_user : (_response_data2 = response.data) === null || _response_data2 === void 0 ? void 0 : _response_data2.user;
+    var _response_user, _ref, _ref1;
+    const user = (_ref1 = (_ref = (_response_user = response.user) !== null && _response_user !== void 0 ? _response_user : (_response_data2 = response.data) === null || _response_data2 === void 0 ? void 0 : _response_data2.user) !== null && _ref !== void 0 ? _ref : createUserFromPayload(response.data)) !== null && _ref1 !== void 0 ? _ref1 : createUserFromPayload(response);
     return {
         accessToken,
         refreshToken,
@@ -204,7 +243,9 @@ const logoutUser = async ()=>{
 };
 const getMe = async ()=>{
     const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$axios$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].get('/api/auth/me');
-    return data;
+    var _data_data;
+    const payload = (_data_data = data.data) !== null && _data_data !== void 0 ? _data_data : data;
+    return createPartialUserFromPayload(payload);
 };
 const loginWithGoogle = async (code)=>{
     const { data } = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$axios$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].post('/api/auth/google', {

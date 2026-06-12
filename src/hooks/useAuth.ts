@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import {
   extractAuthPayload,
+  getMe,
   loginUser,
   logoutUser,
 } from '@/services/authService';
@@ -32,10 +33,21 @@ export const useAuth = () => {
       role: role === 'manager' ? 'OWNER' : 'USER',
     };
 
-    login(userData ?? fallbackUser, accessToken, refreshToken);
+    const initialUser = userData ?? fallbackUser;
+    login(initialUser, accessToken, refreshToken);
+
+    let currentUser = initialUser;
+    try {
+      const profile = await getMe();
+      currentUser = { ...initialUser, ...profile };
+      setUser(currentUser);
+    } catch {
+      currentUser = initialUser;
+    }
+
     router.push('/');
 
-    return userData ?? fallbackUser;
+    return currentUser;
   };
 
   const handleLogout = async () => {

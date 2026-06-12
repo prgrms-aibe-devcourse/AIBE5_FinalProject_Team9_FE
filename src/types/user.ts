@@ -33,15 +33,49 @@ export interface SignupRequest {
 
 export type AuthRole = 'member' | 'manager';
 
+export interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+export interface AuthUserPayload {
+  id?: number;
+  email?: string;
+  nickname?: string;
+  role?: string;
+  profileImageUrl?: string;
+  gender?: string;
+  age?: number;
+  phone?: string;
+  emailVisible?: boolean;
+  ageVisible?: boolean;
+  genderVisible?: boolean;
+  isEmailPublic?: boolean;
+  isAgePublic?: boolean;
+  isGenderPublic?: boolean;
+}
+
 export interface AuthResponse {
   user?: User;
   accessToken?: string;
   refreshToken?: string;
+  id?: number;
+  email?: string;
+  nickname?: string;
+  role?: string;
+  profileImageUrl?: string;
+  gender?: string;
+  age?: number;
+  phone?: string;
+  emailVisible?: boolean;
+  ageVisible?: boolean;
+  genderVisible?: boolean;
   data?: {
     user?: User;
     accessToken?: string;
     refreshToken?: string;
-  };
+  } & AuthUserPayload;
 }
 
 export interface UpdateProfileRequest {
