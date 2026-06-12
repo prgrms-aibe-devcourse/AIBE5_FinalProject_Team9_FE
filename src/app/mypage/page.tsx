@@ -9,6 +9,8 @@ type ReservationStatus = "upcoming" | "cleared" | "failed";
 type TitleStatus = "earned" | "current" | "locked" | "next";
 type AchievementStatus = "complete" | "progress" | "locked";
 type IconName = "ghost" | "user" | "flame" | "group" | "lock" | "foot" | "timer" | "heart" | "skull" | "chick" | "key" | "search" | "crown";
+type PostCategory = "모집" | "정보";
+type MateActivityStatus = "open" | "joined" | "closed";
 
 type Reservation = {
   id: number;
@@ -42,7 +44,40 @@ type AchievementItem = {
   icon: IconName;
   progress?: number;
   total?: number;
-  accent?: "red" | "green" | "amber" | "gray";
+  accent?: "lime" | "red" | "teal" | "rose" | "deepRed" | "amber" | "orange" | "gold";
+};
+
+type ActivityReview = {
+  id: number;
+  themeTitle: string;
+  date: string;
+  rating: number;
+  horrorLevel: number;
+  difficulty: number;
+  content: string;
+  tags: string[];
+  imageUrl: string;
+};
+
+type ActivityPost = {
+  id: number;
+  category: PostCategory;
+  date: string;
+  title: string;
+  comments: number;
+};
+
+type ActivityMate = {
+  id: number;
+  themeTitle: string;
+  location: string;
+  title: string;
+  date: string;
+  time: string;
+  currentMembers: number;
+  totalMembers: number;
+  status: MateActivityStatus;
+  imageUrl: string;
 };
 
 const K = {
@@ -63,9 +98,9 @@ const K = {
   bestClear: "\ucd5c\ub2e8 \ud074\ub9ac\uc5b4",
   achievements: "\ud68d\ub4dd \uc5c5\uc801",
   rankLabel: "\ud604\uc7ac \ub4f1\uae09",
-  rank: "\uac15\uc2ec\uc7a5",
-  topRank: "\uc0c1\uc704 25%",
-  rankRule: "\uc131\uacf5\ub960 75% \uc774\uc0c1",
+  rank: "오컬트 동호회장",
+  topRank: "상위 12%",
+  rankRule: "성공률 70% 이상 ~ 85% 미만",
   upcoming: "\uc608\uc815\ub41c \uc608\uc57d",
   past: "\uc9c0\ub09c \uc608\uc57d",
   horror: "\uacf5\ud3ec\ub3c4",
@@ -87,10 +122,10 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 const STATS = [
-  { label: K.totalPlay, value: "12", accent: "text-[#f5f5f5]", icon: "\ud83c\udfae" },
-  { label: K.successRate, value: "75%", accent: "text-[#2ecc71]", icon: "\ud83c\udfaf" },
-  { label: K.bestClear, value: "38:24", accent: "text-[#3498db]", icon: "\u23f1" },
-  { label: K.achievements, value: "17", accent: "text-[#b66ae0]", icon: "\ud83c\udfc6" },
+  { label: K.totalPlay, value: "12", accent: "text-[#f5f5f5]" },
+  { label: K.successRate, value: "75%", accent: "text-[#2ecc71]" },
+  { label: K.bestClear, value: "38:24", accent: "text-[#3498db]" },
+  { label: K.achievements, value: "17", accent: "text-[#b66ae0]" },
 ];
 
 const UPCOMING_RESERVATIONS: Reservation[] = [
@@ -101,28 +136,65 @@ const UPCOMING_RESERVATIONS: Reservation[] = [
 const PAST_RESERVATIONS: Reservation[] = [
   { id: 3, themeTitle: "\uc880\ube44 \uc544\ud3ec\uce7c\ub9bd\uc2a4", date: "2026-04-30", day: "\ubaa9", time: "16:00", location: K.branch, horrorLevel: 5, difficulty: 4, status: "cleared", clearTime: "47:32", imageUrl: "/images/horror/theme-pumpkin.png", hasReview: true },
   { id: 4, themeTitle: "\uc545\ub9c8\uc758 \uc81c\ub2e8", date: "2026-04-05", day: "\uc77c", time: "21:00", location: "\uc2e0\ucd0c\uc810", horrorLevel: 3, difficulty: 3, status: "failed", imageUrl: "/images/horror/theme-clown.png" },
-  { id: 5, themeTitle: "\uc720\ub839 \ud559\uad50", date: "2026-03-22", day: "\uc77c", time: "19:00", location: "\ud64d\ub300\uc810", horrorLevel: 4, difficulty: 4, status: "cleared", clearTime: "52:18", imageUrl: "/images/horror/theme-zebra.png" },
+  { id: 5, themeTitle: "\uc720\ub839 \ud559\uad50", date: "2026-03-22", day: "\uc77c", time: "19:00", location: "\ud64d\ub300\uc810", horrorLevel: 4, difficulty: 4, status: "cleared", clearTime: "52:18", imageUrl: "/images/horror/hero-door.png" },
   { id: 6, themeTitle: "\ubc84\ub824\uc9c4 \uc720\ub78c\uc120", date: "2026-02-14", day: "\ud1a0", time: "15:00", location: K.branch, horrorLevel: 4, difficulty: 3, status: "cleared", clearTime: "49:05", imageUrl: "/images/horror/hero-door.png", hasReview: true },
 ];
 
 const TITLES: TitleItem[] = [
   { id: 1, name: "\ucabc\ubcf4", condition: "\uc131\uacf5\ub960 30% \ubbf8\ub9cc", status: "earned", icon: "ghost" },
   { id: 2, name: "\uc77c\ubc18\uc778", condition: "\uc131\uacf5\ub960 30% \uc774\uc0c1 ~ 50% \ubbf8\ub9cc", status: "earned", icon: "user" },
-  { id: 3, name: "\uac15\uc2ec\uc7a5", condition: "\uc131\uacf5\ub960 50% \uc774\uc0c1 ~ 70% \ubbf8\ub9cc", status: "current", icon: "flame" },
-  { id: 4, name: "\uc624\uceec\ud2b8 \ub3d9\ud638\ud68c\uc7a5", condition: "\uc131\uacf5\ub960 70% \uc774\uc0c1 ~ 85% \ubbf8\ub9cc", status: "earned", icon: "group" },
+  { id: 3, name: "\uac15\uc2ec\uc7a5", condition: "\uc131\uacf5\ub960 50% \uc774\uc0c1 ~ 70% \ubbf8\ub9cc", status: "earned", icon: "flame" },
+  { id: 4, name: "오컬트 동호회장", condition: "\uc131\uacf5\ub960 70% \uc774\uc0c1 ~ 85% \ubbf8\ub9cc", status: "current", icon: "group" },
   { id: 5, name: "\ud1f4\ub9c8\uc0ac", condition: "\uc131\uacf5\ub960 85% \uc774\uc0c1 + \uc644\ub8cc \ubc29\ud0c8\ucd9c 5\ud68c \uc774\uc0c1", status: "locked", icon: "lock" },
 ];
 
 const ACHIEVEMENTS: AchievementItem[] = [
-  { id: 1, name: "\uccab \ubc1c\uac78\uc74c", condition: "\uccab \ubc29\ud0c8\ucd9c\uc744 \uc644\ub8cc\ud558\uc138\uc694.", status: "complete", icon: "foot", accent: "green" },
+  { id: 1, name: "\uccab \ubc1c\uac78\uc74c", condition: "\uccab \ubc29\ud0c8\ucd9c\uc744 \uc644\ub8cc\ud558\uc138\uc694.", status: "complete", icon: "foot", accent: "lime" },
   { id: 2, name: "\uc2a4\ud53c\ub4dc \ub7ec\ub108", condition: "40\ubd84 \uc774\ub0b4\uc5d0 \ubc29\ud0c8\ucd9c\uc744 \uc644\ub8cc\ud558\uc138\uc694.", status: "progress", icon: "timer", progress: 1, total: 3, accent: "red" },
-  { id: 3, name: "\ud300\uc6cc\ud06c \ub9c8\uc2a4\ud130", condition: "\uba54\uc774\ud2b8 \ucc38\uc5ec/\ubaa8\uc9d1 5\ud68c \ud50c\ub808\uc774", status: "progress", icon: "group", progress: 3, total: 5, accent: "green" },
-  { id: 4, name: "\ub2e8\uc9dd \uce5c\uad6c", condition: "\uac19\uc740 \ud300\uc6d0\uacfc 3\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.", status: "progress", icon: "group", progress: 1, total: 3, accent: "red" },
-  { id: 5, name: "\uacf5\ud3ec \uc815\ubcf5\uc790", condition: "\ub09c\uc774\ub3c4 5 \ubc29\ud0c8\ucd9c 3\uac1c\ub97c \uc131\uacf5\ud558\uc138\uc694.", status: "complete", icon: "skull", accent: "green" },
+  { id: 3, name: "\ud300\uc6cc\ud06c \ub9c8\uc2a4\ud130", condition: "\uba54\uc774\ud2b8 \ucc38\uc5ec/\ubaa8\uc9d1 5\ud68c \ud50c\ub808\uc774", status: "progress", icon: "group", progress: 3, total: 5, accent: "teal" },
+  { id: 4, name: "\ub2e8\uc9dd \uce5c\uad6c", condition: "\uac19\uc740 \ud300\uc6d0\uacfc 3\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.", status: "progress", icon: "heart", progress: 1, total: 3, accent: "rose" },
+  { id: 5, name: "\uacf5\ud3ec \uc815\ubcf5\uc790", condition: "\ub09c\uc774\ub3c4 5 \ubc29\ud0c8\ucd9c 3\uac1c\ub97c \uc131\uacf5\ud558\uc138\uc694.", status: "complete", icon: "skull", accent: "deepRed" },
   { id: 6, name: "\ubc29\ud0c8\ucd9c \ubcd1\uc544\ub9ac", condition: "\ubc29\ud0c8\ucd9c 3\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.", status: "complete", icon: "chick", accent: "amber" },
-  { id: 7, name: "\uc5f4\uc1e0 \uc218\uc9d1\uac00", condition: "\ubc29\ud0c8\ucd9c 7\ud68c \ud50c\ub808\uc774", status: "progress", icon: "key", progress: 3, total: 7, accent: "red" },
-  { id: 8, name: "\ub2e8\uc11c \uc0ac\ub0e5\uafbc", condition: "\ubc29\ud0c8\ucd9c 15\ud68c \ud50c\ub808\uc774", status: "progress", icon: "search", progress: 7, total: 15, accent: "red" },
-  { id: 9, name: "\ubc29\ud0c8\ucd9c \uc9c0\ubc30\uc790", condition: "\ubc29\ud0c8\ucd9c 30\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.", status: "locked", icon: "crown", progress: 12, total: 30, accent: "gray" },
+  { id: 7, name: "\uc5f4\uc1e0 \uc218\uc9d1\uac00", condition: "\ubc29\ud0c8\ucd9c 7\ud68c \ud50c\ub808\uc774", status: "progress", icon: "key", progress: 3, total: 7, accent: "orange" },
+  { id: 8, name: "\ub2e8\uc11c \uc0ac\ub0e5\uafbc", condition: "\ubc29\ud0c8\ucd9c 15\ud68c \ud50c\ub808\uc774", status: "progress", icon: "search", progress: 7, total: 15, accent: "orange" },
+  { id: 9, name: "\ubc29\ud0c8\ucd9c \uc9c0\ubc30\uc790", condition: "\ubc29\ud0c8\ucd9c 30\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.", status: "locked", icon: "crown", progress: 12, total: 30, accent: "gold" },
+];
+
+const ACTIVITY_REVIEWS: ActivityReview[] = [
+  {
+    id: 1,
+    themeTitle: "좀비 아포칼립스",
+    date: "2026-04-22",
+    rating: 5,
+    horrorLevel: 5,
+    difficulty: 4,
+    content: "퍼즐 구성이 탄탄하고 좀비 분장이 리얼해서 몰입감이 좋았어요. 팀원들이랑 같이 가면 훨씬 재미있을 것 같아요.",
+    tags: ["무서워요", "퍼즐이 좋아요", "팀워크 필요"],
+    imageUrl: "/images/horror/theme-pumpkin.png",
+  },
+  {
+    id: 2,
+    themeTitle: "유령 학교",
+    date: "2026-03-24",
+    rating: 4,
+    horrorLevel: 4,
+    difficulty: 4,
+    content: "학교 테마가 익숙해서 더 무서웠어요. 초반 단서가 살짝 어렵지만 흐름이 좋아서 끝까지 긴장감 있게 플레이했습니다.",
+    tags: ["스토리가 좋아요", "숙련자 추천"],
+    imageUrl: "/images/horror/hero-door.png",
+  },
+];
+
+const ACTIVITY_POSTS: ActivityPost[] = [
+  { id: 1, category: "모집", date: "2026-05-03", title: "이번 주말 강남점 폐병원 같이 가실 분?", comments: 8 },
+  { id: 2, category: "정보", date: "2026-04-21", title: "좀비 아포칼립스 공략 팁 공유합니다", comments: 15 },
+  { id: 3, category: "모집", date: "2026-04-12", title: "홍대점 공포 테마 위주로 같이 도실 분 찾아요", comments: 4 },
+];
+
+const ACTIVITY_MATES: ActivityMate[] = [
+  { id: 1, themeTitle: "폐병원의 저주", location: "강남점", title: "이번 주말 강남점 폐병원 같이 가실 분?", date: "2026-05-10", time: "14:30", currentMembers: 2, totalMembers: 4, status: "open", imageUrl: "/images/horror/theme-clown.png" },
+  { id: 2, themeTitle: "감옥 탈출", location: "홍대점", title: "홍대 감옥탈출 처음인데 같이 가봐요", date: "2026-05-10", time: "13:30", currentMembers: 3, totalMembers: 4, status: "joined", imageUrl: "/images/horror/theme-smoke.png" },
+  { id: 3, themeTitle: "인형의 방", location: "건대점", title: "건대 인형의 방 2인 구합니다", date: "2026-05-08", time: "16:00", currentMembers: 4, totalMembers: 4, status: "closed", imageUrl: "/images/horror/offline-scene.png" },
 ];
 
 function SkullIcon({ className }: { className?: string }) {
@@ -158,22 +230,173 @@ function MetaIcon({ type }: { type: "date" | "time" | "location" | "gender" | "a
   return <svg viewBox="0 0 16 16" className={common} aria-hidden="true"><path fill="currentColor" d="M3 4.2h10v8.5H3V4.2Zm2-2h1.2v1.2H5V2.2Zm4.8 0H11v1.2H9.8V2.2ZM4.4 6.5v1.2h7.2V6.5H4.4Z" /></svg>;
 }
 
-function AchievementIcon({ type, className }: { type: IconName; className?: string }) {
-  const common = { fill: "currentColor" };
-  if (type === "ghost") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M8 1.6c-2.5 0-4.5 2-4.5 4.7v7.4l1.5-1.1 1.4 1.1 1.6-1.1 1.6 1.1 1.4-1.1 1.5 1.1V6.3C12.5 3.6 10.5 1.6 8 1.6Zm-1.7 6.5c-.7 0-1.2-.5-1.2-1.2s.5-1.2 1.2-1.2 1.2.5 1.2 1.2-.5 1.2-1.2 1.2Zm3.4 0c-.7 0-1.2-.5-1.2-1.2s.5-1.2 1.2-1.2 1.2.5 1.2 1.2-.5 1.2-1.2 1.2Z" /></svg>;
-  if (type === "user") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M8 8.2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5 6.1c.5-2.9 2.4-4.5 5-4.5s4.5 1.6 5 4.5H3Z" /></svg>;
-  if (type === "flame") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M8.5 1.4c.7 2.3-.5 3.3-1.5 4.5-.8.9-1.4 1.8-.9 3 .4-.9 1-1.5 1.9-2.2 2 1.2 3.3 2.8 3.3 4.6 0 2-1.5 3.3-3.3 3.3s-3.5-1.3-3.5-3.6c0-1.7.8-3 1.8-4.2 1.2-1.5 2.1-2.7 2.2-5.4Z" /></svg>;
-  if (type === "group") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M6.2 7.2a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm3.6.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4ZM2 13.7c.4-3 1.9-4.8 4.2-4.8s3.8 1.8 4.2 4.8H2Zm8.7 0c-.2-1.7-.8-3-1.8-3.9.4-.3.9-.4 1.5-.4 2 0 3.2 1.5 3.6 4.3h-3.3Z" /></svg>;
-  if (type === "lock") return <LockIcon className={className} />;
-  if (type === "foot") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M5.2 2.2c1.1 0 1.8 1 1.8 2.2 0 1.7-.8 3.7-2.1 3.7-1 0-1.7-.9-1.7-2.3 0-1.8.8-3.6 2-3.6Zm5.1 2c1.1 0 1.8 1 1.8 2.2 0 1.7-.8 3.7-2.1 3.7-1 0-1.7-.9-1.7-2.3 0-1.8.8-3.6 2-3.6ZM4.8 9.4c1.1 0 2 .9 2 2s-.9 2.4-2 2.4-2-.9-2-2.1.9-2.3 2-2.3Zm5.1 1.7c1.1 0 2 .8 2 1.9s-.9 2-2 2-2-.8-2-1.9.9-2 2-2Z" /></svg>;
-  if (type === "timer") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M6.5 1.5h3v1.3h-3V1.5Zm.8 7.2V4.9h1.4v3.2l2.1 1.2-.7 1.2-2.8-1.8ZM8 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z" /></svg>;
-  if (type === "heart") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M8 13.8S2.3 10.5 2.3 6.2c0-2 1.3-3.4 3.1-3.4 1.1 0 2 .6 2.6 1.5.6-.9 1.5-1.5 2.6-1.5 1.8 0 3.1 1.4 3.1 3.4 0 4.3-5.7 7.6-5.7 7.6Z" /></svg>;
-  if (type === "skull") return <SkullIcon className={className} />;
-  if (type === "chick") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M8 2.1a4.5 4.5 0 0 0-4.5 4.5v2.2c0 2.5 2 4.6 4.5 4.6s4.5-2.1 4.5-4.6V6.6A4.5 4.5 0 0 0 8 2.1Zm1.5 4.3 2.2-1.2-.6 2.4-1.6-1.2ZM6.4 8.1h.1v1.4H5.1V8.1h1.3Zm4.5 0v1.4H9.5V8.1h1.4Z" /></svg>;
-  if (type === "key") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M6.3 9.4a3.8 3.8 0 1 1 2.2 2.2L6.8 13.3H5.2v1.4H3.4v-1.8L6.3 10V9.4Zm3.5-.6a1.4 1.4 0 1 0 0-2.8 1.4 1.4 0 0 0 0 2.8Z" /></svg>;
-  if (type === "search") return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M7 2.2a4.8 4.8 0 1 0 0 9.6 4.8 4.8 0 0 0 0-9.6Zm0 1.5a3.3 3.3 0 1 1 0 6.6 3.3 3.3 0 0 1 0-6.6Zm3.8 7.8 1.1-1.1 2.6 2.6-1.1 1.1-2.6-2.6Z" /></svg>;
-  return <svg viewBox="0 0 16 16" className={className} aria-hidden="true"><path {...common} d="M2.2 6.2 5 8.1l3-5 3 5 2.8-1.9-.9 6.9H3.1l-.9-6.9Z" /></svg>;
+function ActivityLineIcon({ type, className = "h-4 w-4" }: { type: "review" | "post" | "mate" | "comment" | "users"; className?: string }) {
+  const line = { fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 1.8 } as const;
+  if (type === "review") {
+    return <svg viewBox="0 0 20 20" className={className} aria-hidden="true"><path {...line} d="M4.5 3.5h11v10.2h-4.2L7.4 17v-3.3H4.5V3.5Z" /><path {...line} d="m7.1 8.8 1.6 1.6 4.1-4.1" /></svg>;
+  }
+  if (type === "post") {
+    return <svg viewBox="0 0 20 20" className={className} aria-hidden="true"><path {...line} d="M5 3.4h7.2L15 6.2v10.4H5V3.4Z" /><path {...line} d="M12.2 3.4v3h2.9M7.5 9.3h5M7.5 12.2h4.2" /></svg>;
+  }
+  if (type === "mate" || type === "users") {
+    return <svg viewBox="0 0 20 20" className={className} aria-hidden="true"><path {...line} d="M7.7 9.4a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM2.7 16.4c.5-3.4 2.2-5.1 5-5.1s4.5 1.7 5 5.1H2.7ZM13.5 9.2a2.4 2.4 0 1 0 0-4.8M13.2 11.4c2.3.2 3.6 1.8 4.1 5" /></svg>;
+  }
+  return <svg viewBox="0 0 20 20" className={className} aria-hidden="true"><path {...line} d="M4 4h12v8.7H8.2L4 16V4Z" /><path {...line} d="M7.1 7.5h5.8M7.1 10h3.7" /></svg>;
 }
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`별점 ${rating}점`}>
+      {Array.from({ length: 5 }).map((_, index) => (
+        <svg key={index} viewBox="0 0 16 16" className={["h-4 w-4", index < rating ? "text-[#e2bd63]" : "text-[#363636]"].join(" ")} aria-hidden="true">
+          <path fill="currentColor" d="m8 1.4 1.9 4 4.4.6-3.2 3.1.8 4.4L8 11.4l-3.9 2.1.8-4.4L1.7 6l4.4-.6L8 1.4Z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+function AchievementIcon({ type, className }: { type: IconName; className?: string }) {
+  const solid = { fill: "currentColor" } as const;
+
+  if (type === "ghost") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M12 3.4c-4 0-7 3-7 7.2v8.9c0 .6.7.9 1.1.5l1.7-1.4 1.7 1.3c.3.3.8.3 1.1 0l1.4-1.2 1.4 1.2c.3.3.8.3 1.1 0l1.7-1.3 1.7 1.4c.4.4 1.1.1 1.1-.5v-8.9c0-4.2-3-7.2-7-7.2Zm-2.6 8.7a1.35 1.35 0 1 1 0-2.7 1.35 1.35 0 0 1 0 2.7Zm5.2 0a1.35 1.35 0 1 1 0-2.7 1.35 1.35 0 0 1 0 2.7Zm-2.6 3.5c-1.2 0-2.1-.5-2.7-1.2a.8.8 0 0 1 1.2-1c.4.4.8.6 1.5.6s1.1-.2 1.5-.6a.8.8 0 0 1 1.2 1c-.6.7-1.5 1.2-2.7 1.2Z" />
+      </svg>
+    );
+  }
+  if (type === "user") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M12 11.5a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Zm-7.2 8.2c.7-4.4 3.4-6.6 7.2-6.6s6.5 2.2 7.2 6.6c.1.7-.4 1.2-1.1 1.2H5.9c-.7 0-1.2-.5-1.1-1.2Z" />
+      </svg>
+    );
+  }
+  if (type === "flame") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M13.3 2.6c1 3.4-.6 5-2.2 6.8-1.1 1.2-2.1 2.5-1.5 4.4.6-1.1 1.5-2.2 3.1-3.3 3.1 1.9 5 4.1 5 6.8 0 3.2-2.4 5.1-5.6 5.1s-5.8-2-5.8-5.7c0-2.5 1.1-4.4 2.7-6.3 1.8-2.3 3.5-4.3 4.3-7.8Z" />
+      </svg>
+    );
+  }
+  if (type === "group") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M8.8 11.1a3.8 3.8 0 1 0 0-7.6 3.8 3.8 0 0 0 0 7.6Zm7.6.5a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2ZM2.9 20.2c.6-4.7 2.7-7.1 5.9-7.1s5.3 2.4 5.9 7.1H2.9Zm11.5 0c-.2-2-.8-3.7-1.8-5 .8-.8 1.8-1.2 3-1.2 3 0 4.9 2.1 5.5 6.2h-6.7Z" />
+      </svg>
+    );
+  }
+  if (type === "lock") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M7.1 9.5V7.6a4.9 4.9 0 0 1 9.8 0v1.9h.8c1.2 0 2.1.9 2.1 2.1v7.1c0 1.2-.9 2.1-2.1 2.1H6.3c-1.2 0-2.1-.9-2.1-2.1v-7.1c0-1.2.9-2.1 2.1-2.1h.8Zm2.4 0h5V7.6a2.5 2.5 0 0 0-5 0v1.9Zm2.5 4.1c-.8 0-1.4.6-1.4 1.3 0 .5.3.9.7 1.2v1.5h1.4v-1.5c.4-.3.7-.7.7-1.2 0-.7-.6-1.3-1.4-1.3Z" />
+      </svg>
+    );
+  }
+  if (type === "foot") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M7.5 4.2c1.7.1 2.7 1.7 2.5 3.9-.2 2.6-1.6 5.2-3.5 5.1-1.6-.1-2.5-1.7-2.2-4 .2-2.8 1.4-5.1 3.2-5Zm8.7 3.3c1.6.1 2.5 1.5 2.3 3.5-.2 2.4-1.5 4.7-3.3 4.5-1.4-.1-2.3-1.5-2.1-3.6.3-2.5 1.4-4.5 3.1-4.4ZM6.8 15.6c1.8 0 3.1 1.2 3.1 2.8s-1.3 2.9-3.1 2.9-3-1.2-3-2.9 1.3-2.8 3-2.8Zm8.8 1.6c1.5 0 2.8 1 2.8 2.3s-1.3 2.3-2.8 2.3-2.8-1-2.8-2.3 1.3-2.3 2.8-2.3Z" />
+      </svg>
+    );
+  }
+  if (type === "timer") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M9 2.6h6v2H9v-2Zm2 4V4.3h2v2.3a7.6 7.6 0 1 1-2 0Zm1 13.4a5.4 5.4 0 1 0 0-10.8 5.4 5.4 0 0 0 0 10.8Zm-1-8.6h2v3.3l2.5 1.5-1 1.7-3.5-2.1v-4.4Zm5.5-3.9 1.7-1.7 1.4 1.4-1.7 1.7-1.4-1.4Z" />
+      </svg>
+    );
+  }
+  if (type === "heart") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M12 21s-8.3-4.8-8.3-11.1c0-3 2-5.1 4.7-5.1 1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2 2.7 0 4.7 2.1 4.7 5.1C20.3 16.2 12 21 12 21Z" />
+      </svg>
+    );
+  }
+  if (type === "skull") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M12 3.2c-4.6 0-7.4 2.9-7.4 7.1 0 2.5 1.1 4.5 3 5.8v2.6c0 1.3 1 2.3 2.3 2.3h4.2c1.3 0 2.3-1 2.3-2.3v-2.6c1.9-1.3 3-3.3 3-5.8 0-4.2-2.8-7.1-7.4-7.1Zm-2.8 9.9a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Zm5.6 0a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4ZM12 14.2c.5.8.9 1.5.9 1.9 0 .5-.4.9-.9.9s-.9-.4-.9-.9c0-.4.4-1.1.9-1.9Zm-2.5 4h1.2v1.5H9.5v-1.5Zm2 0h1.2v1.5h-1.2v-1.5Zm2 0h1.2v1.5h-1.2v-1.5Z" />
+      </svg>
+    );
+  }
+  if (type === "chick") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path fill="#f6c34a" d="M10.3 4.6 8.8 2.8l1.5-1 1.3 2.3-1.3.5Zm3.4-.5L15 1.9l1.5 1-1.6 1.8-1.2-.6ZM12 4.4c-4 0-6.8 3-6.8 7.1v2.6c0 4 2.8 6.9 6.8 6.9s6.8-2.9 6.8-6.9v-2.6c0-4.1-2.8-7.1-6.8-7.1Z" />
+        <circle fill="#2b1b10" cx="9.6" cy="11.4" r="0.9" />
+        <circle fill="#2b1b10" cx="14.4" cy="11.4" r="0.9" />
+        <path fill="#f28f2c" d="M10.7 13.1h2.6L12 15l-1.3-1.9Z" />
+        <path fill="#d99a2e" fillOpacity="0.55" d="M8.4 15.8c.8 1.2 2 1.8 3.6 1.8s2.8-.6 3.6-1.8c-.6 2.1-1.9 3.2-3.6 3.2s-3-1.1-3.6-3.2Z" />
+        <path fill="#8a5a18" d="M9.2 20.4h1.5v1.5H9.2v-1.5Zm4.1 0h1.5v1.5h-1.5v-1.5Z" />
+      </svg>
+    );
+  }
+  if (type === "key") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M15.6 3.7a5.4 5.4 0 0 0-5.1 7.1l-7.7 7.7v2.7h3.1v-2h2v-2h2v-2h1.3l1.3-1.3a5.4 5.4 0 1 0 3.1-10.2Zm0 3a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z" />
+      </svg>
+    );
+  }
+  if (type === "search") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path {...solid} d="M10.4 3.8a6.6 6.6 0 1 0 0 13.2 6.6 6.6 0 0 0 0-13.2Zm0 2.4a4.2 4.2 0 1 1 0 8.4 4.2 4.2 0 0 1 0-8.4Zm5.1 9 5 5-1.8 1.8-5-5 1.8-1.8Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path {...solid} d="m3.6 8.2 4.8 3.2 3.6-7.2 3.6 7.2 4.8-3.2-1.5 10.3H5.1L3.6 8.2Zm2.8 11.6h11.2v1.7H6.4v-1.7Z" />
+    </svg>
+  );
+}
+
+function TitleSymbol({ type, className }: { type: IconName; className?: string }) {
+  const solid = { fill: "currentColor" } as const;
+  const line = { fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 1.9 } as const;
+
+  if (type === "ghost") {
+    return (
+      <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+        <path {...solid} d="M16 4.4c-5.5 0-9.4 4.1-9.4 9.8v10.7c0 .7.8 1.1 1.4.7l2.4-1.8 2.1 1.6c.4.3.9.3 1.3 0l2.2-1.7 2.2 1.7c.4.3.9.3 1.3 0l2.1-1.6 2.4 1.8c.6.4 1.4 0 1.4-.7V14.2c0-5.7-3.9-9.8-9.4-9.8Zm-4.1 10.8a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Zm8.2 0a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Zm-4.1 5.2c-1.8 0-3-.8-3.8-1.9l1.7-1.2c.5.6 1.1 1 2.1 1s1.6-.4 2.1-1l1.7 1.2c-.8 1.1-2 1.9-3.8 1.9Z" />
+      </svg>
+    );
+  }
+  if (type === "user") {
+    return (
+      <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+        <path {...solid} d="M16 15.3a5.7 5.7 0 1 0 0-11.4 5.7 5.7 0 0 0 0 11.4Zm-9.7 11.1c1-6 4.5-9 9.7-9s8.7 3 9.7 9c.1.8-.5 1.4-1.3 1.4H7.6c-.8 0-1.4-.6-1.3-1.4Z" />
+      </svg>
+    );
+  }
+  if (type === "flame") {
+    return (
+      <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+        <path {...solid} d="M17.5 2.7c1.4 4.9-.5 7.3-2.7 10-1.3 1.6-2.6 3.1-2.5 5.5.9-1.7 2.2-3 4.3-4.5 4.5 2.8 7.2 5.9 7.2 9.2 0 4.1-3.1 6.8-7.8 6.8s-7.9-2.8-7.9-7.4c0-3.5 1.8-6.2 4.1-8.8 2.5-2.9 5-5.8 5.3-10.8Z" />
+        <path fill="#0f0f0f" fillOpacity="0.45" d="M16.1 17.8c2.3 1.8 3.4 3.5 3.4 5.3 0 2.2-1.4 3.5-3.5 3.5s-3.6-1.4-3.6-3.7c0-1.8 1.1-3.4 3.7-5.1Z" />
+      </svg>
+    );
+  }
+  if (type === "group") {
+    return (
+      <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+        <path {...solid} d="M12.1 14.5a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm9.1.8a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.4 27.2c.8-6.3 3.5-9.5 7.7-9.5s6.9 3.2 7.7 9.5H4.4Zm14.8 0c-.2-2.7-1.1-4.9-2.4-6.6 1-1 2.3-1.5 3.8-1.5 4 0 6.4 2.8 7.2 8.1h-8.6Z" />
+        <path {...line} d="M24.9 4.7 26 2.8l1.1 1.9 2.1.5-1.5 1.5.2 2.1L26 8l-1.9.8.2-2.1-1.5-1.5 2.1-.5Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+      <path {...line} d="M16 3.5v25M7.3 10.1h17.4" />
+      <path {...solid} d="M16 6.9 20.2 12 16 17.1 11.8 12 16 6.9Zm-7.4 10.3 3.1 4.3-3.1 4.3-3.1-4.3 3.1-4.3Zm14.8 0 3.1 4.3-3.1 4.3-3.1-4.3 3.1-4.3Z" />
+    </svg>
+  );
+}
+
 function RatingIcons({ level, type }: { level: number; type: "horror" | "difficulty" }) {
   const Icon = type === "horror" ? SkullIcon : LockIcon;
   const active = type === "horror" ? "text-[#ef4a4a] drop-shadow-[0_0_5px_rgba(239,74,74,0.2)]" : "text-[#e2bd63] drop-shadow-[0_0_5px_rgba(226,189,99,0.18)]";
@@ -191,7 +414,7 @@ function ProfileSummaryCard() {
 
   return (
     <section className="overflow-hidden rounded-[17px] border border-white/[0.075] bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.055),transparent_36%),linear-gradient(112deg,rgba(24,24,24,0.96),rgba(18,18,18,0.92)_48%,rgba(20,12,12,0.94)),rgba(18,18,18,0.9)] shadow-[0_28px_95px_rgba(0,0,0,0.52),0_0_34px_rgba(204,34,34,0.04)] backdrop-blur-md">
-      <div className="grid min-h-[156px] items-stretch lg:grid-cols-[350px_1fr_222px]">
+      <div className="grid min-h-[156px] items-stretch lg:grid-cols-[350px_1fr_260px]">
         <div className="flex items-center gap-5 border-b border-white/[0.035] px-7 py-6 lg:border-b-0 lg:border-r lg:border-white/[0.035]">
           <div className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-white/[0.1] bg-[#1b1b1b] shadow-[inset_0_0_32px_rgba(255,255,255,0.045),0_14px_32px_rgba(0,0,0,0.42)]">
             <Image src={avatarSrc} alt="" fill sizes="98px" className="object-cover p-3" onError={() => setAvatarSrc("/images/%EB%A0%B9%EB%83%A52_%ED%88%AC%EB%AA%85.png")} />
@@ -212,7 +435,7 @@ function ProfileSummaryCard() {
         <div className="grid grid-cols-2 divide-x divide-y divide-white/[0.032] sm:grid-cols-4 sm:divide-y-0">
           {STATS.map((stat) => (
             <div key={stat.label} className="flex min-h-[156px] flex-col items-center justify-center px-4 text-center">
-              <p className="mb-3 flex items-center justify-center gap-2 text-[12px] font-black text-[#7d7d7d]"><span className="text-[20px]">{stat.icon}</span>{stat.label}</p>
+              <p className="mb-3 text-[12px] font-black text-[#7d7d7d]">{stat.label}</p>
               <p className={["text-[30px] font-black leading-none tracking-[0.01em]", stat.accent].join(" ")}>{stat.value}</p>
             </div>
           ))}
@@ -228,9 +451,9 @@ function RankBadgeCard() {
   return (
     <div className="m-4 flex min-h-[126px] flex-col items-center justify-center rounded-[14px] border border-[#cc2222]/58 bg-[radial-gradient(circle_at_50%_0%,rgba(204,34,34,0.2),transparent_66%),linear-gradient(180deg,rgba(204,34,34,0.038),rgba(0,0,0,0.15)),#161111] px-5 text-center shadow-[0_0_30px_rgba(204,34,34,0.12),inset_0_0_22px_rgba(204,34,34,0.026)]">
       <p className="mb-3 text-[11px] font-black tracking-[0.16em] text-[#9c8e8e]">{K.rankLabel}</p>
-      <div className="mb-2 flex items-center justify-center gap-2.5">
-        <span className="text-[34px] leading-none">{"\ud83d\udd25"}</span>
-        <span className="text-[22px] font-black text-[#f5f5f5]">{K.rank}</span>
+      <div className="mb-2 flex items-center justify-center gap-2">
+        <TitleSymbol type="group" className="h-8 w-8 shrink-0 text-[#ef5353] drop-shadow-[0_0_16px_rgba(239,83,83,0.2)]" />
+        <span className="whitespace-nowrap text-[20px] font-black text-[#f5f5f5]">{K.rank}</span>
       </div>
       <p className="text-sm font-black text-[#ef5353]">{K.topRank}</p>
       <p className="mt-1 text-xs font-black text-[#d58a80]">{K.rankRule}</p>
@@ -345,12 +568,12 @@ function ReservationTabContent() {
 function AchievementTabContent() {
   return (
     <div className="mt-5 space-y-8">
-      <AchievementSectionTitle title="\uce6d\ud638" tone="red" />
+      <AchievementSectionTitle title="칭호" tone="red" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {TITLES.map((title) => <TitleCard key={title.id} title={title} />)}
       </div>
 
-      <AchievementSectionTitle title="\uc5c5\uc801" tone="red" className="pt-1" />
+      <AchievementSectionTitle title="업적" tone="red" className="pt-1" />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {ACHIEVEMENTS.map((achievement) => <AchievementCard key={achievement.id} achievement={achievement} />)}
       </div>
@@ -372,21 +595,16 @@ function TitleCard({ title }: { title: TitleItem }) {
   const isLocked = title.status === "locked";
   return (
     <article className={[
-      "relative min-h-[138px] rounded-[13px] border bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] p-5 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all",
+      "relative min-h-[124px] rounded-[13px] border bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] p-4 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all",
       isCurrent ? "border-[#cc2222]/58 shadow-[0_0_30px_rgba(204,34,34,0.12),0_18px_42px_rgba(0,0,0,0.34)]" : "border-white/[0.075]",
       isLocked ? "opacity-48" : "hover:border-white/[0.13] hover:bg-white/[0.018]",
     ].join(" ")}>
       {isCurrent && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-md border border-[#cc2222]/60 bg-[#171111] px-2.5 py-1 text-[11px] font-black text-[#ef5353] shadow-[0_0_18px_rgba(204,34,34,0.18)]">{"\ud604\uc7ac"}</span>}
-      <div className="mb-4 flex items-center gap-3">
-        <div className={[
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border",
-          isCurrent ? "border-[#cc2222]/42 bg-[#cc2222]/18 text-[#ef5353]" : isLocked ? "border-white/[0.08] bg-white/[0.035] text-[#777]" : "border-white/[0.08] bg-white/[0.055] text-[#aaa]",
-        ].join(" ")}>
-          <AchievementIcon type={title.icon} className="h-5 w-5" />
-        </div>
+      <div className="mb-3 flex items-center gap-2.5">
+        <TitleSymbol type={title.icon} className={["h-10 w-10 shrink-0", getTitleSymbolStyle(title)].join(" ")} />
         <div className="min-w-0">
-          <h4 className="truncate text-[16px] font-black text-[#f5f5f5]">{title.name}</h4>
-          <p className="mt-1 line-clamp-2 text-xs font-bold leading-relaxed text-[#858585]">{title.condition}</p>
+          <h4 className="truncate whitespace-nowrap text-[15px] font-black text-[#f5f5f5]">{title.name}</h4>
+          <p className="mt-0.5 line-clamp-2 text-[11px] font-bold leading-relaxed text-[#858585]">{title.condition}</p>
         </div>
       </div>
       <TitleStatusBadge status={title.status} />
@@ -394,22 +612,32 @@ function TitleCard({ title }: { title: TitleItem }) {
   );
 }
 
+function getTitleSymbolStyle(title: TitleItem) {
+  if (title.status === "locked") return "text-[#777] opacity-80 drop-shadow-[0_0_10px_rgba(255,255,255,0.02)]";
+  if (title.icon === "ghost") return "text-[#b7b7b7] drop-shadow-[0_0_13px_rgba(255,255,255,0.08)]";
+  if (title.icon === "user") return "text-[#a8a8a8] drop-shadow-[0_0_12px_rgba(255,255,255,0.05)]";
+  if (title.icon === "flame") return "text-[#ef5353] drop-shadow-[0_0_14px_rgba(239,83,83,0.18)]";
+  if (title.icon === "group") return "text-[#ef5353] drop-shadow-[0_0_16px_rgba(239,83,83,0.2)]";
+  return "text-[#c29a4b] drop-shadow-[0_0_14px_rgba(194,154,75,0.12)]";
+}
+
 function TitleStatusBadge({ status }: { status: TitleStatus }) {
   if (status === "locked") {
-    return <p className="inline-flex items-center gap-1.5 text-xs font-black text-[#777]"><LockIcon className="h-3.5 w-3.5" />{"\uc7a0\uae08 \ud574\uc81c \ud544\uc694"}</p>;
+    return <p className="text-xs font-black text-[#777]">{"조건 미충족"}</p>;
   }
   if (status === "current") {
-    return <p className="text-xs font-black text-[#cfcfcf]">{"\ud604\uc7ac \uce6d\ud638"}</p>;
+    return <p className="text-xs font-black text-[#ef5353]">{"현재"}</p>;
   }
   if (status === "next") {
     return <p className="text-xs font-black text-[#d7b46a]">{"\ub2e4\uc74c \uce6d\ud638"}</p>;
   }
-  return <p className="inline-flex items-center gap-1.5 text-xs font-black text-[#b9c7bd]"><span className="text-[#2ecc71]">{"\u2713"}</span>{"\ud68d\ub4dd \uc644\ub8cc"}</p>;
+  return <p className="text-xs font-black text-[#9a9a9a]">{"달성 구간"}</p>;
 }
 
 function AchievementCard({ achievement }: { achievement: AchievementItem }) {
   const locked = achievement.status === "locked";
   const complete = achievement.status === "complete";
+  const inProgress = achievement.status === "progress";
   const percent = achievement.progress && achievement.total ? Math.min(100, Math.round((achievement.progress / achievement.total) * 100)) : 0;
   return (
     <article className={[
@@ -419,7 +647,7 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
       {locked && <LockIcon className="absolute right-4 top-4 h-4 w-4 text-[#777]" />}
       <div className="flex items-start gap-4">
         <div className={["flex h-14 w-14 shrink-0 items-center justify-center rounded-full border", getAchievementIconStyle(achievement)].join(" ")}>
-          <AchievementIcon type={achievement.icon} className="h-7 w-7" />
+          <AchievementIcon type={achievement.icon} className="h-8 w-8" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-start justify-between gap-3">
@@ -429,14 +657,14 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
           <p className="text-xs font-bold leading-relaxed text-[#898989]">{achievement.condition}</p>
 
           {complete && <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-[#b9c7bd]"><span className="text-[#2ecc71]">{"\u2713"}</span>{"\ud68d\ub4dd \uc644\ub8cc"}</p>}
-          {achievement.status === "progress" && (
+          {inProgress && (
             <div className="mt-4">
               <div className="mb-1.5 flex items-center justify-between text-xs font-black">
-                <span className="rounded-md border border-[#d7b46a]/24 bg-[#d7b46a]/8 px-2 py-0.5 text-[#d7b46a]">{"\uc9c4\ud589 \uc911"}</span>
+                <span className="rounded-md border border-[#cc2222]/35 bg-[#cc2222]/8 px-2 py-0.5 text-[#ef5353]">{"진행 중"}</span>
                 <span className="text-[#aaa]">{achievement.progress}/{achievement.total}</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
-                <div className={getProgressBarStyle(achievement)} style={{ width: `${percent}%` }} />
+                <div className={getProgressBarStyle()} style={{ width: `${percent}%` }} />
               </div>
             </div>
           )}
@@ -448,28 +676,167 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
 }
 
 function getAchievementIconStyle(achievement: AchievementItem) {
-  if (achievement.status === "locked") return "border-white/[0.08] bg-white/[0.04] text-[#777]";
-  if (achievement.accent === "green") return "border-[#2ecc71]/20 bg-[#2ecc71]/14 text-[#58d67d]";
-  if (achievement.accent === "amber") return "border-[#d7b46a]/22 bg-[#d7b46a]/12 text-[#d7b46a]";
-  return "border-[#cc2222]/24 bg-[#cc2222]/16 text-[#ef5353]";
+  if (achievement.accent === "lime") return "border-[#7ee063]/22 bg-[#1d341d] text-[#80df66] shadow-[inset_0_0_18px_rgba(126,224,99,0.14),0_8px_22px_rgba(0,0,0,0.24)]";
+  if (achievement.accent === "teal") return "border-[#42d0a4]/22 bg-[#17342d] text-[#56d6ad] shadow-[inset_0_0_18px_rgba(66,208,164,0.14),0_8px_22px_rgba(0,0,0,0.24)]";
+  if (achievement.accent === "rose") return "border-[#ff5d86]/24 bg-[#3b1724] text-[#ff6f96] shadow-[inset_0_0_18px_rgba(255,93,134,0.15),0_8px_22px_rgba(0,0,0,0.24)]";
+  if (achievement.accent === "deepRed") return "border-[#b7192a]/26 bg-[#2f1014] text-[#e03543] shadow-[inset_0_0_18px_rgba(183,25,42,0.16),0_8px_22px_rgba(0,0,0,0.24)]";
+  if (achievement.accent === "amber") return "border-[#f1bd44]/24 bg-[#352915] text-[#f1bf45] shadow-[inset_0_0_18px_rgba(241,189,68,0.13),0_8px_22px_rgba(0,0,0,0.24)]";
+  if (achievement.accent === "orange") return "border-[#ff7043]/24 bg-[#371914] text-[#ff7043] shadow-[inset_0_0_18px_rgba(255,112,67,0.14),0_8px_22px_rgba(0,0,0,0.24)]";
+  if (achievement.accent === "gold") return "border-[#c89b3c]/26 bg-[#302614] text-[#d6aa45] shadow-[inset_0_0_18px_rgba(200,155,60,0.15),0_8px_22px_rgba(0,0,0,0.24)]";
+  return "border-[#ff4757]/24 bg-[#3a171a] text-[#ff4757] shadow-[inset_0_0_18px_rgba(255,71,87,0.14),0_8px_22px_rgba(0,0,0,0.24)]";
 }
 
-function getProgressBarStyle(achievement: AchievementItem) {
-  const color = achievement.accent === "green" ? "bg-[#2ecc71]" : achievement.accent === "amber" ? "bg-[#d7b46a]" : "bg-[#ef3f4b]";
-  return ["h-full rounded-full shadow-[0_0_12px_rgba(239,63,75,0.28)]", color].join(" ");
+function getProgressBarStyle() {
+  return "h-full rounded-full bg-[#ef3f4b] shadow-[0_0_12px_rgba(239,63,75,0.28)]";
 }
-function PlaceholderTab({ title }: { title: string }) {
+
+function ActivityTabContent() {
   return (
-    <div className="mt-6 rounded-[14px] border border-white/[0.08] bg-[#171717]/72 px-6 py-16 text-center text-[#777]">
-      <p className="text-sm font-bold">{title} {K.nextStep}</p>
+    <div className="mt-5 space-y-8">
+      <ActivitySection title="내 후기" icon="review">
+        <div className="space-y-3.5">
+          {ACTIVITY_REVIEWS.map((review) => <ReviewActivityCard key={review.id} review={review} />)}
+        </div>
+      </ActivitySection>
+
+      <ActivitySection title="내가 쓴 글" icon="post">
+        <div className="overflow-hidden rounded-[13px] border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_20px_58px_rgba(0,0,0,0.34)]">
+          {ACTIVITY_POSTS.map((post, index) => <PostActivityRow key={post.id} post={post} isLast={index === ACTIVITY_POSTS.length - 1} />)}
+        </div>
+      </ActivitySection>
+
+      <ActivitySection title="내가 참여한 메이트 모집" icon="mate">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {ACTIVITY_MATES.map((mate) => <MateActivityCard key={mate.id} mate={mate} />)}
+        </div>
+      </ActivitySection>
     </div>
   );
+}
+
+function ActivitySection({ title, icon, children }: { title: string; icon: "review" | "post" | "mate"; children: ReactNode }) {
+  return (
+    <section>
+      <div className="mb-3.5 flex items-center gap-2.5">
+        <span className="h-2 w-2 rounded-full bg-[#e53939] shadow-[0_0_12px_rgba(229,57,57,0.54)]" />
+        <ActivityLineIcon type={icon} className="h-[18px] w-[18px] text-[#b6b6b6]" />
+        <h3 className="text-[18px] font-black text-[#f5f5f5]">{title}</h3>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ReviewActivityCard({ review }: { review: ActivityReview }) {
+  return (
+    <article className="grid gap-4 rounded-[13px] border border-white/[0.075] bg-[radial-gradient(circle_at_9%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] p-4 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all hover:border-white/[0.13] hover:bg-white/[0.018] md:grid-cols-[116px_1fr]">
+      <div className="relative h-[104px] overflow-hidden rounded-[8px] border border-white/[0.07] bg-[#101010] md:h-full">
+        <Image src={review.imageUrl} alt={review.themeTitle} fill sizes="112px" className="object-cover brightness-[0.78] contrast-[1.18] saturate-[0.82]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.36))]" />
+      </div>
+      <div className="min-w-0">
+        <div className="mb-2.5 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h4 className="truncate text-[18px] font-black text-[#f5f5f5]">{review.themeTitle}</h4>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <span className="text-xs font-bold text-[#747474]">{review.date}</span>
+            <div className="flex gap-2">
+              <button type="button" className="h-8 rounded-md border border-white/[0.11] bg-[#101010]/55 px-3 text-xs font-black text-[#aaa] transition-all hover:border-white/[0.2] hover:text-white">수정</button>
+              <button type="button" className="h-8 rounded-md border border-[#cc2222]/45 bg-[#101010]/55 px-3 text-xs font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white">삭제</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[8px] border border-white/[0.055] bg-black/[0.16] px-3 py-2">
+          <StarRating rating={review.rating} />
+          <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#898989]"><span className="text-[#777]">공포도</span><RatingIcons level={review.horrorLevel} type="horror" /></span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#898989]"><span className="text-[#777]">난이도</span><RatingIcons level={review.difficulty} type="difficulty" /></span>
+        </div>
+
+        <p className="line-clamp-2 text-[13px] font-bold leading-relaxed text-[#b7b7b7]">{review.content}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {review.tags.map((tag) => (
+            <span key={tag} className="rounded-full border border-white/[0.09] bg-white/[0.035] px-2.5 py-1 text-[11px] font-bold text-[#8f8f8f]">{tag}</span>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PostActivityRow({ post, isLast }: { post: ActivityPost; isLast?: boolean }) {
+  const categoryStyle = post.category === "모집" ? "border-[#d7b46a]/35 bg-[#d7b46a]/8 text-[#d7b46a]" : "border-[#5d8fd8]/35 bg-[#5d8fd8]/8 text-[#7fa8df]";
+  return (
+    <article className={["grid min-h-[74px] items-center gap-3 px-4 py-3.5 transition-all hover:bg-white/[0.026] sm:grid-cols-[64px_92px_1fr_72px]", !isLast ? "border-b border-white/[0.042]" : ""].join(" ")}>
+      <span className={["inline-flex h-8 w-fit items-center justify-center rounded-md border px-3 text-xs font-black", categoryStyle].join(" ")}>{post.category}</span>
+      <span className="text-sm font-bold text-[#777]">{post.date}</span>
+      <h4 className="min-w-0 truncate text-[15px] font-black text-[#e7e7e7]">{post.title}</h4>
+      <span className="inline-flex items-center gap-1.5 justify-self-start text-sm font-bold text-[#898989] sm:justify-self-end">
+        <ActivityLineIcon type="comment" className="h-4 w-4 text-[#b5b5b5]" />
+        {post.comments}
+      </span>
+    </article>
+  );
+}
+
+function MateActivityCard({ mate }: { mate: ActivityMate }) {
+  const isClosed = mate.status === "closed";
+  const progress = Math.min(100, Math.round((mate.currentMembers / Math.max(mate.totalMembers, 1)) * 100));
+  return (
+    <article className={["group overflow-hidden rounded-[13px] border border-white/[0.075] bg-[linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all", isClosed ? "opacity-[0.62]" : "hover:border-[#cc2222]/48 hover:shadow-[0_18px_48px_rgba(204,34,34,0.09)]"].join(" ")}>
+      <div className="relative h-[170px] overflow-hidden bg-[#101010]">
+        <Image src={mate.imageUrl} alt={mate.themeTitle} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover brightness-[0.72] contrast-[1.16] saturate-[0.78] transition-transform duration-500 group-hover:scale-[1.035]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.18)_44%,rgba(18,18,18,0.96))]" />
+        <div className="absolute left-4 top-4 flex gap-2">
+          <span className="rounded-md border border-[#cc2222]/45 bg-[#cc2222]/18 px-2.5 py-1 text-[11px] font-black text-[#ef5353]">{mate.themeTitle}</span>
+          <span className="rounded-md border border-white/[0.14] bg-black/35 px-2.5 py-1 text-[11px] font-bold text-[#c7c7c7]">{mate.location}</span>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <h4 className="line-clamp-2 min-h-[44px] text-[17px] font-black leading-snug text-[#f5f5f5]">{mate.title}</h4>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-[#858585]">
+          <span className="inline-flex items-center gap-1.5"><MetaIcon type="date" />{mate.date}</span>
+          <span className="inline-flex items-center gap-1.5"><MetaIcon type="time" />{mate.time}</span>
+        </div>
+      </div>
+
+      <div className="border-t border-white/[0.06] px-4 py-4">
+        <div className="mb-3 flex items-center justify-between gap-3 text-xs font-black">
+          <span className="inline-flex items-center gap-1.5 text-[#8d8d8d]"><ActivityLineIcon type="users" className="h-4 w-4" />현재 인원</span>
+          <span className="text-[#bdbdbd]">{mate.currentMembers}/{mate.totalMembers}명</span>
+        </div>
+        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
+          <span className="block h-full rounded-full bg-[#b93a3a] shadow-[0_0_12px_rgba(204,34,34,0.28)]" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <MateStatusBadge status={mate.status} />
+          <button type="button" disabled={isClosed} className={["h-9 rounded-md border px-4 text-xs font-black transition-all", isClosed ? "cursor-not-allowed border-white/[0.1] bg-white/[0.035] text-[#777]" : "border-[#cc2222]/58 bg-[#101010]/55 text-[#ef5353] hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white"].join(" ")}>
+            {getMateActionText(mate.status)}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MateStatusBadge({ status }: { status: MateActivityStatus }) {
+  if (status === "closed") return <span className="rounded-md border border-white/[0.1] bg-white/[0.035] px-2.5 py-1 text-[11px] font-black text-[#777]">마감</span>;
+  if (status === "joined") return <span className="rounded-md border border-[#2ecc71]/34 bg-[#2ecc71]/9 px-2.5 py-1 text-[11px] font-black text-[#2ecc71]">참여중</span>;
+  return <span className="rounded-md border border-[#cc2222]/45 bg-[#cc2222]/8 px-2.5 py-1 text-[11px] font-black text-[#ef5353]">모집중</span>;
+}
+
+function getMateActionText(status: MateActivityStatus) {
+  if (status === "closed") return "마감";
+  if (status === "joined") return "상세보기";
+  return "상세보기";
 }
 
 export default function MyPage() {
   const [tab, setTab] = useState<TabKey>("achievement");
   const currentTabLabel = TABS.find((item) => item.key === tab)?.label ?? K.reservation;
-  const currentSubtitle = tab === "achievement" ? "\ub098\uc758 \uc5c5\uc801\uacfc \uce6d\ud638\ub97c \ud655\uc778\ud574\ubcf4\uc138\uc694." : K.subtitle;
+  const currentSubtitle = tab === "achievement" ? "\ub098\uc758 \uc5c5\uc801\uacfc \uce6d\ud638\ub97c \ud655\uc778\ud574\ubcf4\uc138\uc694." : tab === "activity" ? "내 후기와 글, 참여 중인 메이트 모집을 확인해보세요." : K.subtitle;
   return (
     <main className="min-h-screen overflow-hidden bg-[#0b0b0b] text-[#f5f5f5]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_86%_9%,rgba(150,20,20,0.42),transparent_30%),radial-gradient(circle_at_2%_82%,rgba(150,24,24,0.34),transparent_28%),radial-gradient(circle_at_24%_14%,rgba(204,34,34,0.105),transparent_32%),linear-gradient(180deg,#0b0b0b_0%,#101010_46%,#090909_100%)]" />
@@ -497,7 +864,7 @@ export default function MyPage() {
 
         {tab === "reservation" && <ReservationTabContent />}
         {tab === "achievement" && <AchievementTabContent />}
-        {tab === "activity" && <PlaceholderTab title={K.activity} />}
+        {tab === "activity" && <ActivityTabContent />}
       </div>
     </main>
   );
