@@ -1,13 +1,16 @@
-import Link from 'next/link';
+import StatePage from '@/components/common/StatePage';
 
 export default function Error401() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <h1 className="text-7xl font-black text-[#e63946]">401</h1>
-      <p className="text-[#f5f5f5] text-xl font-semibold">로그인이 필요합니다</p>
-      <Link href="/login" className="bg-[#e63946] hover:bg-[#c1121f] text-white px-5 py-2.5 rounded text-sm transition-colors">
-        로그인하기
-      </Link>
-    </div>
+    <StatePage
+      eyebrow="AUTH REQUIRED"
+      code="401"
+      title="로그인이 필요해요"
+      description="령냥이가 문을 열기 전에 먼저 신원을 확인해야 해요."
+      actions={[
+        { label: '로그인하기', href: '/login' },
+        { label: '홈으로 가기', href: '/', variant: 'secondary' },
+      ]}
+    />
   );
 }

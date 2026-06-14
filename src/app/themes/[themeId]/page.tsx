@@ -1,11 +1,14 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import ReservationCalendar from '@/components/reservation/ReservationCalendar';
+import ReservationSlideOver from '@/components/reservation/ReservationSlideOver';
 import ReviewCard from '@/components/card/ReviewCard';
+import { getThemeById } from '@/services/themeService';
 import { Review } from '@/types/review';
+import { ThemeDetail } from '@/types/theme';
 
 type TabType = 'info' | 'review' | 'location' | 'reservation';
 
@@ -282,6 +285,39 @@ function LocationTab({ theme }: { theme: ThemeDetailData }) {
   );
 }
 
+const createThemeDetailData = (theme: ThemeDetail): ThemeDetailData => ({
+  id: theme.id,
+  title: theme.title,
+  description: theme.description,
+  genre: theme.genre,
+  difficulty: theme.difficulty,
+  horrorLevel: theme.horrorLevel,
+  minPlayers: theme.minPlayers,
+  maxPlayers: theme.maxPlayers,
+  duration: theme.duration,
+  price: theme.price,
+  imageUrl: theme.imageUrl,
+  rating: theme.rating,
+  reviewCount: theme.reviewCount,
+  clearRate: theme.clearRate ?? 0,
+  locationName: theme.locationName ?? '',
+  branchName: theme.branchName ?? '',
+  isBest: theme.isBest,
+  isNew: theme.isNew,
+  isHot: theme.isHot,
+  story: theme.story || theme.description,
+  notice: theme.notice || '예약 시간 10분 전 도착을 권장합니다.',
+  timeSlots: (theme.availableTimes?.length ? theme.availableTimes : DEFAULT_TIME_SLOTS.map((slot) => slot.time)).map(
+    (time) => ({ time, soldOut: false }),
+  ),
+  branchInfo: {
+    phone: '',
+    hours: '',
+    address: [theme.locationName, theme.branchName].filter(Boolean).join(' · '),
+  },
+  reviews: [],
+});
+
 interface ReservationTabProps {
   theme: ThemeDetailData;
   selectedDate: string;
@@ -338,8 +374,28 @@ export default function ThemeDetailPage({ params }: { params: Promise<{ themeId:
   const [activeTab, setActiveTab] = useState<TabType>('info');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [isReservationOpen, setIsReservationOpen] = useState(false);
+  const [apiTheme, setApiTheme] = useState<ThemeDetailData | null>(null);
 
-  const theme = MOCK_THEMES.find(t => t.id === parseInt(themeId)) ?? MOCK_THEMES[0];
+  const fallbackTheme = MOCK_THEMES.find(t => t.id === parseInt(themeId)) ?? MOCK_THEMES[0];
+  const theme = apiTheme ?? fallbackTheme;
+
+  useEffect(() => {
+    let isMounted = true;
+    const id = Number(themeId);
+
+    if (!Number.isFinite(id)) return;
+
+    getThemeById(id)
+      .then((data) => {
+        if (isMounted) setApiTheme(createThemeDetailData(data));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [themeId]);
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'info', label: '상세 정보' },
@@ -347,8 +403,6 @@ export default function ThemeDetailPage({ params }: { params: Promise<{ themeId:
     { id: 'location', label: '위치 안내' },
     { id: 'reservation', label: '예약' },
   ];
-
-  const canPay = activeTab === 'reservation' && selectedDate && selectedTime;
 
   return (
     <div className="min-h-screen bg-[#0d0d0d]">
@@ -472,23 +526,29 @@ export default function ThemeDetailPage({ params }: { params: Promise<{ themeId:
           >
             닫기
           </Link>
-          {canPay ? (
-            <Link
-              href={`/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}`}
-              className="flex-[2] text-center py-3 rounded bg-[#e63946] hover:bg-[#c1121f] text-white text-sm font-medium transition-colors"
-            >
-              결제하기 →
-            </Link>
-          ) : (
-            <button
-              onClick={() => setActiveTab('reservation')}
-              className="flex-[2] text-center py-3 rounded bg-[#e63946] hover:bg-[#c1121f] text-white text-sm font-medium transition-colors"
-            >
-              예약하기 →
-            </button>
-          )}
+          <button
+            onClick={() => setIsReservationOpen(true)}
+            className="flex-[2] text-center py-3 rounded bg-[#e63946] hover:bg-[#c1121f] text-white text-sm font-medium transition-colors"
+          >
+            예약하기 →
+          </button>
         </div>
       </div>
+
+      {isReservationOpen && (
+        <ReservationSlideOver
+          theme={theme}
+          selectedDate={selectedDate}
+          selectedTime={selectedTime}
+          times={theme.timeSlots}
+          onSelectDate={(date) => {
+            setSelectedDate(date);
+            setSelectedTime('');
+          }}
+          onSelectTime={setSelectedTime}
+          onClose={() => setIsReservationOpen(false)}
+        />
+      )}
     </div>
   );
 }

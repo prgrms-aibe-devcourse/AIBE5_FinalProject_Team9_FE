@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useReservationStore } from "@/stores/reservationStore";
 import { Theme } from "@/types/theme";
 
 function DrawerSkullIcon({ className }: { className?: string }) {
@@ -92,6 +93,7 @@ export default function ThemeDetailDrawer({
   const [calendarMonth, setCalendarMonth] = useState(() =>
     getMonthStart(new Date()),
   );
+  const { setTheme, setLocation, setDateTime, setHeadcount } = useReservationStore();
   const timeSlots = ["10:00", "11:30", "13:00", "14:30", "16:00", "17:30", "19:00", "20:30"];
   const today = useMemo(() => {
     const date = new Date();
@@ -151,6 +153,15 @@ export default function ThemeDetailDrawer({
   const requestClose = () => {
     setIsVisible(false);
     window.setTimeout(onClose, 220);
+  };
+
+  const saveReservationDraft = () => {
+    if (!selectedDate || !selectedTime) return;
+
+    setTheme(theme.id, theme.title, theme.imageUrl);
+    setLocation(theme.locationName ?? "", theme.branchName ?? "");
+    setDateTime(selectedDate, selectedTime);
+    setHeadcount(theme.minPlayers || 1, 0);
   };
 
   return (
@@ -550,12 +561,23 @@ export default function ThemeDetailDrawer({
             >
               닫기
             </button>
-            <Link
-              href={`/reservation?themeId=${theme.id}&date=${selectedDate}${selectedTime ? `&time=${selectedTime}` : ""}`}
-              className="h-12 flex-[1.7] rounded-[10px] bg-[#cc2222] text-center text-sm font-black leading-[48px] text-white transition-all hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]"
-            >
-              예약 진행하기
-            </Link>
+            {selectedDate && selectedTime ? (
+              <Link
+                href={`/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}`}
+                onClick={saveReservationDraft}
+                className="h-12 flex-[1.7] rounded-[10px] bg-[#cc2222] text-center text-sm font-black leading-[48px] text-white transition-all hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]"
+              >
+                예약 진행하기
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="h-12 flex-[1.7] cursor-not-allowed rounded-[10px] bg-[#cc2222] text-sm font-black text-white opacity-45"
+              >
+                예약 진행하기
+              </button>
+            )}
           </div>
         </div>
       </aside>

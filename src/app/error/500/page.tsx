@@ -1,11 +1,13 @@
-import Link from 'next/link';
+import StatePage from '@/components/common/StatePage';
 
 export default function Error500() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <h1 className="text-7xl font-black text-[#e63946]">500</h1>
-      <p className="text-[#f5f5f5] text-xl font-semibold">서버 오류가 발생했습니다</p>
-      <Link href="/" className="bg-[#e63946] hover:bg-[#c1121f] text-white px-5 py-2.5 rounded text-sm transition-colors">홈으로</Link>
-    </div>
+    <StatePage
+      eyebrow="SERVER ERROR"
+      code="500"
+      title="문 너머에서 문제가 생겼어요"
+      description="령냥이가 길을 다시 찾고 있어요. 잠시 후 다시 시도해주세요."
+      actions={[{ label: '홈으로 가기', href: '/' }]}
+    />
   );
 }

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import axiosInstance from '@/lib/axios';
 import { getRefreshToken } from '@/lib/token';
+import { repairMojibake } from '@/lib/text';
 import {
   ApiResponse,
   AuthResponse,
@@ -48,7 +49,7 @@ const createUserFromPayload = (payload?: AuthUserPayload): User | undefined => {
   return {
     id: payload.id,
     email: payload.email,
-    nickname: payload.nickname,
+    nickname: repairMojibake(payload.nickname),
     role: normalizeRole(payload.role),
     profileImageUrl: payload.profileImageUrl,
     gender: payload.gender,
@@ -66,7 +67,7 @@ const createPartialUserFromPayload = (payload?: AuthUserPayload): Partial<User> 
   return {
     id: payload.id,
     email: payload.email,
-    nickname: payload.nickname,
+    nickname: payload.nickname ? repairMojibake(payload.nickname) : undefined,
     role: payload.role ? normalizeRole(payload.role) : undefined,
     profileImageUrl: payload.profileImageUrl,
     gender: payload.gender,
@@ -78,12 +79,20 @@ const createPartialUserFromPayload = (payload?: AuthUserPayload): Partial<User> 
   };
 };
 
+const normalizeUser = (user?: User): User | undefined => {
+  if (!user) return undefined;
+  return {
+    ...user,
+    nickname: repairMojibake(user.nickname),
+  };
+};
+
 export const extractAuthPayload = (response: AuthResponse) => {
   const accessToken = response.accessToken ?? response.data?.accessToken;
   const refreshToken = response.refreshToken ?? response.data?.refreshToken;
   const user =
-    response.user ??
-    response.data?.user ??
+    normalizeUser(response.user) ??
+    normalizeUser(response.data?.user) ??
     createUserFromPayload(response.data) ??
     createUserFromPayload(response);
 

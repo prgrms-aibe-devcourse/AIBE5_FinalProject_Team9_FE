@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useReservationStore } from '@/stores/reservationStore';
+import { getThemeById } from '@/services/themeService';
 import { Theme } from '@/types/theme';
 
 const MOCK_THEMES: Theme[] = [
@@ -894,12 +895,39 @@ function ReservationContent() {
   const urlTime = searchParams.get('time');
 
   const initialTheme = urlThemeId ? MOCK_THEMES.find((theme) => theme.id === Number(urlThemeId)) : null;
-  const hasUrlParams = Boolean(initialTheme && urlDate && urlTime);
+  const hasUrlParams = Boolean(urlThemeId && urlDate && urlTime);
 
   const [step, setStep] = useState<'select' | 'payment'>(hasUrlParams ? 'payment' : 'select');
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(initialTheme ?? null);
   const [selectedDate, setSelectedDate] = useState(urlDate ?? '');
   const [selectedTime, setSelectedTime] = useState(urlTime ?? '');
+  const [isLoadingUrlTheme, setIsLoadingUrlTheme] = useState(hasUrlParams && !initialTheme);
+
+  useEffect(() => {
+    if (!hasUrlParams || initialTheme || !urlThemeId) return;
+
+    let isMounted = true;
+    setIsLoadingUrlTheme(true);
+
+    getThemeById(Number(urlThemeId))
+      .then((theme) => {
+        if (!isMounted) return;
+        setSelectedTheme(theme);
+        setSelectedDate(urlDate ?? '');
+        setSelectedTime(urlTime ?? '');
+        setStep('payment');
+        setIsLoadingUrlTheme(false);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setIsLoadingUrlTheme(false);
+        setStep('select');
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [hasUrlParams, initialTheme, urlDate, urlThemeId, urlTime]);
 
   const handleBook = (theme: Theme, date: string, time: string) => {
     setSelectedTheme(theme);
@@ -914,6 +942,12 @@ function ReservationContent() {
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(204,34,34,0.14),transparent_34%),radial-gradient(circle_at_88%_18%,rgba(204,34,34,0.08),transparent_30%),linear-gradient(180deg,#0d0d0d_0%,#101010_48%,#0d0d0d_100%)]" />
       <StepBar step={step === 'select' ? 1 : 2} />
       {step === 'select' && <BrowseStep onBook={handleBook} />}
+      {step === 'payment' && isLoadingUrlTheme && (
+        <div className="relative mx-auto max-w-2xl px-4 py-16 text-center">
+          <p className="text-sm font-bold text-[#f5f5f5]">예약 정보를 불러오는 중입니다.</p>
+          <p className="mt-2 text-xs text-[#888]">잠시만 기다려주세요.</p>
+        </div>
+      )}
       {step === 'payment' && selectedTheme && selectedDate && selectedTime && (
         <PaymentStep
           theme={selectedTheme}

@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/authStore';
+import { repairMojibake } from '@/lib/text';
 
 export default function Header() {
   const { isLoggedIn, user, logout } = useAuthStore();
+  const nickname = repairMojibake(user?.nickname);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#241414] bg-[#0c0c0c]/96 backdrop-blur">
@@ -31,13 +33,13 @@ export default function Header() {
         <div className="flex items-center justify-self-end gap-3 text-[12px] font-bold">
           {isLoggedIn ? (
             <>
-              <Link href="/mypage" title={user?.nickname}>
+              <Link href="/mypage" title={nickname}>
                 <div
                   className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1a1a] bg-cover bg-center text-[11px] text-[#f5f5f5]"
                   style={user?.profileImageUrl ? { backgroundImage: `url('${user.profileImageUrl}')` } : undefined}
-                  aria-label={user?.nickname}
+                  aria-label={nickname}
                 >
-                  {user?.profileImageUrl ? <span className="sr-only">{user.nickname}</span> : user?.nickname?.[0]?.toUpperCase() ?? 'U'}
+                  {user?.profileImageUrl ? <span className="sr-only">{nickname}</span> : nickname?.[0]?.toUpperCase() ?? 'U'}
                 </div>
               </Link>
               <button onClick={logout} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">

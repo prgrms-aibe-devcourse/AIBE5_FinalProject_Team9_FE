@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import { getMe } from "@/services/authService";
+import { repairMojibake } from "@/lib/text";
 
 type TabKey = "reservation" | "achievement" | "activity";
 type ReservationStatus = "upcoming" | "cleared" | "failed";
@@ -971,7 +972,13 @@ function ProfileSummaryCard() {
       .catch(() => undefined);
   }, [profileRequested, setUser, user]);
 
-  const displayName = user?.nickname || K.name;
+  const displayName = repairMojibake(user?.nickname) || K.name;
+
+  useEffect(() => {
+    if (!user || !displayName || user.nickname === displayName) return;
+    setUser({ ...user, nickname: displayName });
+  }, [displayName, setUser, user]);
+
   const genderLabel = formatGender(user?.gender);
   const ageLabel = formatAge(user?.age);
 

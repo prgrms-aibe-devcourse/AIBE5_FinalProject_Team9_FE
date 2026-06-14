@@ -1,322 +1,561 @@
 'use client';
 
-import { useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  createTheme,
+  deleteTheme,
+  getOwnerThemes,
+  updateTheme,
+} from '@/services/themeService';
+import { OwnerTheme, OwnerThemeRequest } from '@/types/theme';
 
-interface Theme {
-  id: number;
+type FormState = {
   title: string;
   difficulty: number;
-  maxParty: number;
+  horrorLevel: number;
+  minPeople: string;
+  maxPeople: string;
   ageLimit: string;
-  genre: string;
+  playTime: string;
+  tags: string;
+  price: string;
   description: string;
-  date: string;
-  gradient: string;
-}
+  thumbnail: File | null;
+};
 
-const INITIAL_THEMES: Theme[] = [
-  { id: 1, title: '새벽의 저택', difficulty: 4, maxParty: 6, ageLimit: '15세 이상', genre: '공포 / 미스터리', description: '깊은 숲 속을 지나 도착한 오래된 저택, 그곳에 깨어난 당신은 알 수 없는 기운에 둘러싸이게 됩니다.', date: '2024.05.20', gradient: 'from-[#1a0000] via-[#2d1010] to-[#0a0000]' },
-  { id: 2, title: '피의 연회', difficulty: 3, maxParty: 5, ageLimit: '12세 이상', genre: '공포 / 미스터리', description: '화려한 연회장, 그러나 손님들이 하나둘 사라지기 시작합니다. 당신만이 진실을 밝힐 수 있습니다.', date: '2024.05.18', gradient: 'from-[#1a0030] via-[#30104a] to-[#0a001a]' },
-  { id: 3, title: '망자의 서재', difficulty: 4, maxParty: 5, ageLimit: '15세 이상', genre: '공포 / 미스터리', description: '수백 년 전 사라진 학자의 서재에 봉인된 비밀을 풀어 저주를 끊어야 합니다.', date: '2024.05.15', gradient: 'from-[#000a1a] via-[#0d1a2d] to-[#000]' },
-  { id: 4, title: '감금된 연구소', difficulty: 4, maxParty: 4, ageLimit: '12세 이상', genre: '공포 / 탈출', description: '폐쇄된 연구소에서 실험 도중 탈출한 생체 실험체들, 당신은 살아 나올 수 있을까요?', date: '2024.05.10', gradient: 'from-[#001a0d] via-[#0a2010] to-[#000a05]' },
-];
+const EMPTY_FORM: FormState = {
+  title: '',
+  difficulty: 1,
+  horrorLevel: 1,
+  minPeople: '1',
+  maxPeople: '4',
+  ageLimit: '0',
+  playTime: '60',
+  tags: '',
+  price: '0',
+  description: '',
+  thumbnail: null,
+};
 
-type FormState = { title: string; difficulty: number; maxParty: string; ageLimit: string; genre: string; description: string };
-const EMPTY_FORM: FormState = { title: '', difficulty: 0, maxParty: '', ageLimit: '', genre: '', description: '' };
+const getDateText = (value?: string) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  return new Intl.DateTimeFormat('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+};
 
-function DifficultyDots({ value, onClick }: { value: number; onClick?: (v: number) => void }) {
+const createFormFromTheme = (theme: OwnerTheme): FormState => ({
+  title: theme.title,
+  difficulty: theme.difficulty,
+  horrorLevel: theme.horrorLevel,
+  minPeople: String(theme.minPeople),
+  maxPeople: String(theme.maxPeople),
+  ageLimit: String(theme.ageLimit ?? 0),
+  playTime: String(theme.playTime),
+  tags: theme.tags,
+  price: String(theme.price),
+  description: theme.description,
+  thumbnail: null,
+});
+
+const toRequest = (form: FormState): OwnerThemeRequest => ({
+  title: form.title.trim(),
+  difficulty: form.difficulty,
+  horrorLevel: form.horrorLevel,
+  minPeople: Number(form.minPeople),
+  maxPeople: Number(form.maxPeople),
+  ageLimit: Number(form.ageLimit),
+  playTime: Number(form.playTime),
+  tags: form.tags.trim(),
+  price: Number(form.price),
+  description: form.description.trim(),
+  thumbnailUrl: '',
+});
+
+function RatingDots({
+  value,
+  onClick,
+  label,
+}: {
+  value: number;
+  onClick?: (v: number) => void;
+  label: string;
+}) {
   return (
-    <span className="flex gap-1">
+    <div className="flex items-center gap-2" aria-label={label}>
       {Array.from({ length: 5 }).map((_, i) => (
         <button
           key={i}
           type="button"
           onClick={() => onClick?.(i + 1)}
+          disabled={!onClick}
           className={[
-            'w-4 h-4 rounded-full transition-colors',
-            i < value ? 'bg-[#e63946]' : 'bg-[#ddd]',
-            onClick ? 'cursor-pointer hover:opacity-80' : 'cursor-default',
+            'h-3.5 w-3.5 rounded-full transition-colors',
+            i < value ? 'bg-[#e63946]' : 'bg-[#3a3a3a]',
+            onClick ? 'cursor-pointer hover:bg-[#ff5a66]' : 'cursor-default',
           ].join(' ')}
+          title={`${label} ${i + 1}`}
         />
       ))}
-    </span>
+    </div>
   );
 }
 
 export default function OwnerThemesPage() {
-  const [themes, setThemes] = useState(INITIAL_THEMES);
+  const [themes, setThemes] = useState<OwnerTheme[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [editTarget, setEditTarget] = useState<Theme | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<Theme | null>(null);
+  const [editTarget, setEditTarget] = useState<OwnerTheme | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<OwnerTheme | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [descCount, setDescCount] = useState(0);
-  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
+
+  const imagePreview = useMemo(() => {
+    if (form.thumbnail) return URL.createObjectURL(form.thumbnail);
+    return editTarget?.thumbnailUrl ?? '';
+  }, [editTarget?.thumbnailUrl, form.thumbnail]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  const fetchThemes = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await getOwnerThemes();
+      setThemes(data);
+    } catch {
+      setError('테마 목록을 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchThemes();
+  }, []);
 
   const openAdd = () => {
     setForm(EMPTY_FORM);
-    setDescCount(0);
     setEditTarget(null);
     setShowModal(true);
   };
 
-  const openEdit = (t: Theme) => {
-    setForm({ title: t.title, difficulty: t.difficulty, maxParty: String(t.maxParty), ageLimit: t.ageLimit, genre: t.genre, description: t.description });
-    setDescCount(t.description.length);
-    setEditTarget(t);
+  const openEdit = (theme: OwnerTheme) => {
+    setForm(createFormFromTheme(theme));
+    setEditTarget(theme);
     setShowModal(true);
-    setDropdownOpen(null);
   };
 
-  const handleSave = () => {
-    if (!form.title || !form.difficulty || !form.maxParty || !form.genre) return;
-    if (editTarget) {
-      setThemes(prev => prev.map(t => t.id === editTarget.id ? { ...t, ...form, maxParty: Number(form.maxParty) } : t));
-    } else {
-      const gradients = ['from-[#1a0000] via-[#2d1010] to-[#0a0000]', 'from-[#1a0030] via-[#30104a] to-[#0a001a]', 'from-[#000a1a] via-[#0d1a2d] to-[#000]', 'from-[#001a0d] via-[#0a2010] to-[#000a05]'];
-      setThemes(prev => [...prev, { id: Date.now(), ...form, maxParty: Number(form.maxParty), date: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace('.', '.'), gradient: gradients[prev.length % gradients.length] }]);
+  const setText = (key: keyof FormState, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setNumber = (key: 'difficulty' | 'horrorLevel', value: number) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const setThumbnail = (event: ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, thumbnail: event.target.files?.[0] ?? null }));
+  };
+
+  const isValid =
+    form.title.trim() &&
+    form.tags.trim() &&
+    form.description.trim() &&
+    Number(form.minPeople) > 0 &&
+    Number(form.maxPeople) >= Number(form.minPeople) &&
+    Number(form.playTime) > 0 &&
+    Number(form.price) >= 0 &&
+    (editTarget || form.thumbnail);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!isValid || saving) return;
+
+    setSaving(true);
+    setError('');
+    try {
+      if (editTarget) {
+        await updateTheme(editTarget.id, toRequest(form), form.thumbnail ?? undefined);
+      } else if (form.thumbnail) {
+        await createTheme(toRequest(form), form.thumbnail);
+      }
+
+      setShowModal(false);
+      await fetchThemes();
+    } catch {
+      setError(editTarget ? '테마 수정에 실패했습니다.' : '테마 등록에 실패했습니다.');
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
 
-  const handleDelete = (id: number) => {
-    setThemes(prev => prev.filter(t => t.id !== id));
-    setDeleteTarget(null);
-  };
+  const handleDelete = async () => {
+    if (!deleteTarget || deleting) return;
 
-  const isValid = form.title && form.difficulty > 0 && form.maxParty && form.genre && form.description;
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteTheme(deleteTarget.id);
+      setDeleteTarget(null);
+      await fetchThemes();
+    } catch {
+      setError('테마 삭제에 실패했습니다.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-base font-black text-[#f5f5f5]">테마 관리</h1>
-          <p className="text-xs text-[#555] mt-0.5">등록된 테마를 관리할 수 있습니다.</p>
+          <p className="mt-0.5 text-xs text-[#777]">매장 테마를 등록하고 수정할 수 있습니다.</p>
         </div>
-        <button onClick={openAdd}
-          className="flex items-center gap-1.5 bg-[#e63946] hover:bg-[#c1121f] text-white text-xs font-bold px-4 py-2.5 rounded-lg transition-colors">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          + 테마 추가
+        <button
+          type="button"
+          onClick={openAdd}
+          className="flex items-center gap-1.5 rounded-lg bg-[#e63946] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#c1121f]"
+        >
+          <span className="text-base leading-none">+</span>
+          테마 추가
         </button>
       </div>
 
-      {/* Image card grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {themes.slice(0, 3).map(t => (
-          <div key={t.id} className="bg-[#1a1a1a] border border-[#222] rounded-xl overflow-hidden">
-            <div className={['h-52 bg-linear-to-br flex items-end p-0 relative overflow-hidden', t.gradient].join(' ')}>
-              <div className="absolute inset-0 opacity-20">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="absolute bg-white/5 rounded-full"
-                    style={{ width: `${60 + i * 40}px`, height: `${60 + i * 40}px`, top: `${i * 15}%`, left: `${(i * 37) % 80}%`, transform: 'translate(-50%, -50%)' }} />
-                ))}
-              </div>
-              <div className="relative z-10 p-4 w-full bg-linear-to-t from-black/60 to-transparent">
-                <h3 className="text-sm font-black text-white">{t.title}</h3>
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs text-[#555]">난이도</span>
-                <DifficultyDots value={t.difficulty} />
-              </div>
-              <div className="space-y-1 mb-4">
-                <p className="text-xs text-[#666]">최대인원 <span className="text-[#ccc] ml-1">{t.maxParty}명</span></p>
-                <p className="text-xs text-[#666]">장르 <span className="text-[#ccc] ml-1">{t.genre}</span></p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => openEdit(t)}
-                  className="flex items-center justify-center gap-1.5 text-xs text-[#888] hover:text-[#f5f5f5] border border-[#2a2a2a] hover:border-[#444] py-2 rounded-lg transition-colors">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  수정
-                </button>
-                <button onClick={() => setDeleteTarget(t)}
-                  className="flex items-center justify-center gap-1.5 text-xs text-[#e63946]/70 hover:text-[#e63946] border border-[#2a2a2a] hover:border-[#e63946]/40 py-2 rounded-lg transition-colors">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  삭제
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="bg-[#1a1a1a] border border-[#222] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#1f1f1f]">
-                {['테마명', '난이도', '최대 인원', '장르', '등록일', '관리'].map(h => (
-                  <th key={h} className="px-5 py-3 text-left text-xs font-medium text-[#555] whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {themes.map(t => (
-                <tr key={t.id} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
-                  <td className="px-5 py-3.5 text-xs font-bold text-[#f5f5f5]">{t.title}</td>
-                  <td className="px-5 py-3.5"><DifficultyDots value={t.difficulty} /></td>
-                  <td className="px-5 py-3.5 text-xs text-[#888]">{t.maxParty}명</td>
-                  <td className="px-5 py-3.5 text-xs text-[#888]">{t.genre}</td>
-                  <td className="px-5 py-3.5 text-xs text-[#555]">{t.date}</td>
-                  <td className="px-5 py-3.5 relative">
-                    <button
-                      onClick={() => setDropdownOpen(dropdownOpen === t.id ? null : t.id)}
-                      className="text-xs border border-[#2a2a2a] text-[#666] hover:border-[#444] hover:text-[#f5f5f5] px-2 py-1.5 rounded transition-colors font-bold tracking-widest"
-                    >···</button>
-                    {dropdownOpen === t.id && (
-                      <div className="absolute right-5 top-full mt-1 bg-[#1f1f1f] border border-[#2a2a2a] rounded-lg overflow-hidden z-10 shadow-xl min-w-24">
-                        <button onClick={() => openEdit(t)}
-                          className="w-full text-left text-xs text-[#ccc] hover:bg-[#2a2a2a] px-4 py-2.5 transition-colors">수정</button>
-                        <button onClick={() => { setDeleteTarget(t); setDropdownOpen(null); }}
-                          className="w-full text-left text-xs text-[#e63946] hover:bg-[#2a2a2a] px-4 py-2.5 transition-colors">삭제</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error && (
+        <div className="rounded border border-[#e63946]/30 bg-[#e63946]/10 px-4 py-3 text-sm text-[#ff7b84]">
+          {error}
         </div>
-      </div>
-
-      {/* Click outside to close dropdown */}
-      {dropdownOpen !== null && (
-        <div className="fixed inset-0 z-5" onClick={() => setDropdownOpen(null)} />
       )}
 
-      {/* Add/Edit modal — white */}
+      {loading ? (
+        <div className="rounded-lg border border-[#222] bg-[#1a1a1a] p-10 text-center text-sm text-[#777]">
+          테마 목록을 불러오는 중입니다.
+        </div>
+      ) : themes.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-[#333] bg-[#171717] p-10 text-center">
+          <p className="text-sm font-bold text-[#ddd]">등록된 테마가 없습니다.</p>
+          <p className="mt-1 text-xs text-[#777]">첫 테마를 추가해 owner 페이지를 채워보세요.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {themes.slice(0, 3).map((theme) => (
+              <article key={theme.id} className="overflow-hidden rounded-lg border border-[#222] bg-[#1a1a1a]">
+                <div className="relative h-52 bg-[#111]">
+                  {theme.thumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={theme.thumbnailUrl}
+                      alt={theme.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-[#666]">
+                      이미지 없음
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent p-4">
+                    <p className="text-xs text-[#bbb]">{theme.branchName}</p>
+                    <h2 className="text-sm font-black text-white">{theme.title}</h2>
+                  </div>
+                </div>
+                <div className="space-y-3 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[#777]">난이도</span>
+                    <RatingDots value={theme.difficulty} label="난이도" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-[#888]">
+                    <span>공포도 {theme.horrorLevel}</span>
+                    <span>{theme.minPeople}-{theme.maxPeople}명</span>
+                    <span>{theme.playTime}분</span>
+                    <span>{theme.price.toLocaleString()}원</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(theme)}
+                      className="flex-1 rounded border border-[#333] py-2 text-xs text-[#ccc] transition-colors hover:border-[#555] hover:text-white"
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(theme)}
+                      className="flex-1 rounded border border-[#e63946]/30 py-2 text-xs text-[#ff6b75] transition-colors hover:bg-[#e63946]/10"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-[#222] bg-[#1a1a1a]">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#242424]">
+                    {['테마명', '난이도', '공포도', '인원', '태그', '등록일', '관리'].map((head) => (
+                      <th key={head} className="whitespace-nowrap px-5 py-3 text-left text-xs font-medium text-[#666]">
+                        {head}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {themes.map((theme) => (
+                    <tr key={theme.id} className="border-b border-[#171717] last:border-b-0 hover:bg-[#202020]">
+                      <td className="px-5 py-3.5">
+                        <p className="text-xs font-bold text-[#f5f5f5]">{theme.title}</p>
+                        <p className="mt-0.5 text-xs text-[#666]">{theme.branchName}</p>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <RatingDots value={theme.difficulty} label="난이도" />
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <RatingDots value={theme.horrorLevel} label="공포도" />
+                      </td>
+                      <td className="whitespace-nowrap px-5 py-3.5 text-xs text-[#888]">
+                        {theme.minPeople}-{theme.maxPeople}명
+                      </td>
+                      <td className="px-5 py-3.5 text-xs text-[#888]">{theme.tags}</td>
+                      <td className="whitespace-nowrap px-5 py-3.5 text-xs text-[#666]">{getDateText(theme.createdAt)}</td>
+                      <td className="whitespace-nowrap px-5 py-3.5">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(theme)}
+                            className="rounded border border-[#333] px-3 py-1.5 text-xs text-[#ccc] hover:border-[#555] hover:text-white"
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(theme)}
+                            className="rounded border border-[#e63946]/30 px-3 py-1.5 text-xs text-[#ff6b75] hover:bg-[#e63946]/10"
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-900">{editTarget ? '테마 수정' : '테마 추가'}</h3>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <form
+            onSubmit={handleSubmit}
+            className="w-full max-w-2xl overflow-hidden rounded-lg bg-white shadow-2xl"
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h3 className="text-sm font-bold text-gray-900">
+                {editTarget ? '테마 수정' : '테마 추가'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="text-xl leading-none text-gray-400 hover:text-gray-600"
+                aria-label="닫기"
+              >
+                x
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-              {/* 테마명 */}
+            <div className="max-h-[72vh] space-y-4 overflow-y-auto px-6 py-5">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">테마명 <span className="text-[#e63946]">*</span></label>
-                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder={editTarget ? undefined : '예) 새벽의 저택'}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#e63946] placeholder-gray-400" />
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700">테마명 *</label>
+                <input
+                  value={form.title}
+                  onChange={(event) => setText('title', event.target.value)}
+                  required
+                  className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-[#e63946] focus:outline-none"
+                  placeholder="예) 공포의 폐차장"
+                />
               </div>
 
-              {/* 난이도 */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">난이도 <span className="text-[#e63946]">*</span></label>
-                <div className="flex items-center gap-3">
-                  <DifficultyDots value={form.difficulty} onClick={v => setForm(f => ({ ...f, difficulty: v }))} />
-                  {form.difficulty > 0 && (
-                    <span className="text-xs text-gray-500">({['', '매우 쉬움', '쉬움', '보통', '어려움', '매우 어려움'][form.difficulty]})</span>
-                  )}
-                </div>
-              </div>
-
-              {/* 최대 인원 + 연령 제한 */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">최대 인원 <span className="text-[#e63946]">*</span></label>
-                  <input value={form.maxParty} onChange={e => setForm(f => ({ ...f, maxParty: e.target.value }))}
-                    placeholder="인원 선택"
-                    type="number" min={2} max={10}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#e63946] placeholder-gray-400" />
+                  <label className="mb-2 block text-xs font-semibold text-gray-700">난이도 *</label>
+                  <RatingDots
+                    value={form.difficulty}
+                    onClick={(value) => setNumber('difficulty', value)}
+                    label="난이도"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">연령 제한 <span className="text-[#e63946]">*</span></label>
-                  <input value={form.ageLimit} onChange={e => setForm(f => ({ ...f, ageLimit: e.target.value }))}
-                    placeholder="연령 제한"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#e63946] placeholder-gray-400" />
+                  <label className="mb-2 block text-xs font-semibold text-gray-700">공포도 *</label>
+                  <RatingDots
+                    value={form.horrorLevel}
+                    onClick={(value) => setNumber('horrorLevel', value)}
+                    label="공포도"
+                  />
                 </div>
               </div>
 
-              {/* 장르 */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">장르 <span className="text-[#e63946]">*</span></label>
-                <input value={form.genre} onChange={e => setForm(f => ({ ...f, genre: e.target.value }))}
-                  placeholder="장르 선택"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#e63946] placeholder-gray-400" />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <NumberInput label="최소 인원 *" value={form.minPeople} min={1} onChange={(value) => setText('minPeople', value)} />
+                <NumberInput label="최대 인원 *" value={form.maxPeople} min={1} onChange={(value) => setText('maxPeople', value)} />
+                <NumberInput label="연령 제한 *" value={form.ageLimit} min={0} onChange={(value) => setText('ageLimit', value)} />
+                <NumberInput label="소요 시간 *" value={form.playTime} min={1} onChange={(value) => setText('playTime', value)} suffix="분" />
               </div>
 
-              {/* 테마 설명 */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-gray-700">태그 *</label>
+                  <input
+                    value={form.tags}
+                    onChange={(event) => setText('tags', event.target.value)}
+                    required
+                    className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-[#e63946] focus:outline-none"
+                    placeholder="공포, 미스터리"
+                  />
+                </div>
+                <NumberInput label="가격 *" value={form.price} min={0} onChange={(value) => setText('price', value)} suffix="원" />
+              </div>
+
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">테마 설명 <span className="text-[#e63946]">*</span></label>
-                <textarea value={form.description}
-                  onChange={e => { if (e.target.value.length <= 200) { setForm(f => ({ ...f, description: e.target.value })); setDescCount(e.target.value.length); } }}
-                  placeholder="테마에 대한 설명을 입력해주세요."
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700">테마 설명 *</label>
+                <textarea
+                  value={form.description}
+                  onChange={(event) => setText('description', event.target.value)}
+                  required
                   rows={4}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:border-[#e63946] placeholder-gray-400 resize-none" />
-                <p className="text-right text-xs text-gray-400 mt-1">{descCount} / 200</p>
+                  maxLength={500}
+                  className="w-full resize-none rounded border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-[#e63946] focus:outline-none"
+                  placeholder="테마에 대한 설명을 입력해주세요."
+                />
+                <p className="mt-1 text-right text-xs text-gray-400">{form.description.length} / 500</p>
               </div>
 
-              {/* 대표 이미지 */}
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">대표 이미지 <span className="text-[#e63946]">*</span></label>
-                {editTarget ? (
-                  <div className="flex items-center gap-3">
-                    <div className={['w-20 h-20 rounded-lg bg-linear-to-br flex items-center justify-center shrink-0', editTarget.gradient].join(' ')}>
-                      <svg className="w-6 h-6 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
-                      </svg>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-500">권장 사이즈: 1200 x 800px (최대 5MB)</p>
-                      <div className="flex gap-2">
-                        <button className="text-xs border border-gray-300 text-gray-600 hover:border-gray-400 px-3 py-1.5 rounded-lg transition-colors">이미지 변경</button>
-                        <button className="text-xs bg-[#e63946]/10 text-[#e63946] hover:bg-[#e63946]/20 border border-[#e63946]/30 px-3 py-1.5 rounded-lg transition-colors">이미지 삭제</button>
+                <label className="mb-1.5 block text-xs font-semibold text-gray-700">
+                  대표 이미지 {editTarget ? '' : '*'}
+                </label>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <div className="h-28 w-full overflow-hidden rounded border border-gray-200 bg-gray-100 sm:w-36">
+                    {imagePreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={imagePreview} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-gray-400">
+                        미리보기
                       </div>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl h-28 flex items-center justify-center cursor-pointer hover:border-gray-300 transition-colors">
-                    <span className="text-sm text-gray-400">이미지 선택</span>
-                  </div>
-                )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={setThumbnail}
+                    required={!editTarget}
+                    className="text-sm text-gray-700 file:mr-3 file:rounded file:border-0 file:bg-[#222] file:px-3 file:py-2 file:text-xs file:font-bold file:text-white"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2">
-              <button onClick={() => setShowModal(false)}
-                className="text-sm border border-gray-300 text-gray-600 hover:border-gray-400 px-5 py-2 rounded-lg transition-colors">취소</button>
-              <button onClick={handleSave} disabled={!isValid}
-                className="text-sm bg-[#e63946] hover:bg-[#c1121f] disabled:opacity-40 text-white font-bold px-5 py-2 rounded-lg transition-colors">저장하기</button>
+            <div className="flex justify-end gap-2 border-t border-gray-100 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                className="rounded border border-gray-300 px-5 py-2 text-sm text-gray-600 hover:border-gray-400"
+              >
+                취소
+              </button>
+              <button
+                type="submit"
+                disabled={!isValid || saving}
+                className="rounded bg-[#e63946] px-5 py-2 text-sm font-bold text-white transition-colors hover:bg-[#c1121f] disabled:opacity-40"
+              >
+                {saving ? '저장 중...' : '저장하기'}
+              </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
 
-      {/* Delete confirm modal */}
       {deleteTarget && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setDeleteTarget(null)}>
-          <div className="bg-white rounded-2xl w-80 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-80 overflow-hidden rounded-lg bg-white shadow-2xl">
             <div className="px-6 py-5">
-              <h3 className="text-sm font-bold text-gray-900 mb-2">테마 삭제</h3>
+              <h3 className="mb-2 text-sm font-bold text-gray-900">테마 삭제</h3>
               <p className="text-sm text-gray-600">
-                <span className="font-bold text-[#e63946]">{deleteTarget.title}</span> 테마를 삭제하시겠습니까?<br />
-                <span className="text-xs text-gray-400">삭제 후에는 복구할 수 없습니다.</span>
+                <span className="font-bold text-[#e63946]">{deleteTarget.title}</span> 테마를 삭제하시겠습니까?
               </p>
             </div>
-            <div className="px-6 pb-5 flex gap-2">
-              <button onClick={() => setDeleteTarget(null)}
-                className="flex-1 text-sm border border-gray-300 text-gray-600 hover:border-gray-400 py-2.5 rounded-lg transition-colors">취소</button>
-              <button onClick={() => handleDelete(deleteTarget.id)}
-                className="flex-1 text-sm bg-[#e63946] hover:bg-[#c1121f] text-white font-bold py-2.5 rounded-lg transition-colors">삭제</button>
+            <div className="flex gap-2 px-6 pb-5">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 rounded border border-gray-300 py-2.5 text-sm text-gray-600 hover:border-gray-400"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 rounded bg-[#e63946] py-2.5 text-sm font-bold text-white hover:bg-[#c1121f] disabled:opacity-50"
+              >
+                {deleting ? '삭제 중...' : '삭제'}
+              </button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function NumberInput({
+  label,
+  value,
+  min,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  min: number;
+  suffix?: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-semibold text-gray-700">{label}</label>
+      <div className="relative">
+        <input
+          type="number"
+          value={value}
+          min={min}
+          onChange={(event) => onChange(event.target.value)}
+          required
+          className="w-full rounded border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:border-[#e63946] focus:outline-none"
+        />
+        {suffix && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+            {suffix}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
