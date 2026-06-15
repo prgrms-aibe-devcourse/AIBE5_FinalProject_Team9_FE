@@ -1,3 +1,0 @@
-module.exports=[18680,a=>{"use strict";a.s(["default",()=>c]);var b=a.i(87924);function c({error:a,reset:c}){return(0,b.jsxs)("div",{className:"flex flex-col items-center justify-center min-h-[60vh] gap-4",children:[(0,b.jsx)("h2",{className:"text-2xl font-bold text-[#e63946]",children:"오류가 발생했습니다"}),(0,b.jsx)("p",{className:"text-[#888]",children:a.message}),(0,b.jsx)("button",{onClick:c,className:"bg-[#e63946] text-white px-4 py-2 rounded text-sm",children:"다시 시도"})]})}}];
-
-//# sourceMappingURL=src_app_owner_error_tsx_c5b88360._.js.map

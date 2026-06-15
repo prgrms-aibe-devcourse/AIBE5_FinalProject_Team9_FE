@@ -280,7 +280,7 @@ export default function OwnerThemesPage() {
                     <span>공포도 {theme.horrorLevel}</span>
                     <span>{theme.minPeople}-{theme.maxPeople}명</span>
                     <span>{theme.playTime}분</span>
-                    <span>{theme.price.toLocaleString()}원</span>
+                    <span>{theme.price ? theme.price.toLocaleString() : '0'}원</span>
                   </div>
                   <div className="flex gap-2">
                     <button

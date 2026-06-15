@@ -1,3 +1,0 @@
-module.exports=[54712,a=>{"use strict";a.s(["default",()=>d]);var b=a.i(7997);let c={sm:"w-5 h-5 border-2",md:"w-8 h-8 border-2",lg:"w-12 h-12 border-4"};function d({fullScreen:a=!1,size:d="md"}){let e=(0,b.jsx)("span",{className:["block rounded-full border-[#e63946] border-t-transparent animate-spin",c[d]].join(" ")});return a?(0,b.jsx)("div",{className:"fixed inset-0 z-50 flex items-center justify-center bg-[#0d0d0d]/80",children:e}):(0,b.jsx)("div",{className:"flex items-center justify-center py-10",children:e})}},2747,a=>{"use strict";a.s(["default",()=>d]);var b=a.i(7997),c=a.i(54712);function d(){return(0,b.jsx)(c.default,{fullScreen:!0})}}];
-
-//# sourceMappingURL=src_ec68d808._.js.map
