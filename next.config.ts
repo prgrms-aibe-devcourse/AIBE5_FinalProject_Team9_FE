@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'picsum.photos' },
       { protocol: 'https', hostname: 'grimgate.s3.amazonaws.com' },
+        { protocol: 'https', hostname: 'team9-grimgate-bucket.s3.amazonaws.com' },
     ],
   },
 };
