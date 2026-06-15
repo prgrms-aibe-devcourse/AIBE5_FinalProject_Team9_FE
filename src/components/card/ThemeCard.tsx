@@ -10,6 +10,7 @@ interface ThemeCardProps {
   theme: Theme;
   showRank?: boolean;
   showPrice?: boolean;
+  actionLabel?: string;
   onAction?: (theme: Theme) => void;
 }
 
@@ -83,6 +84,7 @@ export default function ThemeCard({
   theme,
   showRank = true,
   showPrice = false,
+  actionLabel = "예약하기",
   onAction,
 }: ThemeCardProps) {
   const actionClassName =
@@ -154,7 +156,7 @@ export default function ThemeCard({
           }}
           className={actionClassName}
         >
-          예약하기
+          {actionLabel}
         </Link>
       </div>
     </article>

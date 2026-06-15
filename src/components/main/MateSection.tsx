@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MatePost } from "@/types/mate";
+import { MatePost, MatePostStatus } from "@/types/mate";
 
 interface MateSectionProps {
   posts: MatePost[];
@@ -12,6 +12,28 @@ const levelLabel: Record<string, string> = {
   INTERMEDIATE: "중급",
   EXPERT: "고수",
 };
+
+const statusLabel: Record<MatePostStatus, string> = {
+  DRAFT: "임시저장",
+  RECRUITING: "모집중",
+  CLOSING_SOON: "마감임박",
+  MATCHED: "매칭완료",
+  CLOSED: "마감",
+  DELETED: "삭제됨",
+};
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day} / ${hour}:${minute}`;
+}
 
 const mateImages = [
   "/images/horror/theme-clown.png",
@@ -44,8 +66,9 @@ export default function MateSection({ posts }: MateSectionProps) {
         {posts.slice(0, 3).map((post, index) => {
           const progress = Math.min(
             100,
-            (post.currentMembers / Math.max(post.totalMembers, 1)) * 100,
+            (post.currentPeople / Math.max(post.maxPeople, 1)) * 100,
           );
+          const place = [post.storeName, post.branchName, post.region].filter(Boolean).join(" · ");
 
           return (
             <Link
@@ -64,7 +87,7 @@ export default function MateSection({ posts }: MateSectionProps) {
 
                 <div className="absolute left-5 top-5 flex gap-2">
                   <span className="rounded-[5px] border border-[#cc2222]/45 bg-[#cc2222]/85 px-3 py-1.5 text-[11px] font-black text-white">
-                    {post.status === "OPEN" ? "모집중" : "마감"}
+                    {statusLabel[post.status]}
                   </span>
                   <span className="rounded-[5px] border border-white/25 bg-black/50 px-3 py-1.5 text-[11px] font-bold text-[#d2d2d2]">
                     {levelLabel[post.experienceLevel]}
@@ -78,7 +101,7 @@ export default function MateSection({ posts }: MateSectionProps) {
                     {post.themeTitle}
                   </span>
                   <span className="rounded-[6px] border border-white/[0.12] bg-[#252525] px-3.5 py-2 text-[13px] text-[#c6c6c6]">
-                    {post.locationName}
+                    {place || "위치 정보 없음"}
                   </span>
                 </div>
 
@@ -95,7 +118,7 @@ export default function MateSection({ posts }: MateSectionProps) {
                     className="h-[24px] w-[24px] shrink-0 object-contain"
                   />
                   <span>
-                    {post.playDate} / {post.reservationTime}
+                    {formatDateTime(post.meetingTime)}
                   </span>
                 </div>
               </div>
@@ -108,7 +131,7 @@ export default function MateSection({ posts }: MateSectionProps) {
                         참여 인원
                       </span>
                       <span className="shrink-0 font-semibold text-[#b5b5b5]">
-                        {post.currentMembers}/{post.totalMembers}명
+                        {post.currentPeople}/{post.maxPeople}명
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-[#333]">
