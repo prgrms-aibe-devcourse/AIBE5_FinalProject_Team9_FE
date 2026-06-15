@@ -58,6 +58,34 @@ export interface ThemeTimeSlot {
   available: boolean;
 }
 
+export interface AvailableThemeSlot {
+  timeSlotId: number;
+  slotDate: string;
+  startTime: string;
+  endTime: string;
+  status?: string;
+}
+
+export interface AvailableSlotTheme {
+  themeId: number;
+  themeTitle: string;
+  branchId: number;
+  branchName: string;
+  region?: string;
+  rating?: number;
+  reviewCount?: number;
+  difficulty?: number;
+  horrorLevel?: number;
+  minPeople?: number;
+  maxPeople?: number;
+  playTime?: number;
+  price?: number;
+  thumbnailUrl?: string;
+  tags?: string;
+  description?: string;
+  availableSlots: AvailableThemeSlot[];
+}
+
 interface ThemeReviewApiResponse {
   id?: number;
   reviewId?: number;
@@ -124,6 +152,28 @@ interface ThemeTimeSlotApiResponse {
   availableSlots?: ThemeTimeSlotApiResponse[];
 }
 
+interface AvailableSlotThemeApiResponse {
+  themeId?: number;
+  id?: number;
+  themeTitle?: string;
+  title?: string;
+  branchId?: number;
+  branchName?: string;
+  region?: string;
+  rating?: number | null;
+  reviewCount?: number | null;
+  difficulty?: number;
+  horrorLevel?: number;
+  minPeople?: number;
+  maxPeople?: number;
+  playTime?: number;
+  price?: number;
+  thumbnailUrl?: string;
+  tags?: string;
+  description?: string;
+  availableSlots?: ThemeTimeSlotApiResponse[];
+}
+
 type ThemeTimeSlotRaw = ThemeTimeSlotApiResponse | string;
 type ThemeTimeSlotListApiResponse =
   | ThemeTimeSlotRaw[]
@@ -140,6 +190,12 @@ type ThemeTimeSlotListApiResponse =
       items?: ThemeTimeSlotRaw[];
       timeSlots?: ThemeTimeSlotRaw[];
       availableSlots?: ThemeTimeSlotRaw[];
+    };
+type AvailableSlotThemeListApiResponse =
+  | AvailableSlotThemeApiResponse[]
+  | {
+      data?: AvailableSlotThemeApiResponse[] | { content?: AvailableSlotThemeApiResponse[] };
+      content?: AvailableSlotThemeApiResponse[];
     };
 
 const unwrapList = <T>(response: ApiListResponse<T>): T[] => {
@@ -266,11 +322,22 @@ const unwrapReviewSummary = (body: ThemeReviewListApiResponse): ThemeReviewSumma
     : source.reviews ?? source.content ?? [];
   const reviews = rawReviews.map(mapThemeReview);
   const averageRating = source.averageRating ?? source.rating ?? calculateAverageRating(reviews);
+  const reviewCount = Math.max(source.reviewCount ?? source.totalElements ?? 0, reviews.length);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[themeService.getThemeReviews]', {
+      response: body,
+      rawReviews,
+      mappedReviews: reviews,
+      averageRating,
+      reviewCount,
+    });
+  }
 
   return {
     reviews,
     averageRating,
-    reviewCount: source.reviewCount ?? source.totalElements ?? reviews.length,
+    reviewCount,
   };
 };
 
@@ -289,6 +356,43 @@ const mapThemeBranch = (branch: ThemeBranchApiResponse): ThemeBranchInfo => ({
   thumbnailUrl: branch.thumbnailUrl,
 });
 
+const mapAvailableThemeSlot = (slot: ThemeTimeSlotApiResponse): AvailableThemeSlot => ({
+  timeSlotId: slot.timeSlotId ?? slot.id ?? slot.slotId ?? 0,
+  slotDate: slot.slotDate ?? slot.date ?? slot.startDate ?? getRawSlotDate(slot),
+  startTime: normalizeSlotTime(slot.startTime ?? slot.time ?? slot.startAt ?? slot.startDateTime),
+  endTime: normalizeSlotTime(slot.endTime ?? slot.endAt ?? slot.endDateTime),
+  status: slot.status ?? slot.slotStatus ?? slot.state,
+});
+
+const mapAvailableSlotTheme = (item: AvailableSlotThemeApiResponse): AvailableSlotTheme => ({
+  themeId: item.themeId ?? item.id ?? 0,
+  themeTitle: repairMojibake(item.themeTitle ?? item.title),
+  branchId: item.branchId ?? 0,
+  branchName: repairMojibake(item.branchName),
+  region: repairMojibake(item.region),
+  rating: item.rating ?? undefined,
+  reviewCount: item.reviewCount ?? undefined,
+  difficulty: item.difficulty,
+  horrorLevel: item.horrorLevel,
+  minPeople: item.minPeople,
+  maxPeople: item.maxPeople,
+  playTime: item.playTime,
+  price: item.price,
+  thumbnailUrl: item.thumbnailUrl,
+  tags: repairMojibake(item.tags),
+  description: repairMojibake(item.description),
+  availableSlots: (item.availableSlots ?? [])
+    .map(mapAvailableThemeSlot)
+    .filter((slot) => slot.timeSlotId && slot.slotDate && slot.startTime),
+});
+
+const unwrapAvailableSlotThemes = (body: AvailableSlotThemeListApiResponse): AvailableSlotThemeApiResponse[] => {
+  if (Array.isArray(body)) return body;
+  if (Array.isArray(body.data)) return body.data;
+  if (body.data?.content) return body.data.content;
+  return body.content ?? [];
+};
+
 const mapThemeSlot = (slot: ThemeTimeSlotApiResponse | string): ThemeTimeSlot => {
   if (typeof slot === 'string') {
     return { time: slot, status: 'SLOT_AVAILABLE', available: true };
@@ -298,14 +402,17 @@ const mapThemeSlot = (slot: ThemeTimeSlotApiResponse | string): ThemeTimeSlot =>
     slot.status ??
     slot.slotStatus ??
     slot.state ??
-    (slot.available ?? slot.isAvailable ? 'SLOT_AVAILABLE' : 'SLOT_FULL');
+    ((slot.available ?? slot.isAvailable ?? true) ? 'SLOT_AVAILABLE' : 'SLOT_FULL');
   const upperStatus = status.toUpperCase();
   const available =
     slot.available ??
     slot.isAvailable ??
     (
-      upperStatus.includes('AVAILABLE') ||
-      (!slot.held && !upperStatus.includes('FULL') && !upperStatus.includes('RESERVED'))
+      upperStatus.includes('AVAILABLE') &&
+      !slot.held &&
+      !upperStatus.includes('HELD') &&
+      !upperStatus.includes('FULL') &&
+      !upperStatus.includes('RESERVED')
     );
   const startTime = normalizeSlotTime(slot.time ?? slot.startTime ?? slot.startAt ?? slot.startDateTime);
   const endTime = normalizeSlotTime(slot.endTime ?? slot.endAt ?? slot.endDateTime);
@@ -416,70 +523,55 @@ export const getThemeBranchInfo = async (themeId: number): Promise<ThemeBranchIn
   }
 };
 
-// GET /api/themes/:themeId/slots
+// GET /api/themes/:themeId/slots?slotDate=YYYY-MM-DD
 export const getThemeTimeSlots = async (
   themeId: number,
   date: string,
 ): Promise<ThemeTimeSlot[]> => {
-  const requests = [
-    {
-      url: '/api/slots/available',
-      params: { themeId, date },
-      request: () => axiosInstance.get<ThemeTimeSlotListApiResponse>(
-        '/api/slots/available',
-        { params: { themeId, date } },
-      ),
-    },
-    {
+  const params = { slotDate: date };
+  const { data } = await axiosInstance.get<ThemeTimeSlotListApiResponse>(
+    `/api/themes/${themeId}/slots`,
+    { params },
+  );
+  const rawSlots = unwrapTimeSlots(data);
+  const slots = rawSlots
+    .map(mapThemeSlot)
+    .filter((slot) => slot.time);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[themeService.getThemeTimeSlots]', {
       url: `/api/themes/${themeId}/slots`,
-      params: { date },
-      request: () => axiosInstance.get<ThemeTimeSlotListApiResponse>(
-        `/api/themes/${themeId}/slots`,
-        { params: { date } },
-      ),
-    },
-  ];
-  let lastError: unknown;
-  let hasSuccessfulResponse = false;
-
-  for (const { request, url, params } of requests) {
-    try {
-      const response = await request();
-      hasSuccessfulResponse = true;
-      const rawSlots = unwrapTimeSlots(response.data);
-      const slots = rawSlots
-        .filter((slot) => {
-          const slotDate = getRawSlotDate(slot);
-          return !slotDate || slotDate === date;
-        })
-        .map(mapThemeSlot)
-        .filter((slot) => slot.time);
-
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[themeService.getThemeTimeSlots]', {
-          url,
-          params,
-          response: response.data,
-          rawSlots,
-          mappedSlots: slots,
-        });
-      }
-
-      if (slots.length > 0) return slots;
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[themeService.getThemeTimeSlots] request failed', {
-          url,
-          params,
-          error,
-        });
-      }
-      lastError = error;
-    }
+      params,
+      response: data,
+      rawSlots,
+      mappedSlots: slots,
+    });
   }
 
-  if (!hasSuccessfulResponse && lastError) throw lastError;
-  return [];
+  return slots;
+};
+
+// GET /api/slots/available?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
+export const getAvailableSlotThemes = async (
+  dateFrom: string,
+  dateTo: string,
+): Promise<AvailableSlotTheme[]> => {
+  const { data } = await axiosInstance.get<AvailableSlotThemeListApiResponse>(
+    '/api/slots/available',
+    { params: { dateFrom, dateTo } },
+  );
+
+  const themes = unwrapAvailableSlotThemes(data).map(mapAvailableSlotTheme);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[themeService.getAvailableSlotThemes]', {
+      params: { dateFrom, dateTo },
+      response: data,
+      mappedThemes: themes,
+    });
+  }
+
+  return themes;
 };
 
 // TODO: GET /api/themes/popular

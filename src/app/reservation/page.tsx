@@ -1,34 +1,22 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import ImageWithFallback from '@/components/common/ImageWithFallback';
 import { useReservationStore } from '@/stores/reservationStore';
-import { getThemeById } from '@/services/themeService';
+import {
+  AvailableSlotTheme,
+  AvailableThemeSlot,
+  getAvailableSlotThemes,
+  getThemeById,
+} from '@/services/themeService';
 import { Theme } from '@/types/theme';
 
-const MOCK_THEMES: Theme[] = [
-  { id: 1, title: '감옥 탈출', description: '탈출 불가능한 감옥에 갇힌 당신. 문은 잠겼고, 감시의 눈은 점점 가까워진다.', genre: '공포/미스터리', difficulty: 4, horrorLevel: 5, minPlayers: 2, maxPlayers: 4, duration: 80, price: 28000, imageUrl: 'https://picsum.photos/seed/grimgate1/400/300', rating: 4.9, reviewCount: 342, isBest: true, locationName: '홍대', branchName: '홍대 1호점', clearRate: 41 },
-  { id: 2, title: '13번째 방', description: '전설의 13번째 방에 들어간 사람은 아무도 돌아오지 못했다.', genre: '공포/스릴러', difficulty: 5, horrorLevel: 3, minPlayers: 3, maxPlayers: 6, duration: 90, price: 30000, imageUrl: 'https://picsum.photos/seed/grimgate2/400/300', rating: 4.9, reviewCount: 312, isBest: true, locationName: '홍대', branchName: '홍대 6호점', clearRate: 38 },
-  { id: 3, title: '블러드문', description: '붉은 달이 뜨는 밤, 오래된 저주가 다시 시작된다.', genre: '공포/추리', difficulty: 5, horrorLevel: 5, minPlayers: 3, maxPlayers: 6, duration: 90, price: 32000, imageUrl: 'https://picsum.photos/seed/grimgate3/400/300', rating: 4.8, reviewCount: 289, isHot: true, locationName: '강남', branchName: '강남 8호점', clearRate: 57 },
-  { id: 4, title: '좀비 아포칼립스', description: '바이러스가 창궐한 도시에서 마지막 탈출 경로를 찾아야 한다.', genre: '액션/공포', difficulty: 3, horrorLevel: 4, minPlayers: 2, maxPlayers: 6, duration: 75, price: 26000, imageUrl: 'https://picsum.photos/seed/grimgate4/400/300', rating: 4.8, reviewCount: 275, isHot: true, locationName: '강남', branchName: '강남 3호점', clearRate: 62 },
-  { id: 5, title: '미상의 초상화', description: '그림 속 인물이 당신을 따라온다. 액자 뒤에 숨은 진실을 찾아라.', genre: '추리/공포', difficulty: 4, horrorLevel: 4, minPlayers: 1, maxPlayers: 6, duration: 70, price: 25000, imageUrl: 'https://picsum.photos/seed/grimgate5/400/300', rating: 4.5, reviewCount: 287, locationName: '건대', branchName: '건대 2호점', clearRate: 44 },
-  { id: 6, title: '체이서', description: '사라진 의뢰인을 추적하다 발견한 단서는 더 큰 함정으로 이어진다.', genre: '스릴러', difficulty: 5, horrorLevel: 5, minPlayers: 2, maxPlayers: 4, duration: 75, price: 27000, imageUrl: 'https://picsum.photos/seed/grimgate6/400/300', rating: 4.8, reviewCount: 234, isHot: true, locationName: '건대', branchName: '건대 6호점', clearRate: 41 },
-  { id: 7, title: '감옥 탈출 2', description: '탈출은 가능하지만 살아남기는 어렵다. 제한 시간 안에 문을 열어라.', genre: '스릴러', difficulty: 4, horrorLevel: 4, minPlayers: 2, maxPlayers: 7, duration: 60, price: 22000, imageUrl: 'https://picsum.photos/seed/grimgate7/400/300', rating: 4.5, reviewCount: 221, isHot: true, locationName: '건대', branchName: '건대 2호점', clearRate: 68 },
-  { id: 8, title: '사일런스', description: '소리를 내면 끝난다. 침묵 속에서 탈출구를 찾아라.', genre: '공포/스릴러', difficulty: 3, horrorLevel: 4, minPlayers: 2, maxPlayers: 6, duration: 70, price: 24000, imageUrl: 'https://picsum.photos/seed/grimgate8/400/300', rating: 4.5, reviewCount: 203, locationName: '신촌', branchName: '신촌 4호점', clearRate: 72 },
-  { id: 9, title: '인형의 방', description: '움직이지 않아야 할 인형들이 당신의 뒤를 따라온다.', genre: '공포', difficulty: 4, horrorLevel: 4, minPlayers: 2, maxPlayers: 6, duration: 75, price: 25000, imageUrl: 'https://picsum.photos/seed/grimgate9/400/300', rating: 4.7, reviewCount: 198, locationName: '홍대', branchName: '홍대 3호점', clearRate: 55 },
-  { id: 10, title: '낡은 인형', description: '오래된 인형이 남긴 단서를 따라 마지막 방으로 향한다.', genre: '공포', difficulty: 3, horrorLevel: 4, minPlayers: 2, maxPlayers: 4, duration: 65, price: 23000, imageUrl: 'https://picsum.photos/seed/grimgate10/400/300', rating: 4.5, reviewCount: 188, locationName: '강남', branchName: '강남 5호점', clearRate: 61 },
-  { id: 11, title: '저주받은 극장', description: '닫힌 극장에서 울려 퍼지는 마지막 공연의 비밀을 밝혀라.', genre: '미스터리', difficulty: 3, horrorLevel: 4, minPlayers: 2, maxPlayers: 6, duration: 80, price: 25000, imageUrl: 'https://picsum.photos/seed/grimgate11/400/300', rating: 4.6, reviewCount: 180, locationName: '강남', branchName: '강남 1호점', clearRate: 59 },
-  { id: 12, title: '악마의 계약', description: '계약서에 서명하면 다시 돌아갈 수 없다. 선택은 당신의 몫이다.', genre: '공포/스릴러', difficulty: 4, horrorLevel: 5, minPlayers: 2, maxPlayers: 5, duration: 75, price: 26000, imageUrl: 'https://picsum.photos/seed/grimgate12/400/300', rating: 4.4, reviewCount: 165, locationName: '건대', branchName: '건대 1호점', clearRate: 48 },
-];
-
-const LOCATIONS = ['강남', '홍대', '건대', '신촌'];
 const SORT_OPTIONS = [
   { value: 'popular', label: '인기순' },
   { value: 'latest', label: '최신순' },
 ] as const;
-const BASE_TIMES = ['11:00', '13:00', '15:00', '17:00', '19:00', '21:00'];
 const PER_PAGE = 5;
 const TEEN_PRICE = 20000;
 
@@ -38,27 +26,16 @@ function getUpcomingDates(count = 3) {
 
   return Array.from({ length: count }, (_, index) => {
     const date = new Date(today);
-    date.setDate(date.getDate() + index + 1);
+    date.setDate(date.getDate() + index);
     const month = date.getMonth() + 1;
     const day = date.getDate();
+    const relativeLabels = ['오늘', '내일', '모레'];
 
     return {
       dateStr: `${date.getFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
-      label: `${month}.${day}(${days[date.getDay()]})`,
+      label: `${relativeLabels[index] ?? `${index + 1}일 후`} ${month}.${day}(${days[date.getDay()]})`,
     };
   });
-}
-
-function getSlots(themeId: number, dateIndex: number) {
-  const soldOut = new Set([
-    (themeId + dateIndex * 2) % 6,
-    (themeId * 3 + dateIndex + 4) % 6,
-  ]);
-
-  return BASE_TIMES.map((time, index) => ({
-    time,
-    soldOut: soldOut.has(index),
-  }));
 }
 
 function formatDateLabel(dateStr: string) {
@@ -70,6 +47,34 @@ function formatDateLabel(dateStr: string) {
 
 function formatPrice(value: number) {
   return `${value.toLocaleString('ko-KR')}원`;
+}
+
+function formatSlotTime(value: string) {
+  return value.slice(0, 5);
+}
+
+function formatSlotRange(slot: AvailableThemeSlot) {
+  return slot.endTime ? `${formatSlotTime(slot.startTime)}~${formatSlotTime(slot.endTime)}` : formatSlotTime(slot.startTime);
+}
+
+function mapAvailableThemeToTheme(item: AvailableSlotTheme): Theme {
+  return {
+    id: item.themeId,
+    title: item.themeTitle,
+    description: item.description ?? '',
+    genre: item.tags ?? '',
+    difficulty: item.difficulty ?? 0,
+    horrorLevel: item.horrorLevel ?? 0,
+    minPlayers: item.minPeople ?? 0,
+    maxPlayers: item.maxPeople ?? 0,
+    duration: item.playTime ?? 0,
+    price: item.price ?? 0,
+    imageUrl: item.thumbnailUrl ?? '',
+    rating: item.rating ?? 0,
+    reviewCount: item.reviewCount ?? 0,
+    locationName: item.region,
+    branchName: item.branchName,
+  };
 }
 
 function StepBar({ step }: { step: 1 | 2 }) {
@@ -221,42 +226,43 @@ function FilterRatingControl({
 }
 
 function ThemeListRow({
-  theme,
-  dates,
+  item,
+  selectedDate,
   onQuickBook,
 }: {
-  theme: Theme;
-  dates: { dateStr: string; label: string }[];
-  onQuickBook: (theme: Theme, date: string, time: string) => void;
+  item: AvailableSlotTheme;
+  selectedDate: string;
+  onQuickBook: (item: AvailableSlotTheme, slot: AvailableThemeSlot) => void;
 }) {
-  const [activeDateIdx, setActiveDateIdx] = useState(0);
-  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState<AvailableThemeSlot | null>(null);
   const [showTimeNotice, setShowTimeNotice] = useState(false);
 
-  const slots = getSlots(theme.id, activeDateIdx);
+  const slots = item.availableSlots.filter((slot) => slot.slotDate === selectedDate);
   const showcaseDescription =
-    theme.description.length > 80
-      ? theme.description
-      : `${theme.description}
-문은 잠겼고, 감시의 눈은 점점 가까워진다.
-남은 단서는 어둠 속에 숨겨진 흔적뿐.
-시간이 흐를수록 탈출의 기회는 사라진다.`;
+    item.description ||
+    `${item.themeTitle}의 예약 가능한 시간을 확인하고 바로 예약을 진행해보세요.`;
 
   const handleBook = () => {
-    if (!selectedTime) {
+    if (!selectedSlot) {
       setShowTimeNotice(true);
       return;
     }
-    onQuickBook(theme, dates[activeDateIdx].dateStr, selectedTime);
+    onQuickBook(item, selectedSlot);
   };
+
+  useEffect(() => {
+    setSelectedSlot(null);
+    setShowTimeNotice(false);
+  }, [item.themeId, selectedDate]);
 
   return (
     <div className="mx-auto w-full max-w-[1120px] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#171717] shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition-all duration-300 hover:border-[#cc2222]/70 hover:bg-[#1b1b1b] hover:shadow-[0_18px_48px_rgba(204,34,34,0.16)]">
       <div className="grid min-h-[308px] grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)_380px]">
         <div className="relative min-h-[300px] shrink-0 overflow-hidden bg-[#111] lg:min-h-0">
-          <Image
-            src={theme.imageUrl || 'https://picsum.photos/seed/default/400/300'}
-            alt={theme.title}
+          <ImageWithFallback
+            src={item.thumbnailUrl}
+            fallbackSrc="/images/theme-placeholder.png"
+            alt={item.themeTitle}
             fill
             className="object-cover brightness-[0.76] contrast-110 saturate-[0.82]"
             sizes="(max-width: 1024px) 100vw, 300px"
@@ -267,8 +273,8 @@ function ThemeListRow({
         <div className="contents">
           <div className="flex min-w-0 flex-col justify-center border-y border-white/[0.08] px-[28px] py-7 lg:border-x lg:border-y-0">
             <h3 className="flex min-w-0 items-baseline gap-2 text-[22px] font-black leading-tight text-white">
-              <span className="min-w-0 shrink truncate">{theme.title}</span>
-              <span className="min-w-0 truncate text-[12px] font-bold text-[#8a8a8a]">· {theme.branchName}</span>
+              <span className="min-w-0 shrink truncate">{item.themeTitle}</span>
+              <span className="min-w-0 truncate text-[12px] font-bold text-[#8a8a8a]">· {item.branchName}</span>
             </h3>
 
             <div className="mt-4 space-y-2.5 text-[12px] leading-none text-[#888]">
@@ -276,24 +282,27 @@ function ThemeListRow({
                 <span>별점</span>
                 <span className="flex items-center gap-3">
                   <span className="text-[15px] tracking-[0.08em] text-[#f39c12]">★★★★★</span>
-                  <strong className="text-[14px] font-black text-[#f5f5f5]">{theme.rating?.toFixed(1)}</strong>
-                  <span className="text-[#5f5f5f]">({theme.reviewCount})</span>
+                  <strong className="text-[14px] font-black text-[#f5f5f5]">{(item.rating ?? 0).toFixed(1)}</strong>
+                  <span className="text-[#5f5f5f]">({item.reviewCount ?? 0})</span>
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                 <span className="inline-flex items-center gap-3">
                   <span>난이도</span>
-                  <ReservationRatingIcons level={theme.difficulty} type="difficulty" />
+                  <ReservationRatingIcons level={item.difficulty ?? 0} type="difficulty" />
                 </span>
                 <span className="inline-flex items-center gap-3">
                   <span>공포도</span>
-                  <ReservationRatingIcons level={theme.horrorLevel} type="horror" />
+                  <ReservationRatingIcons level={item.horrorLevel ?? 0} type="horror" />
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[#7f8791]">
-                <span>인원 {theme.minPlayers}~{theme.maxPlayers}명</span>
-                <span>시간 {theme.duration}분</span>
-                <span className="font-bold text-[#c6c6c6]">가격 {theme.price.toLocaleString('ko-KR')}원</span>
+                <span>인원 {item.minPeople ?? 0}~{item.maxPeople ?? 0}명</span>
+                {item.playTime && <span>시간 {item.playTime}분</span>}
+                <span className="font-bold text-[#c6c6c6]">가격 {(item.price ?? 0).toLocaleString('ko-KR')}원</span>
+                {(item.region || item.branchName) && (
+                  <span>{[item.region, item.branchName].filter(Boolean).join(' · ')}</span>
+                )}
               </div>
             </div>
 
@@ -303,59 +312,46 @@ function ThemeListRow({
           </div>
 
           <div className="flex min-h-[308px] min-w-0 flex-col justify-center px-5 py-5">
-            <div className="grid grid-cols-3 border-b border-white/[0.08]">
-              {dates.map((date, index) => {
-                const isActive = activeDateIdx === index;
+            <div className="border-b border-white/[0.08] pb-3">
+              <p className="text-[11px] font-black tracking-[0.2em] text-[#cc2222]">예약 가능 시간</p>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              {slots.map((slot) => {
+                const isAvailable = !slot.status || slot.status === 'SLOT_AVAILABLE';
+                const isSelected = selectedSlot?.timeSlotId === slot.timeSlotId;
 
                 return (
                   <button
-                    key={date.dateStr}
+                    key={slot.timeSlotId}
+                    type="button"
+                    disabled={!isAvailable}
                     onClick={() => {
-                      setActiveDateIdx(index);
-                      setSelectedTime('');
+                      setSelectedSlot(slot);
                       setShowTimeNotice(false);
                     }}
                     className={[
-                      'relative h-8 text-center text-[12px] font-bold transition-colors',
-                      isActive ? 'text-[#e72a2d]' : 'text-[#d9d9d9] hover:text-white',
+                      'h-[38px] min-w-0 rounded-[7px] border text-[12px] font-bold transition-colors',
+                      !isAvailable
+                        ? 'cursor-not-allowed border-white/[0.05] bg-[#101010] text-[#444] line-through'
+                        : isSelected
+                          ? 'border-[#e12225] bg-[#e12225] text-white shadow-[0_0_16px_rgba(204,34,34,0.22)]'
+                          : 'border-white/[0.1] bg-[#171717] text-[#d8d8d8] hover:border-[#cc2222]/65 hover:bg-[#cc2222]/10',
                     ].join(' ')}
                   >
-                    {date.label}
-                    {isActive && <span className="absolute bottom-[-1px] left-2 right-2 h-[2px] bg-[#e12225]" />}
+                    {formatSlotTime(slot.startTime)}
                   </button>
                 );
               })}
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-1.5">
-              {slots.map((slot) => (
-                <button
-                  key={slot.time}
-                  disabled={slot.soldOut}
-                  onClick={() => {
-                    if (slot.soldOut) return;
-                    setSelectedTime(slot.time);
-                    setShowTimeNotice(false);
-                  }}
-                  className={[
-                    'h-[38px] min-w-0 rounded-[7px] border text-[12px] font-bold transition-colors',
-                    slot.soldOut
-                      ? 'cursor-not-allowed border-transparent bg-[#222] text-[#686868] line-through opacity-70'
-                      : selectedTime === slot.time
-                        ? 'border-[#e12225] bg-[#e12225] text-white'
-                        : 'border-white/[0.1] bg-[#171717] text-[#d8d8d8] hover:border-[#cc2222]/65',
-                  ].join(' ')}
-                >
-                  {slot.time}
-                </button>
-              ))}
-            </div>
-
             <button
+              type="button"
               onClick={handleBook}
+              disabled={!selectedSlot}
               className={[
                 'mt-6 h-10 w-full rounded-[8px] text-[13px] font-black transition-colors',
-                selectedTime
+                selectedSlot
                   ? 'bg-[#cc2222] text-white hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]'
                   : 'cursor-not-allowed bg-[#cc2222]/55 text-white/60',
               ].join(' ')}
@@ -375,6 +371,7 @@ function ThemeListRow({
 }
 
 function ThemeFilterSidebar({
+  locations,
   selectedLocations,
   difficulty,
   horrorLevel,
@@ -390,6 +387,7 @@ function ThemeFilterSidebar({
   onSort,
   onResetFilters,
 }: {
+  locations: string[];
   selectedLocations: string[];
   difficulty: number;
   horrorLevel: number;
@@ -437,7 +435,7 @@ function ThemeFilterSidebar({
       <div className="mb-6">
         <h3 className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-[#9a9a9a]">지역</h3>
         <div className="grid grid-cols-2 gap-1.5">
-          {['전체', ...LOCATIONS].map((location) => {
+          {['전체', ...locations].map((location) => {
             const isAll = location === '전체';
             const isActive = isAll ? selectedLocations.length === 0 : selectedLocations.includes(location);
 
@@ -572,7 +570,7 @@ function ThemeFilterSidebar({
   );
 }
 
-function BrowseStep({ onBook }: { onBook: (theme: Theme, date: string, time: string) => void }) {
+function BrowseStep({ onBook }: { onBook: (item: AvailableSlotTheme, slot: AvailableThemeSlot) => void }) {
   const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [difficulty, setDifficulty] = useState(0);
   const [horrorLevel, setHorrorLevel] = useState(0);
@@ -580,20 +578,74 @@ function BrowseStep({ onBook }: { onBook: (theme: Theme, date: string, time: str
   const [minRating, setMinRating] = useState(0);
   const [sort, setSort] = useState<'popular' | 'latest'>('popular');
   const [page, setPage] = useState(1);
+  const [activeDateIdx, setActiveDateIdx] = useState(0);
+  const [availableThemes, setAvailableThemes] = useState<AvailableSlotTheme[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const dates = useMemo(() => getUpcomingDates(), []);
+  const selectedDate = dates[activeDateIdx]?.dateStr ?? dates[0]?.dateStr ?? '';
+  const availableLocations = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          availableThemes
+            .map((theme) => theme.region || theme.branchName)
+            .filter((location): location is string => Boolean(location)),
+        ),
+      ),
+    [availableThemes],
+  );
+
+  useEffect(() => {
+    if (!selectedDate) return;
+
+    let isMounted = true;
+
+    setIsLoading(true);
+    setErrorMessage('');
+    setPage(1);
+
+    getAvailableSlotThemes(selectedDate, selectedDate)
+      .then((themes) => {
+        if (!isMounted) return;
+
+        const filteredByDate = themes
+          .map((theme) => ({
+            ...theme,
+            availableSlots: theme.availableSlots.filter((slot) => slot.slotDate === selectedDate),
+          }))
+          .filter((theme) => theme.availableSlots.length > 0);
+
+        setAvailableThemes(filteredByDate);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setAvailableThemes([]);
+        setErrorMessage('예약 가능 정보를 불러오지 못했습니다');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDate]);
 
   const filtered = useMemo(() => {
-    let list = [...MOCK_THEMES];
-    if (selectedLocations.length > 0) list = list.filter((theme) => selectedLocations.includes(theme.locationName ?? ''));
+    let list = [...availableThemes];
+    if (selectedLocations.length > 0) {
+      list = list.filter((theme) => selectedLocations.includes(theme.region || theme.branchName));
+    }
     if (difficulty > 0) list = list.filter((theme) => theme.difficulty === difficulty);
     if (horrorLevel > 0) list = list.filter((theme) => theme.horrorLevel === horrorLevel);
-    if (minPlayers > 0) list = list.filter((theme) => (theme.maxPlayers ?? 0) >= minPlayers);
+    if (minPlayers > 0) list = list.filter((theme) => (theme.maxPeople ?? 0) >= minPlayers);
     if (minRating > 0) list = list.filter((theme) => (theme.rating ?? 0) >= minRating);
     if (sort === 'popular') list.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
-    else list.sort((a, b) => b.id - a.id);
+    else list.sort((a, b) => b.themeId - a.themeId);
     return list;
-  }, [selectedLocations, difficulty, horrorLevel, minPlayers, minRating, sort]);
+  }, [availableThemes, selectedLocations, difficulty, horrorLevel, minPlayers, minRating, sort]);
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -642,6 +694,7 @@ function BrowseStep({ onBook }: { onBook: (theme: Theme, date: string, time: str
 
       <div className="grid gap-7 lg:grid-cols-[240px_1fr] lg:gap-7 xl:grid-cols-[248px_1fr]">
         <ThemeFilterSidebar
+          locations={availableLocations}
           selectedLocations={selectedLocations}
           difficulty={difficulty}
           horrorLevel={horrorLevel}
@@ -662,24 +715,72 @@ function BrowseStep({ onBook }: { onBook: (theme: Theme, date: string, time: str
         />
 
         <div className="min-w-0">
-          <div className="mb-3 flex h-11 items-center justify-between rounded-[14px] border border-white/[0.08] bg-[#171717]/72 px-4">
-            <span className="text-sm text-[#888]">
-              <span className="font-bold text-[#f5f5f5]">{filtered.length}</span>개의 테마
-            </span>
+          <div className="sticky top-0 z-20 mb-5 space-y-3 bg-[#0b0b0b]/95 py-2 backdrop-blur">
+            <div className="grid grid-cols-3 overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#171717]/90">
+              {dates.map((date, index) => {
+                const isActive = activeDateIdx === index;
+
+                return (
+                  <button
+                    key={date.dateStr}
+                    type="button"
+                    onClick={() => {
+                      setActiveDateIdx(index);
+                      setPage(1);
+                    }}
+                    className={[
+                      'relative h-12 text-center text-sm font-black transition-colors',
+                      isActive ? 'bg-[#cc2222]/14 text-[#ef5353]' : 'text-[#d8d8d8] hover:bg-white/[0.04] hover:text-white',
+                    ].join(' ')}
+                  >
+                    {date.label}
+                    {isActive && <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-[#e12225]" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex h-11 items-center justify-between rounded-[14px] border border-white/[0.08] bg-[#171717]/90 px-4">
+              <span className="text-sm text-[#888]">
+                <span className="font-bold text-[#f5f5f5]">{filtered.length}</span>개의 테마
+              </span>
+              <span className="text-xs font-bold text-[#aaa]">{formatDateLabel(selectedDate)}</span>
+            </div>
           </div>
 
-          <div className="space-y-8">
-            {paged.map((theme) => (
-              <ThemeListRow key={theme.id} theme={theme} dates={dates} onQuickBook={onBook} />
-            ))}
-            {paged.length === 0 && (
-              <div className="py-20 text-center text-[#888]">
-                <p>조건에 맞는 테마가 없습니다.</p>
-              </div>
-            )}
-          </div>
+          {isLoading ? (
+            <div className="rounded-[14px] border border-white/[0.08] bg-[#171717] py-20 text-center text-sm font-bold text-[#888]">
+              예약 가능 정보를 불러오는 중입니다.
+            </div>
+          ) : errorMessage ? (
+            <div className="rounded-[14px] border border-[#cc2222]/35 bg-[#171717] py-20 text-center">
+              <p className="text-sm font-black text-[#ef5353]">{errorMessage}</p>
+              <p className="mt-2 text-xs text-[#777]">잠시 후 다시 시도해주세요.</p>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {paged.map((theme) => (
+                <ThemeListRow
+                  key={`${theme.themeId}-${theme.branchId}`}
+                  item={theme}
+                  selectedDate={selectedDate}
+                  onQuickBook={onBook}
+                />
+              ))}
+              {paged.length === 0 && (
+                <div className="rounded-[14px] border border-white/[0.08] bg-[#171717] py-20 text-center text-[#888]">
+                  <p className="text-sm font-black text-[#d8d8d8]">
+                    {availableThemes.length === 0 ? '선택한 날짜에 예약 가능한 테마가 없습니다' : '조건에 맞는 테마가 없습니다.'}
+                  </p>
+                  <p className="mt-2 text-xs text-[#777]">
+                    {availableThemes.length === 0 ? '다른 날짜를 선택해주세요.' : '필터를 조정해보세요.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
-          {totalPages > 1 && (
+          {!isLoading && !errorMessage && totalPages > 1 && (
             <div className="mt-8 flex items-center justify-center gap-1">
               <button
                 onClick={() => setPage((current) => Math.max(1, current - 1))}
@@ -721,11 +822,13 @@ function PaymentStep({
   theme,
   date,
   time,
+  slot,
   onBack,
 }: {
   theme: Theme;
   date: string;
   time: string;
+  slot?: AvailableThemeSlot | null;
   onBack: () => void;
 }) {
   const router = useRouter();
@@ -742,6 +845,7 @@ function PaymentStep({
   const agreeAll = requiredAgreed && agreeMarketing;
   const totalPlayers = adultCount + teenCount;
   const totalAmount = adultCount * (theme.price ?? 25000) + teenCount * TEEN_PRICE;
+  const displayTime = slot ? formatSlotRange(slot) : time;
 
   const handleAgreeAll = (checked: boolean) => {
     setAgreeTerms(checked);
@@ -754,7 +858,7 @@ function PaymentStep({
     if (!requiredAgreed) return;
     setTheme(theme.id, theme.title, theme.imageUrl);
     setLocation(theme.locationName ?? '', theme.branchName ?? '');
-    setDateTime(date, time);
+    setDateTime(date, displayTime);
     setHeadcount(adultCount, teenCount);
     router.push('/reservation/complete');
   };
@@ -769,14 +873,24 @@ function PaymentStep({
           </h2>
           <div className="flex gap-4">
             <div className="relative h-20 w-24 shrink-0 overflow-hidden rounded bg-[#111]">
-              <Image src={theme.imageUrl || 'https://picsum.photos/seed/default/400/300'} alt={theme.title} fill className="object-cover" sizes="96px" />
+              <ImageWithFallback
+                src={theme.imageUrl}
+                fallbackSrc="/images/theme-placeholder.png"
+                alt={theme.title}
+                fill
+                className="object-cover"
+                sizes="96px"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <span className="rounded border border-[#2a2a2a] bg-[#222] px-1.5 py-0.5 text-xs text-[#888]">{theme.locationName}</span>
               <h3 className="mb-2 mt-2 text-base font-bold text-[#f5f5f5]">{theme.title}</h3>
               <div className="flex flex-wrap gap-2">
                 <span className="rounded border border-[#2a2a2a] bg-[#0d0d0d] px-2 py-0.5 text-xs text-[#f5f5f5]">{formatDateLabel(date)}</span>
-                <span className="rounded border border-[#e63946]/40 bg-[#0d0d0d] px-2 py-0.5 text-xs text-[#e63946]">{time}</span>
+                <span className="rounded border border-[#e63946]/40 bg-[#0d0d0d] px-2 py-0.5 text-xs text-[#e63946]">{displayTime}</span>
+                {slot?.timeSlotId && (
+                  <span className="rounded border border-[#2a2a2a] bg-[#0d0d0d] px-2 py-0.5 text-xs text-[#666]">slot #{slot.timeSlotId}</span>
+                )}
                 <span className="rounded border border-[#2a2a2a] bg-[#0d0d0d] px-2 py-0.5 text-xs text-[#888]">{theme.branchName}</span>
                 <span className="rounded border border-[#2a2a2a] bg-[#0d0d0d] px-2 py-0.5 text-xs text-[#888]">{theme.duration}분</span>
               </div>
@@ -894,17 +1008,17 @@ function ReservationContent() {
   const urlDate = searchParams.get('date');
   const urlTime = searchParams.get('time');
 
-  const initialTheme = urlThemeId ? MOCK_THEMES.find((theme) => theme.id === Number(urlThemeId)) : null;
   const hasUrlParams = Boolean(urlThemeId && urlDate && urlTime);
 
   const [step, setStep] = useState<'select' | 'payment'>(hasUrlParams ? 'payment' : 'select');
-  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(initialTheme ?? null);
+  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
   const [selectedDate, setSelectedDate] = useState(urlDate ?? '');
   const [selectedTime, setSelectedTime] = useState(urlTime ?? '');
-  const [isLoadingUrlTheme, setIsLoadingUrlTheme] = useState(hasUrlParams && !initialTheme);
+  const [selectedSlot, setSelectedSlot] = useState<AvailableThemeSlot | null>(null);
+  const [isLoadingUrlTheme, setIsLoadingUrlTheme] = useState(hasUrlParams);
 
   useEffect(() => {
-    if (!hasUrlParams || initialTheme || !urlThemeId) return;
+    if (!hasUrlParams || !urlThemeId) return;
 
     let isMounted = true;
     setIsLoadingUrlTheme(true);
@@ -927,12 +1041,13 @@ function ReservationContent() {
     return () => {
       isMounted = false;
     };
-  }, [hasUrlParams, initialTheme, urlDate, urlThemeId, urlTime]);
+  }, [hasUrlParams, urlDate, urlThemeId, urlTime]);
 
-  const handleBook = (theme: Theme, date: string, time: string) => {
-    setSelectedTheme(theme);
-    setSelectedDate(date);
-    setSelectedTime(time);
+  const handleBook = (item: AvailableSlotTheme, slot: AvailableThemeSlot) => {
+    setSelectedTheme(mapAvailableThemeToTheme(item));
+    setSelectedDate(slot.slotDate);
+    setSelectedTime(formatSlotTime(slot.startTime));
+    setSelectedSlot(slot);
     setStep('payment');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -953,6 +1068,7 @@ function ReservationContent() {
           theme={selectedTheme}
           date={selectedDate}
           time={selectedTime}
+          slot={selectedSlot}
           onBack={() => setStep('select')}
         />
       )}

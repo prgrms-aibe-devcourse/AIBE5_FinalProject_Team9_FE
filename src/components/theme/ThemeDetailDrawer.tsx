@@ -99,6 +99,7 @@ export default function ThemeDetailDrawer({
     getDateValue(new Date()),
   );
   const [selectedTime, setSelectedTime] = useState("");
+  const [selectedTimeSlotId, setSelectedTimeSlotId] = useState<number | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(() =>
     getMonthStart(new Date()),
   );
@@ -234,6 +235,7 @@ export default function ThemeDetailDrawer({
 
     setTimeSlots([]);
     setSelectedTime("");
+    setSelectedTimeSlotId(null);
     setSlotsError("");
     setIsSlotsLoading(true);
 
@@ -260,7 +262,7 @@ export default function ThemeDetailDrawer({
   };
 
   const saveReservationDraft = () => {
-    if (!selectedDate || !selectedTime) return;
+    if (!selectedDate || !selectedTime || !selectedTimeSlotId) return;
 
     setTheme(displayThemeId, displayTheme.title, displayTheme.imageUrl);
     setLocation(displayRegion ?? "", displayBranchName ?? "");
@@ -675,26 +677,41 @@ export default function ThemeDetailDrawer({
                   ) : (
                     <div className="grid grid-cols-4 gap-2 max-sm:grid-cols-3">
                       {timeSlots.map((slot) => {
-                        const isSoldOut = !slot.available;
-                        const isSelected = selectedTime === slot.time;
+                        const isAvailable = slot.status === "SLOT_AVAILABLE";
+                        const isHeld = slot.status === "SLOT_HELD";
+                        const isFull = slot.status === "SLOT_FULL";
+                        const isSelected = selectedTimeSlotId === slot.id;
+                        const statusLabel = isFull ? "마감" : isHeld ? "홀드" : "";
 
                         return (
                           <button
                             key={slot.id ?? slot.time}
                             type="button"
-                            disabled={isSoldOut}
-                            onClick={() => setSelectedTime(slot.time)}
+                            disabled={!isAvailable}
+                            onClick={() => {
+                              setSelectedTime(slot.time);
+                              setSelectedTimeSlotId(slot.id ?? null);
+                            }}
                             className={[
-                              "h-11 rounded-[10px] border text-sm font-black transition-all",
-                              isSoldOut
-                                ? "cursor-not-allowed border-white/[0.05] text-[#444] line-through"
+                              "flex h-11 items-center justify-center gap-1.5 rounded-[10px] border text-sm font-black transition-all",
+                              !isAvailable
+                                ? [
+                                    "cursor-not-allowed border-white/[0.05] bg-[#101010] text-[#444]",
+                                    isHeld ? "border-[#7c5cff]/15 text-[#5e5875]" : "",
+                                    isFull ? "line-through" : "",
+                                  ].join(" ")
                                 : isSelected
                                   ? "border-[#cc2222] bg-[#cc2222] text-white shadow-[0_0_18px_rgba(204,34,34,0.2)]"
                                   : "border-white/[0.1] bg-[#171717] text-[#d8d8d8] hover:border-[#cc2222]/65",
                             ].join(" ")}
                             title={slot.status}
                           >
-                            {slot.time}
+                            <span>{slot.time}</span>
+                            {statusLabel && (
+                              <span className="text-[10px] font-black no-underline opacity-70">
+                                {statusLabel}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -716,9 +733,9 @@ export default function ThemeDetailDrawer({
             >
               닫기
             </button>
-            {selectedDate && selectedTime ? (
+            {selectedDate && selectedTime && selectedTimeSlotId ? (
               <Link
-                href={`/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}`}
+                href={`/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}&timeSlotId=${selectedTimeSlotId}`}
                 onClick={saveReservationDraft}
                 className="h-12 flex-[1.7] rounded-[10px] bg-[#cc2222] text-center text-sm font-black leading-[48px] text-white transition-all hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]"
               >
