@@ -1,31 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-
-// ── Mock Data ──────────────────────────────────────────────────────
-const STAT_CARDS = [
-  { label: '오늘 예약', value: '23건', sub: '어제 대비 +3건', color: '#f39c12', bg: 'bg-[#f39c12]/10', icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  )},
-  { label: '이번달 예약', value: '312건', sub: '지난달 대비 +28건', color: '#3498db', bg: 'bg-[#3498db]/10', icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  )},
-  { label: '미승인 후기', value: '14건', sub: '승인 대기 중', color: '#e63946', bg: 'bg-[#e63946]/10', icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-    </svg>
-  )},
-  { label: '숨김 요청', value: '3건', sub: '처리 대기 중', color: '#9b59b6', bg: 'bg-[#9b59b6]/10', icon: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-    </svg>
-  )},
-];
+import { getToken } from '@/lib/token';
+import { ReviewReportItem } from '@/types/review';
 
 const RECENT_RESERVATIONS = [
   { id: '#R20240527-042', theme: '폐병원의 저주', user: '김민수', date: '2026-05-27', time: '20:00', status: 'CONFIRMED', amount: '112,000₩' },
@@ -43,9 +21,9 @@ const PENDING_REVIEWS = [
 
 const QUICK_LINKS = [
   { href: '/owner/reservations', label: '예약 관리', sub: '오늘 23건', color: '#f39c12' },
-  { href: '/owner/reviews', label: '후기 관리', sub: '대기 14건', color: '#e63946' },
+  { href: '/owner/hidden', label: '요청 관리', sub: '대기 14건', color: '#e63946' },
   { href: '/owner/themes', label: '테마 관리', sub: '총 8개', color: '#3498db' },
-  { href: '/owner/hidden', label: '숨김 요청', sub: '대기 3건', color: '#9b59b6' },
+
 ];
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
@@ -67,8 +45,31 @@ function StarDisplay({ value }: { value: number }) {
 
 export default function OwnerDashboardPage() {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+    const [reportCount, setReportCount] = useState(0);
+    const [pendingReviews, setPendingReviews] = useState<ReviewReportItem[]>([]);
 
-  return (
+
+    // ── Mock Data ──────────────────────────────────────────────────────
+    const STAT_CARDS = [
+        { label: '오늘 예약', value: '23건', sub: '어제 대비 +3건', color: '#f39c12', bg: 'bg-[#f39c12]/10', icon: (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            )},
+        { label: '이번달 예약', value: '312건', sub: '지난달 대비 +28건', color: '#3498db', bg: 'bg-[#3498db]/10', icon: (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+            )},
+        { label: '미승인 후기', value: `${reportCount}건`, sub: '승인 대기 중', color: '#e63946', bg: 'bg-[#e63946]/10', icon: (
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                </svg> //admin
+            )},
+    ];
+
+
+    return (
     <div className="p-6 space-y-6">
       {/* Welcome */}
       <div>
@@ -80,15 +81,15 @@ export default function OwnerDashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {STAT_CARDS.map(card => (
-          <div key={card.label} className="bg-[#1a1a1a] border border-[#222] rounded-xl p-5 flex items-start gap-4">
-            <div className={['w-10 h-10 rounded-lg flex items-center justify-center shrink-0', card.bg].join(' ')} style={{ color: card.color }}>
+          <div key={card.label} className="bg-[#1a1a1a] border border-[#222] rounded-xl p-5 flex items-center gap-4 min-h-[140px]">
+            <div className={['w-12 h-12 rounded-lg flex items-center justify-center shrink-0', card.bg].join(' ')} style={{ color: card.color }}>
               {card.icon}
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-[#888] mb-0.5">{card.label}</p>
-              <p className="text-2xl font-black" style={{ color: card.color }}>{card.value}</p>
+              <p className="text-sm text-[#888] mb-0.5">{card.label}</p>
+              <p className="text-3xl font-black" style={{ color: card.color }}>{card.value}</p>
               <p className="text-xs text-[#444] mt-0.5">{card.sub}</p>
             </div>
           </div>
@@ -96,7 +97,7 @@ export default function OwnerDashboardPage() {
       </div>
 
       {/* Quick links */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {QUICK_LINKS.map(link => (
           <Link key={link.href} href={link.href}
             className="bg-[#1a1a1a] border border-[#222] rounded-xl px-4 py-3 flex items-center justify-between hover:border-[#333] transition-colors group">
@@ -148,10 +149,10 @@ export default function OwnerDashboardPage() {
         <section className="bg-[#1a1a1a] border border-[#222] rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#1f1f1f]">
             <h2 className="text-sm font-bold text-[#f5f5f5] flex items-center gap-2">
-              승인 대기 후기
+              후기 신고 접수
               <span className="text-[11px] bg-[#e63946] text-white rounded-full px-1.5 py-0.5 font-black">14</span>
             </h2>
-            <Link href="/owner/reviews" className="text-xs text-[#555] hover:text-[#e63946] transition-colors">전체 보기 →</Link>
+            <Link href="/owner/hidden" className="text-xs text-[#555] hover:text-[#e63946] transition-colors">전체 보기 →</Link>
           </div>
           <div className="divide-y divide-[#171717]">
             {PENDING_REVIEWS.map(r => (

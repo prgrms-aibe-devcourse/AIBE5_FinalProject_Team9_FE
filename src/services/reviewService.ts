@@ -1,5 +1,6 @@
 import axiosInstance from '@/lib/axios';
-import { Review, CreateReviewRequest, UpdateReviewRequest, ReviewFilter } from '@/types/review';
+import { getToken } from '@/lib/token';
+import { Review, CreateReviewRequest, UpdateReviewRequest, ReviewFilter,ReviewReportItem  } from '@/types/review';
 
 interface PaginatedResponse<T> {
   content: T[];
@@ -39,4 +40,14 @@ export const deleteReview = async (id: number): Promise<void> => {
 // TODO: POST /api/reviews/:id/hide-request
 export const requestHideReview = async (id: number, reason: string): Promise<void> => {
   await axiosInstance.post(`/reviews/${id}/hide-request`, { reason });
+};
+
+
+export const getOwnerReviewReports = async (page = 0, limit = 3) => {
+    const accessToken = getToken();
+    const res = await fetch(`/api/owner/review-reports?page=${page}&limit=${limit}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const data = await res.json();
+    return data;
 };

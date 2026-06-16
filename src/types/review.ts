@@ -44,3 +44,14 @@ export interface ReviewFilter {
   page?: number;
   size?: number;
 }
+
+export interface ReviewReportItem {
+    reportId: number;
+    reviewId: number;
+    reviewContent: string;
+    reporterNickname: string;
+    reason: string;
+    detail: string;
+    status: string;
+    createdAt: string;
+}
