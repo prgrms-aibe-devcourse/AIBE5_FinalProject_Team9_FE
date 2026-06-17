@@ -15,6 +15,7 @@ const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
 ] as const;
 type SortOption = (typeof SORT_OPTIONS)[number]["value"];
+type DrawerInitialTab = "info" | "reservation";
 
 function FilterSkullIcon({ className }: { className?: string }) {
   return (
@@ -117,6 +118,7 @@ export default function ThemesPage() {
   const [sort, setSort] = useState<SortOption>("default");
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [selectedThemeId, setSelectedThemeId] = useState<number | null>(null);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<DrawerInitialTab>("info");
   const [page, setPage] = useState(1);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
   const availableLocations = useMemo(() => {
@@ -231,6 +233,7 @@ export default function ThemesPage() {
   };
 
   const openThemeDrawer = (theme: Theme) => {
+    setDrawerInitialTab("info");
     setSelectedThemeId(theme.id);
   };
 
@@ -258,7 +261,10 @@ export default function ThemesPage() {
 
   useEffect(() => {
     const syncThemeFromUrl = () => {
-      const themeId = Number(new URLSearchParams(window.location.search).get("themeId"));
+      const params = new URLSearchParams(window.location.search);
+      const themeId = Number(params.get("themeId"));
+      const tab = params.get("tab") === "reservation" ? "reservation" : "info";
+      setDrawerInitialTab(tab);
       setSelectedThemeId(Number.isFinite(themeId) && themeId > 0 ? themeId : null);
     };
 
@@ -624,7 +630,11 @@ export default function ThemesPage() {
         </div>
       </div>
       {selectedTheme && (
-        <ThemeDetailDrawer theme={selectedTheme} onClose={closeThemeDrawer} />
+        <ThemeDetailDrawer
+          theme={selectedTheme}
+          initialTab={drawerInitialTab}
+          onClose={closeThemeDrawer}
+        />
       )}
     </div>
   );

@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useReservationStore } from '@/stores/reservationStore';
 import { useAuthStore } from '@/stores/authStore';
 import { repairMojibake } from '@/lib/text';
+import {
+  CompletePaymentSession,
+  getCompletePaymentSession,
+} from '@/lib/reservationPaymentSession';
 
 function StepBar() {
   const steps = [
@@ -73,31 +77,37 @@ export default function ReservationCompletePage() {
   const { user } = useAuthStore();
 
   const [copied, setCopied] = useState(false);
-  const [reservationNumber] = useState(() => {
-    const n = Math.floor(100000 + Math.random() * 900000);
-    return `GG-${n}`;
-  });
   const [reservedAt] = useState(() => formatKoreanDateTime(new Date()));
+  const [completeSession, setCompleteSession] = useState<CompletePaymentSession | null>(null);
 
-  // Use store data if available, otherwise show mock defaults
-  const themeTitle = store.themeTitle || '블러드문';
-  const themeImageUrl = store.themeImageUrl || 'https://picsum.photos/seed/grimgate3/400/300';
-  const locationName = store.locationName || '강남';
-  const branchName = store.branchName || '강남 8호점';
-  const date = store.date || '2026-05-27';
-  const time = store.time || '19:00';
-  const adultCount = store.adultCount ?? 2;
-  const teenCount = store.teenCount ?? 0;
-  const adultPrice = 28000;
-  const totalAmount = adultCount * adultPrice + teenCount * 20000;
+  useEffect(() => {
+    setCompleteSession(getCompletePaymentSession());
+  }, []);
 
-  const userName = repairMojibake(user?.nickname) || '김공포';
+  const reservationId = store.reservationId ?? completeSession?.reservationId ?? null;
+  const paymentId = store.paymentId ?? completeSession?.paymentId ?? null;
+  const orderId = store.orderId || completeSession?.orderId || '';
+  const paymentStatus = store.paymentStatus || completeSession?.status || '';
+  const reservationNumber = reservationId ? `GG-${reservationId}` : '예약 정보 없음';
+  const themeTitle = store.themeTitle || completeSession?.themeTitle || '선택한 테마';
+  const themeImageUrl = store.themeImageUrl || completeSession?.themeImageUrl || '/images/theme-placeholder.png';
+  const locationName = store.locationName || completeSession?.locationName || '지점 정보 없음';
+  const branchName = store.branchName || completeSession?.branchName || '';
+  const date = store.date || completeSession?.date || '';
+  const time = store.time || completeSession?.time || '';
+  const adultCount = store.adultCount ?? completeSession?.adultCount ?? 2;
+  const teenCount = store.teenCount ?? completeSession?.teenCount ?? 0;
+  const totalAmount = store.totalAmount ?? completeSession?.amount ?? 0;
+
+  const userName = repairMojibake(user?.nickname) || '예약자';
   const userPhone = user?.phone
     ? user.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1-****-$2')
-    : '010-****-1921';
+    : '연락처 정보 없음';
   const dateLabel = formatDateWithDay(date);
 
   const handleCopy = () => {
+    if (!reservationId) return;
+
     navigator.clipboard.writeText(reservationNumber).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -115,7 +125,7 @@ export default function ReservationCompletePage() {
     { label: '예약 시간 10분 전', desc: '현장 도착 후 프론트 데스크에서 체크인' },
     { label: `예약 번호 ${reservationNumber}`, desc: '를 마이페이지 화면 제시' },
     { label: '소지품 보관 후', desc: '게임 마스터의 브리핑 참가' },
-    { label: `제한 시간 ${store.themeTitle ? '90' : '90'}분 안에 탈출하세요`, desc: '— 살아서 나올 수 있다면.' },
+    { label: '제한 시간 안에 탈출하세요', desc: '— 살아서 나올 수 있다면.' },
   ];
 
   return (
@@ -146,6 +156,7 @@ export default function ReservationCompletePage() {
           </div>
           <button
             onClick={handleCopy}
+            disabled={!reservationId}
             className="text-xs border border-[#2a2a2a] hover:border-[#f39c12] hover:text-[#f39c12] text-[#888] px-3 py-1.5 rounded transition-colors"
           >
             {copied ? '✓ 복사됨' : '번호 복사'}
@@ -185,8 +196,11 @@ export default function ReservationCompletePage() {
                 { label: '연락처', value: userPhone },
                 { label: '인원', value: `성인 ${adultCount}명${teenCount > 0 ? ` · 청소년 ${teenCount}명` : ''}` },
                 { label: '결제 금액', value: `${totalAmount.toLocaleString('ko-KR')}₩`, highlight: true },
-                { label: '결제 상태', value: '✓ 결제 완료', green: true },
-                { label: '예약 시각', value: reservedAt },
+                { label: '결제 상태', value: paymentStatus || '확인 필요', green: paymentStatus === 'PAY_SUCCESS' },
+                ...(paymentId ? [{ label: '결제 ID', value: String(paymentId) }] : []),
+                ...(orderId ? [{ label: '주문 ID', value: orderId }] : []),
+                ...(completeSession?.paymentMethod ? [{ label: '결제 수단', value: completeSession.paymentMethod }] : []),
+                { label: '예약 시각', value: completeSession?.paidAt ? formatKoreanDateTime(new Date(completeSession.paidAt)) : reservedAt },
               ].map(row => (
                 <tr key={row.label} className="border-b border-[#111] last:border-b-0">
                   <td className="py-2.5 text-[#888] w-24 text-xs">{row.label}</td>

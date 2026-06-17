@@ -9,6 +9,7 @@ import {
   deleteMatePost,
   getMatePostById,
   getMatePostParticipants,
+  getMyMateParticipations,
   joinMatePost,
   leaveMatePost,
 } from "@/services/mateService";
@@ -112,24 +113,6 @@ function SummaryItem({ label, value }: { label: string; value: React.ReactNode }
     <div className="min-w-0">
       <p className="mb-1 text-[11px] font-black text-[#626262]">{label}</p>
       <p className="truncate text-sm font-bold text-[#e7e7e7]">{value}</p>
-    </div>
-  );
-}
-
-function MemberDots({ current, total }: { current: number; total: number }) {
-  return (
-    <div className="flex gap-1">
-      {Array.from({ length: Math.max(total, 1) }).map((_, index) => (
-        <span
-          key={index}
-          className={[
-            "h-2.5 w-2.5 rounded-full border",
-            index < current
-              ? "border-[#e63946] bg-[#e63946] shadow-[0_0_8px_rgba(230,57,70,0.28)]"
-              : "border-white/[0.14] bg-[#101010]",
-          ].join(" ")}
-        />
-      ))}
     </div>
   );
 }
@@ -260,6 +243,64 @@ function ThemePreviewModal({
   );
 }
 
+interface MateComment {
+  id: number;
+  authorNickname: string;
+  content: string;
+  createdAt: string;
+}
+
+function CommentsSection({
+  comments = [],
+}: {
+  comments?: MateComment[];
+}) {
+  return (
+    <section className="rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.22)]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black text-[#f5f5f5]">
+          댓글 <span className="text-[#ef5353]">{comments.length}</span>
+        </h2>
+      </div>
+
+      <div className="rounded-xl border border-white/[0.06] bg-[#101010]/70 p-3">
+        <textarea
+          rows={3}
+          placeholder="댓글을 입력하세요..."
+          className="block w-full resize-none rounded-lg border border-white/[0.08] bg-[#0d0d0d] px-3 py-3 text-sm leading-6 text-[#f5f5f5] outline-none transition-colors placeholder:text-[#555] focus:border-[#e63946]/55"
+        />
+        <div className="mt-3 flex justify-end">
+          <button
+            type="button"
+            className="rounded-lg bg-[#e63946] px-4 py-2 text-sm font-black text-white transition-colors hover:bg-[#c1121f]"
+          >
+            등록
+          </button>
+        </div>
+      </div>
+
+      {comments.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-white/[0.055] bg-[#101010]/45 py-8 text-center">
+          <p className="text-sm font-black text-[#d8d8d8]">아직 댓글이 없어요</p>
+          <p className="mt-1 text-xs text-[#666]">첫 댓글을 남겨보세요.</p>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {comments.map((comment) => (
+            <article key={comment.id} className="rounded-xl border border-white/[0.055] bg-[#101010]/55 p-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-sm font-black text-[#f5f5f5]">{comment.authorNickname}</p>
+                <p className="text-xs font-bold text-[#666]">{formatDateTime(comment.createdAt)}</p>
+              </div>
+              <p className="text-sm leading-6 text-[#c9c9c9]">{comment.content}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function MateDetailPage({ params }: { params: Promise<{ mateId: string }> }) {
   const { mateId } = use(params);
   const router = useRouter();
@@ -301,8 +342,11 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     setIsLoading(true);
     setErrorMessage("");
 
-    Promise.allSettled([getMatePostById(postId), getMatePostParticipants(postId)])
-      .then(([postResult, participantResult]) => {
+    Promise.allSettled([
+      getMatePostById(postId),
+      getMyMateParticipations(),
+    ])
+      .then(([postResult, myParticipationsResult]) => {
         if (!isMounted) return;
         if (postResult.status === "fulfilled") {
           setPost(postResult.value);
@@ -310,8 +354,12 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
           setErrorMessage("메이트 모집 글을 불러오지 못했습니다.");
         }
 
-        if (participantResult.status === "fulfilled") {
-          setParticipants(participantResult.value);
+        if (myParticipationsResult.status === "fulfilled") {
+          setJoined(
+            myParticipationsResult.value.some(
+              (participation) => participation.matePostId === postId,
+            ),
+          );
         }
       })
       .finally(() => {
@@ -322,6 +370,35 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
       isMounted = false;
     };
   }, [postId]);
+
+  useEffect(() => {
+    if (!post) return;
+
+    let isMounted = true;
+    const canViewParticipants = Boolean(user?.id && user.id === post.memberId);
+
+    if (!canViewParticipants) {
+      setParticipants(EMPTY_PARTICIPANTS);
+      setIsParticipantsLoading(false);
+      return;
+    }
+
+    setIsParticipantsLoading(true);
+    getMatePostParticipants(post.id)
+      .then((data) => {
+        if (isMounted) setParticipants(data);
+      })
+      .catch(() => {
+        if (isMounted) setParticipants(EMPTY_PARTICIPANTS);
+      })
+      .finally(() => {
+        if (isMounted) setIsParticipantsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [post, user?.id]);
 
   useEffect(() => {
     if (!post?.themeId) {
@@ -354,6 +431,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
   const currentPeople = participants.currentPeople || post?.currentPeople || 0;
   const maxPeople = participants.maxPeople || post?.maxPeople || 0;
   const isAuthor = Boolean(post && user?.id === post.memberId);
+  const canViewParticipants = isAuthor;
   const isAlreadyParticipant = Boolean(
     user?.id && participants.items.some((participant) => participant.memberId === user.id),
   );
@@ -374,9 +452,13 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     try {
       await joinMatePost(post.id);
       setJoined(true);
-      await Promise.allSettled([loadPost(), loadParticipants()]);
+      await Promise.allSettled([loadPost(), isAuthor ? loadParticipants() : Promise.resolve()]);
     } catch (error) {
-      setActionError(getApiErrorMessage(error, "참여 신청에 실패했습니다."));
+      const message = getApiErrorMessage(error, "참여 신청에 실패했습니다.");
+      if (message.includes("이미 참여")) {
+        setJoined(true);
+      }
+      setActionError(message);
     } finally {
       setIsJoining(false);
     }
@@ -390,7 +472,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     try {
       await leaveMatePost(post.id);
       setJoined(false);
-      await Promise.allSettled([loadPost(), loadParticipants()]);
+      await Promise.allSettled([loadPost(), isAuthor ? loadParticipants() : Promise.resolve()]);
     } catch (error) {
       setActionError(getApiErrorMessage(error, "참여 취소에 실패했습니다."));
     } finally {
@@ -520,26 +602,23 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
             <div className="mb-5 rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.22)]">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-black text-[#f5f5f5]">모집 요약</h2>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#888]">진행률 {progress}%</span>
-                </div>
               </div>
 
-              <div className="mb-5 flex flex-col gap-4 rounded-xl border border-white/[0.055] bg-[#101010]/60 p-3 sm:flex-row sm:items-center">
-                <div className="relative aspect-[14/9] w-full shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-[#0d0d0d] sm:w-[140px]">
+              <div className="mb-5 flex flex-col gap-4 rounded-xl border border-white/[0.055] bg-[#101010]/60 p-3.5 sm:flex-row sm:items-center">
+                <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-[#0d0d0d] sm:w-[200px] md:w-[220px]">
                   <ImageWithFallback
                     src={summaryTheme?.imageUrl || post.imageUrl}
                     fallbackSrc="/images/theme-placeholder.png"
                     alt={summaryTheme?.title || post.themeTitle || "테마 이미지"}
                     fill
-                    sizes="(max-width: 640px) 100vw, 140px"
+                    sizes="(max-width: 640px) 100vw, 220px"
                     className="object-cover"
                   />
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 py-1">
                   <p className="mb-1 text-[11px] font-black text-[#626262]">테마</p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-lg font-black text-[#f5f5f5]">{summaryTheme?.title || post.themeTitle || "-"}</h3>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <h3 className="min-w-0 text-xl font-black leading-tight text-[#f5f5f5]">{summaryTheme?.title || post.themeTitle || "-"}</h3>
                     <button
                       type="button"
                       onClick={handleOpenThemePreview}
@@ -549,7 +628,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                       테마 정보 보기
                     </button>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
+                  <div className="mt-3 flex flex-wrap gap-1.5">
                     {[summaryTheme?.storeName, summaryTheme?.branchName, summaryTheme?.locationName, summaryTheme?.genre]
                       .filter(Boolean)
                       .map((item) => (
@@ -566,23 +645,23 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                 <SummaryItem label="모집 마감" value={formatDateTime(post.deadline)} />
                 <SummaryItem label="모집 인원" value={`${currentPeople}/${maxPeople}명`} />
                 <SummaryItem label="남은 자리" value={isClosed ? "마감" : `${remaining}자리 남음`} />
+              </div>
+
+              <div className="mt-4">
                 <SummaryItem label="경험 레벨" value={EXPERIENCE_LABEL[post.experienceLevel]} />
               </div>
 
               <div className="mt-5 rounded-xl border border-white/[0.055] bg-[#101010]/70 px-4 py-3">
                 <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold">
                   <span className="text-[#888]">모집 진행률</span>
-                  <span className="text-[#d8d8d8]">{currentPeople}/{maxPeople}명</span>
+                  <span className="text-[#d8d8d8]">{progress}% · {currentPeople}/{maxPeople}명</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
                   <span className="block h-full rounded-full bg-[#e63946] shadow-[0_0_12px_rgba(230,57,70,0.35)]" style={{ width: `${progress}%` }} />
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <MemberDots current={currentPeople} total={maxPeople} />
-                  <span className="text-sm font-bold text-[#d8d8d8]">
-                    {currentPeople}명 참여 중 <span className="mx-1 text-[#555]">&middot;</span> {isClosed ? "마감" : `${remaining}자리 남음`}
-                  </span>
-                </div>
+                <p className="mt-3 text-sm font-bold text-[#d8d8d8]">
+                  {currentPeople}명 참여 중 <span className="mx-1 text-[#555]">&middot;</span> {isClosed ? "마감" : `${remaining}자리 남음`}
+                </p>
               </div>
             </div>
 
@@ -598,22 +677,38 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
               </div>
             </div>
 
-            {/* TODO: 댓글 API가 제공되면 이 영역 하단에 댓글 목록/작성 UI를 연결합니다. */}
+            <div className="mt-5">
+              <CommentsSection />
+            </div>
           </section>
 
           <aside className="lg:sticky lg:top-5 lg:self-start">
             <div className="rounded-xl border border-white/[0.08] bg-[#171717]/92 shadow-[0_16px_42px_rgba(0,0,0,0.25)]">
               <div className="border-b border-white/[0.06] px-4 py-3">
                 <h2 className="text-sm font-black text-[#f5f5f5]">
-                  참여 신청자 <span className="text-[#ef5353]">{participants.items.length}</span>
+                  {canViewParticipants ? "참여 신청자" : "참여 현황"}{" "}
+                  <span className="text-[#ef5353]">
+                    {canViewParticipants ? participants.items.length : `${currentPeople}/${maxPeople}`}
+                  </span>
                 </h2>
                 <p className="mt-1 text-[11px] leading-4 text-[#666]">
-                  모집 요약의 {currentPeople}/{maxPeople}명에는 작성자가 포함될 수 있습니다.
+                  {canViewParticipants
+                    ? `모집 요약의 ${currentPeople}/${maxPeople}명에는 작성자가 포함될 수 있습니다.`
+                    : "참여 신청자 목록은 모집글 작성자만 확인할 수 있습니다."}
                 </p>
               </div>
               <div className="max-h-[430px] overflow-y-auto px-4">
                 {isParticipantsLoading ? (
                   <div className="py-7 text-center text-xs font-bold text-[#777]">참여자 목록을 불러오는 중입니다.</div>
+                ) : !canViewParticipants ? (
+                  <div className="py-7 text-center">
+                    <p className="text-xs font-bold text-[#777]">
+                      {currentPeople}명 참여 중입니다
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#555]">
+                      신청자 상세 목록은 작성자에게만 공개됩니다.
+                    </p>
+                  </div>
                 ) : participants.items.length === 0 ? (
                   <div className="py-7 text-center">
                     <p className="text-xs font-bold text-[#777]">아직 참여 신청자가 없어요</p>
@@ -628,7 +723,21 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-bold text-[#f5f5f5]">{participant.nickname}</p>
-                          {participant.joinedAt && <p className="mt-1 text-xs text-[#555]">{formatDateTime(participant.joinedAt)}</p>}
+                          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                            {participant.joinedAt && (
+                              <p className="text-xs text-[#555]">{formatDateTime(participant.joinedAt)}</p>
+                            )}
+                            {participant.openChatUrl && (
+                              <a
+                                href={participant.openChatUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] font-black text-[#ef5353] transition-colors hover:text-white"
+                              >
+                                오픈채팅
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

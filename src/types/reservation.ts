@@ -22,15 +22,19 @@ export interface Reservation {
 }
 
 export interface CreateReservationRequest {
-  themeId: number;
-  date: string;
-  time: string;
-  adultCount: number;
-  teenCount?: number;
-  agreeTerms: boolean;
-  agreePrivacy: boolean;
-  agreeCancellation: boolean;
-  agreeMarketing?: boolean;
+  timeSlotId: number;
+  holdToken: string;
+  peopleCount: number;
+  termsAgreed: boolean;
+}
+
+export interface ReservationCreateResponse {
+  reservationId: number;
+  timeSlotId: number;
+  memberId: number;
+  status: string;
+  peopleCount: number;
+  totalPrice: number;
 }
 
 export interface ReservationFilter {

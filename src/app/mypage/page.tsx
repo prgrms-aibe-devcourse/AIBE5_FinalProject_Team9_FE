@@ -3,9 +3,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
+import ImageWithFallback from "@/components/common/ImageWithFallback";
+import { enrichMyPageReviewsWithThemeImages, parseReviewTags } from "@/lib/myPageReview";
 import { useAuthStore } from "@/stores/authStore";
-import { getMe } from "@/services/authService";
+import { getMatePostById } from "@/services/mateService";
+import {
+  getMyPageAchievements,
+  getMyPageMain,
+  getMyPageMateParticipations,
+  getMyPageMatePosts,
+  getMyPageReservations,
+  getMyPageReviews,
+  type MyPageAchievement,
+  type MyPageMain,
+  type MyPageReservation,
+  type MyPageReview,
+} from "@/services/mypageService";
+import { getThemeById, getThemes } from "@/services/themeService";
 import { repairMojibake } from "@/lib/text";
+import type { MatePostStatus, MyPageMatePost } from "@/types/mate";
+import type { Theme } from "@/types/theme";
 
 type TabKey = "reservation" | "achievement" | "activity";
 type ReservationStatus = "upcoming" | "cleared" | "failed";
@@ -30,6 +47,7 @@ type MateActivityStatus = "open" | "joined" | "closed";
 
 type Reservation = {
   id: number;
+  themeId?: number;
   themeTitle: string;
   date: string;
   day: string;
@@ -73,7 +91,9 @@ type AchievementItem = {
 
 type ActivityReview = {
   id: number;
+  themeId: number;
   themeTitle: string;
+  createdAt: string;
   date: string;
   rating: number;
   horrorLevel: number;
@@ -88,7 +108,7 @@ type ActivityPost = {
   category: PostCategory;
   date: string;
   title: string;
-  comments: number;
+  comments?: number;
 };
 
 type ActivityMate = {
@@ -149,321 +169,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "activity", label: K.activity },
 ];
 
-const STATS = [
-  { label: K.totalPlay, value: "12", accent: "text-[#f5f5f5]" },
-  { label: K.successRate, value: "75%", accent: "text-[#2ecc71]" },
-  { label: K.bestClear, value: "38:24", accent: "text-[#3498db]" },
-  { label: K.achievements, value: "17", accent: "text-[#b66ae0]" },
-];
-
-const UPCOMING_RESERVATIONS: Reservation[] = [
-  {
-    id: 1,
-    themeTitle: "\ud3d0\ubcd1\uc6d0\uc758 \uc800\uc8fc",
-    date: "2026-06-02",
-    day: "\ud654",
-    time: "20:00",
-    location: K.branch,
-    horrorLevel: 5,
-    difficulty: 4,
-    status: "upcoming",
-    imageUrl: "/images/horror/%EC%A0%95%EC%A7%80.png",
-  },
-  {
-    id: 2,
-    themeTitle: "\ubb18\uc9c0\uc758 \uc800\uc8fc",
-    date: "2026-06-17",
-    day: "\uc218",
-    time: "17:00",
-    location: "\uc2e0\ucd0c\uc810",
-    horrorLevel: 4,
-    difficulty: 4,
-    status: "upcoming",
-    imageUrl: "/images/horror/theme-smoke.png",
-    dday: "D-7",
-  },
-];
-
-const PAST_RESERVATIONS: Reservation[] = [
-  {
-    id: 3,
-    themeTitle: "\uc880\ube44 \uc544\ud3ec\uce7c\ub9bd\uc2a4",
-    date: "2026-04-30",
-    day: "\ubaa9",
-    time: "16:00",
-    location: K.branch,
-    horrorLevel: 5,
-    difficulty: 4,
-    status: "cleared",
-    clearTime: "47:32",
-    imageUrl: "/images/horror/theme-pumpkin.png",
-    hasReview: true,
-  },
-  {
-    id: 4,
-    themeTitle: "\uc545\ub9c8\uc758 \uc81c\ub2e8",
-    date: "2026-04-05",
-    day: "\uc77c",
-    time: "21:00",
-    location: "\uc2e0\ucd0c\uc810",
-    horrorLevel: 3,
-    difficulty: 3,
-    status: "failed",
-    imageUrl: "/images/horror/theme-clown.png",
-  },
-  {
-    id: 5,
-    themeTitle: "\uc720\ub839 \ud559\uad50",
-    date: "2026-03-22",
-    day: "\uc77c",
-    time: "19:00",
-    location: "\ud64d\ub300\uc810",
-    horrorLevel: 4,
-    difficulty: 4,
-    status: "cleared",
-    clearTime: "52:18",
-    imageUrl: "/images/horror/hero-door.png",
-  },
-  {
-    id: 6,
-    themeTitle: "\ubc84\ub824\uc9c4 \uc720\ub78c\uc120",
-    date: "2026-02-14",
-    day: "\ud1a0",
-    time: "15:00",
-    location: K.branch,
-    horrorLevel: 4,
-    difficulty: 3,
-    status: "cleared",
-    clearTime: "49:05",
-    imageUrl: "/images/horror/hero-door.png",
-    hasReview: true,
-  },
-];
-
-const TITLES: TitleItem[] = [
-  {
-    id: 1,
-    name: "\ucabc\ubcf4",
-    condition: "\uc131\uacf5\ub960 30% \ubbf8\ub9cc",
-    status: "earned",
-    icon: "ghost",
-  },
-  {
-    id: 2,
-    name: "\uc77c\ubc18\uc778",
-    condition: "\uc131\uacf5\ub960 30% \uc774\uc0c1 ~ 50% \ubbf8\ub9cc",
-    status: "earned",
-    icon: "user",
-  },
-  {
-    id: 3,
-    name: "\uac15\uc2ec\uc7a5",
-    condition: "\uc131\uacf5\ub960 50% \uc774\uc0c1 ~ 70% \ubbf8\ub9cc",
-    status: "earned",
-    icon: "flame",
-  },
-  {
-    id: 4,
-    name: "오컬트 동호회장",
-    condition: "\uc131\uacf5\ub960 70% \uc774\uc0c1 ~ 85% \ubbf8\ub9cc",
-    status: "current",
-    icon: "group",
-  },
-  {
-    id: 5,
-    name: "\ud1f4\ub9c8\uc0ac",
-    condition:
-      "\uc131\uacf5\ub960 85% \uc774\uc0c1 + \uc644\ub8cc \ubc29\ud0c8\ucd9c 5\ud68c \uc774\uc0c1",
-    status: "locked",
-    icon: "lock",
-  },
-];
-
-const ACHIEVEMENTS: AchievementItem[] = [
-  {
-    id: 1,
-    name: "\uccab \ubc1c\uac78\uc74c",
-    condition:
-      "\uccab \ubc29\ud0c8\ucd9c\uc744 \uc644\ub8cc\ud558\uc138\uc694.",
-    status: "complete",
-    icon: "foot",
-    accent: "lime",
-  },
-  {
-    id: 2,
-    name: "\uc2a4\ud53c\ub4dc \ub7ec\ub108",
-    condition:
-      "40\ubd84 \uc774\ub0b4\uc5d0 \ubc29\ud0c8\ucd9c\uc744 \uc644\ub8cc\ud558\uc138\uc694.",
-    status: "progress",
-    icon: "timer",
-    progress: 1,
-    total: 3,
-    accent: "red",
-  },
-  {
-    id: 3,
-    name: "\ud300\uc6cc\ud06c \ub9c8\uc2a4\ud130",
-    condition:
-      "\uba54\uc774\ud2b8 \ucc38\uc5ec/\ubaa8\uc9d1 5\ud68c \ud50c\ub808\uc774",
-    status: "progress",
-    icon: "group",
-    progress: 3,
-    total: 5,
-    accent: "teal",
-  },
-  {
-    id: 4,
-    name: "\ub2e8\uc9dd \uce5c\uad6c",
-    condition:
-      "\uac19\uc740 \ud300\uc6d0\uacfc 3\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.",
-    status: "progress",
-    icon: "heart",
-    progress: 1,
-    total: 3,
-    accent: "rose",
-  },
-  {
-    id: 5,
-    name: "\uacf5\ud3ec \uc815\ubcf5\uc790",
-    condition:
-      "\ub09c\uc774\ub3c4 5 \ubc29\ud0c8\ucd9c 3\uac1c\ub97c \uc131\uacf5\ud558\uc138\uc694.",
-    status: "complete",
-    icon: "skull",
-    accent: "deepRed",
-  },
-  {
-    id: 6,
-    name: "\ubc29\ud0c8\ucd9c \ubcd1\uc544\ub9ac",
-    condition:
-      "\ubc29\ud0c8\ucd9c 3\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.",
-    status: "complete",
-    icon: "chick",
-    accent: "amber",
-  },
-  {
-    id: 7,
-    name: "\uc5f4\uc1e0 \uc218\uc9d1\uac00",
-    condition: "\ubc29\ud0c8\ucd9c 7\ud68c \ud50c\ub808\uc774",
-    status: "progress",
-    icon: "key",
-    progress: 3,
-    total: 7,
-    accent: "orange",
-  },
-  {
-    id: 8,
-    name: "\ub2e8\uc11c \uc0ac\ub0e5\uafbc",
-    condition: "\ubc29\ud0c8\ucd9c 15\ud68c \ud50c\ub808\uc774",
-    status: "progress",
-    icon: "search",
-    progress: 7,
-    total: 15,
-    accent: "orange",
-  },
-  {
-    id: 9,
-    name: "\ubc29\ud0c8\ucd9c \uc9c0\ubc30\uc790",
-    condition:
-      "\ubc29\ud0c8\ucd9c 30\ud68c \ud50c\ub808\uc774\ud558\uc138\uc694.",
-    status: "locked",
-    icon: "crown",
-    progress: 12,
-    total: 30,
-    accent: "gold",
-  },
-];
-
-const ACTIVITY_REVIEWS: ActivityReview[] = [
-  {
-    id: 1,
-    themeTitle: "좀비 아포칼립스",
-    date: "2026-04-22",
-    rating: 5,
-    horrorLevel: 5,
-    difficulty: 4,
-    content:
-      "퍼즐 구성이 탄탄하고 좀비 분장이 리얼해서 몰입감이 좋았어요. 팀원들이랑 같이 가면 훨씬 재미있을 것 같아요.",
-    tags: ["무서워요", "퍼즐이 좋아요", "팀워크 필요"],
-    imageUrl: "/images/horror/theme-pumpkin.png",
-  },
-  {
-    id: 2,
-    themeTitle: "유령 학교",
-    date: "2026-03-24",
-    rating: 4,
-    horrorLevel: 4,
-    difficulty: 4,
-    content:
-      "학교 테마가 익숙해서 더 무서웠어요. 초반 단서가 살짝 어렵지만 흐름이 좋아서 끝까지 긴장감 있게 플레이했습니다.",
-    tags: ["스토리가 좋아요", "숙련자 추천"],
-    imageUrl: "/images/horror/hero-door.png",
-  },
-];
-
-const ACTIVITY_POSTS: ActivityPost[] = [
-  {
-    id: 1,
-    category: "모집",
-    date: "2026-05-03",
-    title: "이번 주말 강남점 폐병원 같이 가실 분?",
-    comments: 8,
-  },
-  {
-    id: 2,
-    category: "정보",
-    date: "2026-04-21",
-    title: "좀비 아포칼립스 공략 팁 공유합니다",
-    comments: 15,
-  },
-  {
-    id: 3,
-    category: "모집",
-    date: "2026-04-12",
-    title: "홍대점 공포 테마 위주로 같이 도실 분 찾아요",
-    comments: 4,
-  },
-];
-
-const ACTIVITY_MATES: ActivityMate[] = [
-  {
-    id: 1,
-    themeTitle: "폐병원의 저주",
-    location: "강남점",
-    title: "이번 주말 강남점 폐병원 같이 가실 분?",
-    date: "2026-05-10",
-    time: "14:30",
-    currentMembers: 2,
-    totalMembers: 4,
-    status: "open",
-    isAuthor: true,
-    imageUrl: "/images/horror/theme-clown.png",
-  },
-  {
-    id: 2,
-    themeTitle: "감옥 탈출",
-    location: "홍대점",
-    title: "홍대 감옥탈출 처음인데 같이 가봐요",
-    date: "2026-05-10",
-    time: "13:30",
-    currentMembers: 3,
-    totalMembers: 4,
-    status: "joined",
-    imageUrl: "/images/horror/theme-smoke.png",
-  },
-  {
-    id: 3,
-    themeTitle: "인형의 방",
-    location: "건대점",
-    title: "건대 인형의 방 2인 구합니다",
-    date: "2026-05-08",
-    time: "16:00",
-    currentMembers: 4,
-    totalMembers: 4,
-    status: "closed",
-    imageUrl: "/images/horror/offline-scene.png",
-  },
-];
-
 function SkullIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
@@ -500,8 +205,9 @@ function ThemeThumbnail({
       ].join(" ")}
       style={style}
     >
-      <Image
+      <ImageWithFallback
         src={src}
+        fallbackSrc="/images/theme-placeholder.png"
         alt={alt ?? ""}
         fill
         sizes={width ? `${width}px` : "100vw"}
@@ -957,33 +663,163 @@ function formatAge(age?: number | string) {
   return `${age}세`;
 }
 
-function ProfileSummaryCard() {
-  const { user, setUser } = useAuthStore();
-  const [profileRequested, setProfileRequested] = useState(false);
+function formatSeconds(value?: number | null) {
+  if (value === undefined || value === null) return "-";
+  const minutes = Math.floor(value / 60);
+  const seconds = value % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getDateParts(value?: string) {
+  if (!value) return { date: "-", day: "-" };
+  const date = new Date(value);
+  const days = ["일", "월", "화", "수", "목", "금", "토"];
+  if (Number.isNaN(date.getTime())) return { date: value, day: "-" };
+
+  return {
+    date: value.slice(0, 10),
+    day: days[date.getDay()],
+  };
+}
+
+function formatTime(value?: string) {
+  return value ? value.slice(0, 5) : "-";
+}
+
+function findThemeForReservation(reservation: MyPageReservation, themes: Theme[]) {
+  return themes.find((theme) => {
+    const sameTitle = repairMojibake(theme.title) === repairMojibake(reservation.themeName);
+    const sameBranch =
+      !reservation.branchName ||
+      repairMojibake(theme.branchName) === repairMojibake(reservation.branchName);
+
+    return sameTitle && sameBranch;
+  });
+}
+
+function mapReservationToUi(
+  reservation: MyPageReservation,
+  type: "UPCOMING" | "PAST",
+  theme?: Theme,
+): Reservation {
+  const dateParts = getDateParts(reservation.reservationDate);
+  const status: ReservationStatus =
+    type === "UPCOMING" ? "upcoming" : reservation.isCleared ? "cleared" : "failed";
+
+  return {
+    id: reservation.reservationId,
+    themeId: theme?.id,
+    themeTitle: reservation.themeName || "예약 테마",
+    date: dateParts.date,
+    day: dateParts.day,
+    time: formatTime(reservation.reservationTime),
+    location: reservation.branchName || "-",
+    horrorLevel: theme?.horrorLevel ?? 0,
+    difficulty: theme?.difficulty ?? 0,
+    status,
+    clearTime: reservation.clearTime ? formatSeconds(reservation.clearTime) : undefined,
+    imageUrl: theme?.imageUrl || "/images/theme-placeholder.png",
+  };
+}
+
+function mapAchievementToUi(achievement: MyPageAchievement): AchievementItem {
+  const typeIconMap: Record<string, IconName> = {
+    TOTAL_PLAY_COUNT: "foot",
+    CLEAR_TIME_UNDER: "timer",
+    HORROR_LEVEL_SUCCESS: "skull",
+    MATE_PARTICIPATE_COUNT: "group",
+    SAME_MATE_COUNT: "heart",
+  };
+  const accentMap: Record<string, AchievementItem["accent"]> = {
+    TOTAL_PLAY_COUNT: "amber",
+    CLEAR_TIME_UNDER: "red",
+    HORROR_LEVEL_SUCCESS: "deepRed",
+    MATE_PARTICIPATE_COUNT: "teal",
+    SAME_MATE_COUNT: "rose",
+  };
+
+  return {
+    id: achievement.id,
+    name: achievement.name || "업적",
+    condition: achievement.description || "달성 조건 정보가 없습니다.",
+    status: achievement.acquired ? "complete" : "locked",
+    icon: typeIconMap[achievement.conditionType] ?? "key",
+    accent: accentMap[achievement.conditionType] ?? "gold",
+  };
+}
+
+function mapReviewToUi(review: MyPageReview, index: number): ActivityReview {
+  return {
+    id: review.reviewId ?? (review.themeId ? Number(`${review.themeId}${index}`) : index),
+    themeId: review.themeId,
+    themeTitle: review.themeTitle || "후기 테마",
+    createdAt: review.createdAt ?? "",
+    date: review.createdAt ? review.createdAt.slice(0, 10).replaceAll("-", ".") : "-",
+    rating: review.rating ?? 0,
+    horrorLevel: review.horrorRating ?? 0,
+    difficulty: review.difficultyRating ?? 0,
+    content: review.content || "",
+    tags: parseReviewTags(review.tags),
+    imageUrl: review.imageUrls[0] || "/images/theme-placeholder.png",
+  };
+}
+
+function mapMatePostToActivityPost(post: MyPageMatePost): ActivityPost {
+  return {
+    id: post.matePostId,
+    category: "모집",
+    date: post.createdAt ? post.createdAt.slice(0, 10) : "-",
+    title: post.title || "제목 없는 메이트 모집",
+  };
+}
+
+function ProfileSummaryCard({
+  main,
+  isLoading,
+  errorMessage,
+}: {
+  main: MyPageMain | null;
+  isLoading: boolean;
+  errorMessage: string;
+}) {
+  const user = useAuthStore((state) => state.user);
   const [avatarSrc, setAvatarSrc] = useState(
-    user?.profileImageUrl || "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
+    main?.profile.profileCharacterImageUrl ||
+      user?.profileImageUrl ||
+      "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
   );
-  useEffect(() => {
-    if (!user || profileRequested || (user.gender && user.age !== undefined)) return;
-
-    setProfileRequested(true);
-    getMe()
-      .then((profile) => setUser({ ...user, ...profile }))
-      .catch(() => undefined);
-  }, [profileRequested, setUser, user]);
-
-  const displayName = repairMojibake(user?.nickname) || K.name;
 
   useEffect(() => {
-    if (!user || !displayName || user.nickname === displayName) return;
-    setUser({ ...user, nickname: displayName });
-  }, [displayName, setUser, user]);
+    setAvatarSrc(
+      main?.profile.profileCharacterImageUrl ||
+        user?.profileImageUrl ||
+        "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
+    );
+  }, [main?.profile.profileCharacterImageUrl, user?.profileImageUrl]);
 
-  const genderLabel = formatGender(user?.gender);
-  const ageLabel = formatAge(user?.age);
+  const displayName = repairMojibake(main?.profile.nickname || user?.nickname) || "회원";
+  const genderLabel = formatGender(main?.profile.gender);
+  const ageLabel = formatAge(main?.profile.age);
+  const stats = [
+    { label: K.totalPlay, value: isLoading ? "-" : String(main?.stats.totalPlayCount ?? 0), accent: "text-[#f5f5f5]" },
+    { label: K.successRate, value: isLoading ? "-" : `${main?.stats.successRate ?? 0}%`, accent: "text-[#2ecc71]" },
+    { label: K.bestClear, value: isLoading ? "-" : formatSeconds(main?.stats.bestClearTime), accent: "text-[#3498db]" },
+    {
+      label: K.achievements,
+      value: isLoading
+        ? "-"
+        : `${main?.stats.acquiredAchievementCount ?? 0}/${main?.stats.totalAchievementCount ?? 0}`,
+      accent: "text-[#b66ae0]",
+    },
+  ];
 
   return (
     <section className="overflow-hidden rounded-2xl border border-white/[0.075] bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.05),transparent_36%),linear-gradient(112deg,rgba(23,23,23,0.96),rgba(17,17,17,0.92)_48%,rgba(20,12,12,0.94)),rgba(18,18,18,0.9)] shadow-[0_28px_95px_rgba(0,0,0,0.48),0_0_34px_rgba(204,34,34,0.035)] backdrop-blur-md">
+      {errorMessage && (
+        <div className="border-b border-[#cc2222]/20 bg-[#cc2222]/8 px-5 py-3 text-sm font-bold text-[#ef5353]">
+          {errorMessage}
+        </div>
+      )}
       <div className="grid min-h-[156px] items-stretch lg:grid-cols-[350px_1fr_286px]">
         <div className="flex items-center gap-5 border-b border-white/[0.035] px-7 py-6 lg:border-b-0 lg:border-r lg:border-white/[0.035]">
           <div className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-white/[0.1] bg-[#1b1b1b] shadow-[inset_0_0_32px_rgba(255,255,255,0.045),0_14px_32px_rgba(0,0,0,0.42)]">
@@ -1042,7 +878,7 @@ function ProfileSummaryCard() {
         </div>
 
         <div className="grid grid-cols-2 divide-x divide-y divide-white/[0.032] sm:grid-cols-4 sm:divide-y-0">
-          {STATS.map((stat) => (
+          {stats.map((stat) => (
             <div
               key={stat.label}
               className="flex min-h-[132px] flex-col items-center justify-center px-4 text-center sm:min-h-[156px]"
@@ -1062,13 +898,20 @@ function ProfileSummaryCard() {
           ))}
         </div>
 
-        <RankBadgeCard />
+        <RankBadgeCard titleName={main?.profile.titleName} isLoading={isLoading} />
       </div>
     </section>
   );
 }
 
-function RankBadgeCard() {
+function RankBadgeCard({
+  titleName,
+  isLoading,
+}: {
+  titleName?: string;
+  isLoading: boolean;
+}) {
+  const displayTitle = isLoading ? "불러오는 중" : titleName || "대표 칭호 없음";
   return (
     <div className="m-4 flex min-h-[132px] flex-col items-center justify-center rounded-xl border border-[#cc2222]/68 bg-[radial-gradient(circle_at_50%_0%,rgba(229,57,57,0.24),transparent_66%),linear-gradient(180deg,rgba(204,34,34,0.065),rgba(0,0,0,0.16)),#171010] px-5 text-center shadow-[0_0_34px_rgba(204,34,34,0.16),inset_0_0_24px_rgba(204,34,34,0.04)]">
       <p className="mb-3 text-[11px] font-black tracking-[0.16em] text-[#c09a9a]">
@@ -1080,11 +923,15 @@ function RankBadgeCard() {
           className="h-9 w-9 shrink-0 text-[#ef5353] drop-shadow-[0_0_16px_rgba(239,83,83,0.2)]"
         />
         <span className="whitespace-nowrap text-[21px] font-black text-[#f5f5f5]">
-          {K.rank}
+          {displayTitle}
         </span>
       </div>
-      <p className="text-sm font-black text-[#ef5353]">{K.topRank}</p>
-      <p className="mt-1 text-xs font-black text-[#d58a80]">{K.rankRule}</p>
+      <p className="text-sm font-black text-[#ef5353]">
+        {titleName ? "프로필 대표 칭호" : "칭호 API 추가 필요"}
+      </p>
+      <p className="mt-1 text-xs font-black text-[#d58a80]">
+        전체 칭호 목록은 현재 응답에 포함되지 않습니다.
+      </p>
     </div>
   );
 }
@@ -1125,11 +972,17 @@ function ReservationSection({
   count,
   tone,
   reservations,
+  isLoading,
+  errorMessage,
+  emptyMessage,
 }: {
   title: string;
   count: number;
   tone: "upcoming" | "past";
   reservations: Reservation[];
+  isLoading?: boolean;
+  errorMessage?: string;
+  emptyMessage: string;
 }) {
   return (
     <section className={tone === "upcoming" ? "mt-5" : "mt-8"}>
@@ -1151,13 +1004,21 @@ function ReservationSection({
         </span>
       </div>
       <div className="overflow-hidden rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_20px_58px_rgba(0,0,0,0.38),0_0_28px_rgba(204,34,34,0.025)]">
-        {reservations.map((reservation, index) => (
-          <ReservationRowCard
-            key={reservation.id}
-            reservation={reservation}
-            isLast={index === reservations.length - 1}
-          />
-        ))}
+        {isLoading ? (
+          <ActivityStateCard title="예약 내역을 불러오는 중입니다" description="잠시만 기다려주세요." />
+        ) : errorMessage ? (
+          <ActivityStateCard title="예약 내역을 불러오지 못했습니다" description={errorMessage} />
+        ) : reservations.length === 0 ? (
+          <ActivityStateCard title={emptyMessage} description="새로운 예약이 생기면 이곳에 표시됩니다." />
+        ) : (
+          reservations.map((reservation, index) => (
+            <ReservationRowCard
+              key={reservation.id}
+              reservation={reservation}
+              isLast={index === reservations.length - 1}
+            />
+          ))
+        )}
       </div>
     </section>
   );
@@ -1173,6 +1034,10 @@ function ReservationRowCard({
   const status = getStatusStyle(reservation);
   const action = getActionText(reservation);
   const showStatusBadge = reservation.status !== "upcoming";
+  const reviewWriteHref =
+    reservation.themeId && reservation.status !== "upcoming"
+      ? `/mypage/reviews/write?reservationId=${reservation.id}&themeId=${reservation.themeId}&themeTitle=${encodeURIComponent(reservation.themeTitle)}&reservationDate=${encodeURIComponent(`${reservation.date} (${reservation.day}) ${reservation.time}`)}`
+      : null;
   return (
     <div
       className={[
@@ -1247,12 +1112,21 @@ function ReservationRowCard({
             {getStatusText(reservation.status)}
           </span>
         )}
-        <button
-          type="button"
-          className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
-        >
-          {action}
-        </button>
+        {reviewWriteHref ? (
+          <Link
+            href={reviewWriteHref}
+            className="inline-flex h-9 min-w-[104px] items-center justify-center rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
+          >
+            {action}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
+          >
+            {action}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1295,40 +1169,143 @@ function getActionText(reservation: Reservation) {
 }
 
 function ReservationTabContent() {
+  const [upcoming, setUpcoming] = useState<Reservation[]>([]);
+  const [past, setPast] = useState<Reservation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsLoading(true);
+    setErrorMessage("");
+
+    Promise.all([
+      getMyPageReservations("UPCOMING"),
+      getMyPageReservations("PAST"),
+      getThemes(),
+    ])
+      .then(([upcomingReservations, pastReservations, themes]) => {
+        if (!isMounted) return;
+        setUpcoming(
+          upcomingReservations.map((reservation) =>
+            mapReservationToUi(
+              reservation,
+              "UPCOMING",
+              findThemeForReservation(reservation, themes),
+            ),
+          ),
+        );
+        setPast(
+          pastReservations.map((reservation) =>
+            mapReservationToUi(
+              reservation,
+              "PAST",
+              findThemeForReservation(reservation, themes),
+            ),
+          ),
+        );
+      })
+      .catch(() => {
+        if (isMounted) setErrorMessage("예약 정보를 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div>
       <ReservationSection
         title={K.upcoming}
-        count={UPCOMING_RESERVATIONS.length}
+        count={upcoming.length}
         tone="upcoming"
-        reservations={UPCOMING_RESERVATIONS}
+        reservations={upcoming}
+        isLoading={isLoading}
+        errorMessage={errorMessage}
+        emptyMessage="아직 예정된 예약이 없습니다."
       />
       <ReservationSection
         title={K.past}
-        count={PAST_RESERVATIONS.length}
+        count={past.length}
         tone="past"
-        reservations={PAST_RESERVATIONS}
+        reservations={past}
+        isLoading={isLoading}
+        errorMessage={errorMessage}
+        emptyMessage="아직 지난 예약 내역이 없습니다."
       />
     </div>
   );
 }
 
-function AchievementTabContent() {
+function AchievementTabContent({ titleName }: { titleName?: string }) {
+  const [achievements, setAchievements] = useState<AchievementItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const currentTitle: TitleItem | null = titleName
+    ? {
+        id: 1,
+        name: titleName,
+        condition: "프로필에 설정된 대표 칭호입니다.",
+        status: "current",
+        icon: "group",
+      }
+    : null;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsLoading(true);
+    setErrorMessage("");
+
+    getMyPageAchievements()
+      .then((items) => {
+        if (isMounted) setAchievements(items.map(mapAchievementToUi));
+      })
+      .catch(() => {
+        if (isMounted) setErrorMessage("업적 정보를 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="mt-5 space-y-8">
       <AchievementSectionTitle title="칭호" tone="red" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {TITLES.map((title) => (
-          <TitleCard key={title.id} title={title} />
-        ))}
-      </div>
+      {currentTitle ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <TitleCard title={currentTitle} />
+        </div>
+      ) : (
+        <ActivityStateCard
+          title="대표 칭호가 없습니다"
+          description="전체 칭호 목록 API가 없어 프로필 대표 칭호만 표시합니다."
+        />
+      )}
 
       <AchievementSectionTitle title="업적" tone="red" className="pt-1" />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {ACHIEVEMENTS.map((achievement) => (
-          <AchievementCard key={achievement.id} achievement={achievement} />
-        ))}
-      </div>
+      {isLoading ? (
+        <ActivityStateCard title="업적 정보를 불러오는 중입니다" description="잠시만 기다려주세요." />
+      ) : errorMessage ? (
+        <ActivityStateCard title="업적 정보를 불러오지 못했습니다" description={errorMessage} />
+      ) : achievements.length === 0 ? (
+        <ActivityStateCard title="아직 달성한 업적이 없습니다" description="조건을 달성하면 업적이 표시됩니다." />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {achievements.map((achievement) => (
+            <AchievementCard key={achievement.id} achievement={achievement} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -1510,53 +1487,252 @@ function getProgressBarStyle() {
   return "h-full rounded-full bg-[#ef3f4b] shadow-[0_0_12px_rgba(239,63,75,0.28)]";
 }
 
+function formatMateDateTime(value: string) {
+  if (!value) return { date: "-", time: "-" };
+
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    const hour = String(parsed.getHours()).padStart(2, "0");
+    const minute = String(parsed.getMinutes()).padStart(2, "0");
+
+    return {
+      date: `${year}-${month}-${day}`,
+      time: `${hour}:${minute}`,
+    };
+  }
+
+  const [date = "-", rawTime = "-"] = value.split("T");
+  return {
+    date,
+    time: rawTime.slice(0, 5) || "-",
+  };
+}
+
+function mapMateActivityStatus(status: MatePostStatus): MateActivityStatus {
+  if (status === "CLOSED" || status === "MATCHED" || status === "DELETED") {
+    return "closed";
+  }
+
+  return "joined";
+}
+
+function mapMyPageMateToActivityMate(post: MyPageMatePost): ActivityMate {
+  const { date, time } = formatMateDateTime(post.meetingTime);
+  const [primaryTag, ...restTags] = post.tags;
+
+  return {
+    id: post.matePostId,
+    themeTitle: post.themeTitle || primaryTag || "메이트 모집",
+    location: post.location || restTags.slice(0, 2).join(" · ") || "참여한 모집",
+    title: post.title || "제목 없는 메이트 모집",
+    date,
+    time,
+    currentMembers: post.currentPeople,
+    totalMembers: post.maxPeople,
+    status: mapMateActivityStatus(post.status),
+    imageUrl: post.imageUrl || "/images/theme-placeholder.png",
+  };
+}
+
+async function enrichMyPageMatePost(post: MyPageMatePost): Promise<MyPageMatePost> {
+  if (!post.matePostId) return post;
+
+  try {
+    const detail = await getMatePostById(post.matePostId);
+    const theme = detail.themeId ? await getThemeById(detail.themeId).catch(() => null) : null;
+
+    return {
+      ...post,
+      themeId: post.themeId ?? detail.themeId,
+      themeTitle: post.themeTitle || theme?.title || detail.themeTitle,
+      location:
+        post.location ||
+        [
+          theme?.storeName || detail.storeName,
+          theme?.branchName || detail.branchName,
+          theme?.locationName || detail.region,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      title: post.title || detail.title,
+      status: post.status || detail.status,
+      meetingTime: post.meetingTime || detail.meetingTime,
+      currentPeople: post.currentPeople || detail.currentPeople,
+      maxPeople: post.maxPeople || detail.maxPeople,
+      createdAt: post.createdAt || detail.createdAt,
+      tags: post.tags.length > 0 ? post.tags : detail.tags,
+      imageUrl: post.imageUrl || detail.imageUrl || theme?.imageUrl,
+    };
+  } catch (error) {
+    console.error("Failed to enrich my mate participation", error);
+    return post;
+  }
+}
+
 function ActivityTabContent() {
+  const [reviews, setReviews] = useState<ActivityReview[]>([]);
+  const [writtenPosts, setWrittenPosts] = useState<ActivityPost[]>([]);
+  const [joinedMates, setJoinedMates] = useState<ActivityMate[]>([]);
+  const [isActivityLoading, setIsActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadActivity = async () => {
+      setIsActivityLoading(true);
+      setActivityError("");
+
+      try {
+        const [reviewItems, writtenMatePosts, joinedPosts] = await Promise.all([
+          getMyPageReviews(),
+          getMyPageMatePosts(),
+          getMyPageMateParticipations(),
+        ]);
+        if (!isMounted) return;
+
+        setReviews(reviewItems.map(mapReviewToUi));
+
+        void enrichMyPageReviewsWithThemeImages(reviewItems).then((enrichedReviews) => {
+          if (!isMounted) return;
+          setReviews(enrichedReviews.map(mapReviewToUi));
+        });
+
+        const enrichedJoinedPosts = await Promise.all(joinedPosts.map(enrichMyPageMatePost));
+        if (!isMounted) return;
+        setWrittenPosts(writtenMatePosts.map(mapMatePostToActivityPost));
+        setJoinedMates(enrichedJoinedPosts.map(mapMyPageMateToActivityMate));
+      } catch (error) {
+        console.error("Failed to load mypage activity", error);
+        if (!isMounted) return;
+        setActivityError("내 활동 정보를 불러오지 못했습니다.");
+      } finally {
+        if (isMounted) {
+          setIsActivityLoading(false);
+        }
+      }
+    };
+
+    loadActivity();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <div className="mt-5 space-y-8">
-      <ActivitySection title="내 후기" icon="review">
-        <div className="space-y-3.5">
-          {ACTIVITY_REVIEWS.map((review) => (
-            <ReviewActivityCard key={review.id} review={review} />
-          ))}
-        </div>
+      <ActivitySection
+        title="내 후기"
+        icon="review"
+        action={
+          <Link
+            href="/mypage/reviews"
+            className="inline-flex h-9 items-center justify-center rounded-lg border border-[#cc2222]/46 bg-[#101010]/55 px-3.5 text-[12px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
+          >
+            내 후기 관리
+          </Link>
+        }
+      >
+        {isActivityLoading ? (
+          <ActivityStateCard title="내 후기를 불러오는 중입니다" description="잠시만 기다려주세요." />
+        ) : activityError ? (
+          <ActivityStateCard title="내 후기를 불러오지 못했습니다" description={activityError} />
+        ) : reviews.length === 0 ? (
+          <ActivityStateCard title="작성한 후기가 없습니다" description="후기를 작성하면 이곳에 표시됩니다." />
+        ) : (
+          <div className="space-y-3.5">
+            {reviews.map((review) => (
+              <ReviewActivityCard key={review.id} review={review} />
+            ))}
+          </div>
+        )}
       </ActivitySection>
 
       <ActivitySection title="내가 쓴 글" icon="post">
-        <div className="overflow-hidden rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_20px_58px_rgba(0,0,0,0.34)]">
-          {ACTIVITY_POSTS.map((post, index) => (
-            <PostActivityRow
-              key={post.id}
-              post={post}
-              isLast={index === ACTIVITY_POSTS.length - 1}
-            />
-          ))}
-        </div>
+        {isActivityLoading ? (
+          <ActivityStateCard title="작성한 메이트 모집글을 불러오는 중입니다" description="잠시만 기다려주세요." />
+        ) : activityError ? (
+          <ActivityStateCard title="작성한 글을 불러오지 못했습니다" description={activityError} />
+        ) : writtenPosts.length === 0 ? (
+          <ActivityStateCard title="작성한 메이트 모집글이 없습니다" description="메이트 모집글을 작성하면 이곳에 표시됩니다." />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_20px_58px_rgba(0,0,0,0.34)]">
+            {writtenPosts.map((post, index) => (
+              <PostActivityRow
+                key={post.id}
+                post={post}
+                isLast={index === writtenPosts.length - 1}
+              />
+            ))}
+          </div>
+        )}
       </ActivitySection>
 
       <ActivitySection title="내가 참여한 메이트 모집" icon="mate">
-        <div className="grid gap-4 lg:grid-cols-3">
-          {ACTIVITY_MATES.map((mate) => (
-            <MateActivityCard key={mate.id} mate={mate} />
-          ))}
-        </div>
+        {isActivityLoading ? (
+          <ActivityStateCard
+            title="참여한 메이트 모집을 불러오는 중입니다"
+            description="잠시만 기다려주세요."
+          />
+        ) : activityError ? (
+          <ActivityStateCard
+            title="목록을 불러오지 못했습니다"
+            description={activityError}
+          />
+        ) : joinedMates.length === 0 ? (
+          <ActivityStateCard
+            title="아직 참여한 메이트 모집이 없습니다"
+            description="메이트 찾기에서 참여 신청한 모집이 이곳에 표시됩니다."
+          />
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {joinedMates.map((mate) => (
+              <MateActivityCard key={mate.id} mate={mate} />
+            ))}
+          </div>
+        )}
       </ActivitySection>
+    </div>
+  );
+}
+
+function ActivityStateCard({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] px-5 py-8 text-center shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
+      <p className="text-[15px] font-black text-[#e8e8e8]">{title}</p>
+      <p className="mt-2 text-sm font-bold text-[#858585]">{description}</p>
     </div>
   );
 }
 
 function ActivitySection({
   title,
+  action,
   children,
 }: {
   title: string;
   icon: "review" | "post" | "mate";
+  action?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <section>
-      <div className="mb-3.5 flex items-center gap-2.5">
-        <span className="h-2 w-2 rounded-full bg-[#e53939] shadow-[0_0_12px_rgba(229,57,57,0.54)]" />
-        <h3 className="text-[18px] font-black text-[#f5f5f5]">{title}</h3>
+      <div className="mb-3.5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <span className="h-2 w-2 rounded-full bg-[#e53939] shadow-[0_0_12px_rgba(229,57,57,0.54)]" />
+          <h3 className="text-[18px] font-black text-[#f5f5f5]">{title}</h3>
+        </div>
+        {action}
       </div>
       {children}
     </section>
@@ -1585,20 +1761,6 @@ function ReviewActivityCard({ review }: { review: ActivityReview }) {
             <span className="text-xs font-bold text-[#747474]">
               {review.date}
             </span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="h-8 rounded-md border border-white/[0.11] bg-[#101010]/55 px-3 text-xs font-black text-[#aaa] transition-all hover:border-white/[0.2] hover:text-white"
-              >
-                수정
-              </button>
-              <button
-                type="button"
-                className="h-8 rounded-md border border-[#cc2222]/45 bg-[#101010]/55 px-3 text-xs font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
-              >
-                삭제
-              </button>
-            </div>
           </div>
         </div>
 
@@ -1691,22 +1853,29 @@ function MateActivityCard({ mate }: { mate: ActivityMate }) {
         alt={mate.themeTitle}
         className="group-hover:scale-[1.035]"
       >
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.18)_44%,rgba(18,18,18,0.96))]" />
-        <div className="absolute left-4 top-4 flex gap-2">
-          <span className="rounded-md border border-[#cc2222]/45 bg-[#cc2222]/18 px-2.5 py-1 text-[11px] font-black text-[#ef5353]">
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(0,0,0,0.12)_42%,rgba(0,0,0,0.78)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <p className="line-clamp-1 text-[20px] font-black leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.72)]">
             {mate.themeTitle}
-          </span>
-          <span className="rounded-md border border-white/[0.14] bg-black/35 px-2.5 py-1 text-[11px] font-bold text-[#c7c7c7]">
+          </p>
+          <p className="mt-1.5 line-clamp-1 text-xs font-bold text-[#d0d0d0]">
             {mate.location}
-          </span>
+          </p>
         </div>
       </ThemeThumbnail>
 
-      <div className="p-4">
-        <h4 className="line-clamp-2 min-h-[44px] text-[17px] font-black leading-snug text-[#f5f5f5]">
+      <div className="p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <MateStatusBadge status={mate.status} />
+          <span className="rounded-md border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[11px] font-black text-[#bdbdbd]">
+            {mate.currentMembers}/{mate.totalMembers}명
+          </span>
+        </div>
+
+        <h4 className="line-clamp-2 text-[20px] font-black leading-snug text-[#f5f5f5]">
           {mate.title}
         </h4>
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-[#858585]">
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm font-bold text-[#8f8f8f]">
           <span className="inline-flex items-center gap-1.5">
             <MetaIcon type="date" />
             {mate.date}
@@ -1716,10 +1885,8 @@ function MateActivityCard({ mate }: { mate: ActivityMate }) {
             {mate.time}
           </span>
         </div>
-      </div>
 
-      <div className="border-t border-white/[0.06] px-4 py-4">
-        <div className="mb-3 flex items-center justify-between gap-3 text-xs font-black">
+        <div className="mt-5 flex items-center justify-between gap-3 text-xs font-black">
           <span className="inline-flex items-center gap-1.5 text-[#8d8d8d]">
             <ActivityLineIcon type="users" className="h-4 w-4" />
             현재 인원
@@ -1728,23 +1895,19 @@ function MateActivityCard({ mate }: { mate: ActivityMate }) {
             {mate.currentMembers}/{mate.totalMembers}명
           </span>
         </div>
-        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
+        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
           <span
             className="block h-full rounded-full bg-[#b93a3a] shadow-[0_0_12px_rgba(204,34,34,0.28)]"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex items-center justify-between gap-3">
-          <MateStatusBadge status={mate.status} />
-          <button
-            type="button"
-            className={
-              "h-9 rounded-md border px-4 text-xs font-black transition-all border-[#cc2222]/58 bg-[#101010]/55 text-[#ef5353] hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white"
-            }
-          >
-            {isAuthor ? "관리하기" : "상세보기"}
-          </button>
-        </div>
+
+        <Link
+          href={`/mate/${mate.id}`}
+          className="mt-5 flex h-11 items-center justify-center rounded-lg border border-[#cc2222]/48 bg-[#cc2222]/8 px-4 text-sm font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/14 hover:text-white"
+        >
+          {isAuthor ? "모집 관리하기" : "모집 상세보기"}
+        </Link>
       </div>
     </article>
   );
@@ -1772,6 +1935,9 @@ function MateStatusBadge({ status }: { status: MateActivityStatus }) {
 
 export default function MyPage() {
   const [tab, setTab] = useState<TabKey>("reservation");
+  const [main, setMain] = useState<MyPageMain | null>(null);
+  const [isMainLoading, setIsMainLoading] = useState(true);
+  const [mainError, setMainError] = useState("");
   const currentTabLabel =
     TABS.find((item) => item.key === tab)?.label ?? K.reservation;
   const currentSubtitle =
@@ -1780,6 +1946,29 @@ export default function MyPage() {
       : tab === "activity"
         ? "내 후기와 글, 참여 중인 메이트 모집을 확인해보세요."
         : K.subtitle;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsMainLoading(true);
+    setMainError("");
+
+    getMyPageMain()
+      .then((data) => {
+        if (isMounted) setMain(data);
+      })
+      .catch(() => {
+        if (isMounted) setMainError("마이페이지 정보를 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        if (isMounted) setIsMainLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     <main className="min-h-screen overflow-hidden bg-[#0b0b0b] text-[#f5f5f5]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_86%_9%,rgba(150,20,20,0.42),transparent_30%),radial-gradient(circle_at_2%_82%,rgba(150,24,24,0.34),transparent_28%),radial-gradient(circle_at_24%_14%,rgba(204,34,34,0.105),transparent_32%),linear-gradient(180deg,#0b0b0b_0%,#101010_46%,#090909_100%)]" />
@@ -1811,11 +2000,15 @@ export default function MyPage() {
           </p>
         </header>
 
-        <ProfileSummaryCard />
+        <ProfileSummaryCard
+          main={main}
+          isLoading={isMainLoading}
+          errorMessage={mainError}
+        />
         <ReservationTabs active={tab} onChange={setTab} />
 
         {tab === "reservation" && <ReservationTabContent />}
-        {tab === "achievement" && <AchievementTabContent />}
+        {tab === "achievement" && <AchievementTabContent titleName={main?.profile.titleName} />}
         {tab === "activity" && <ActivityTabContent />}
       </div>
     </main>

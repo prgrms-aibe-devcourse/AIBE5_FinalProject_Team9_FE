@@ -72,7 +72,7 @@ function DrawerRatingIcons({
   const activeColor = type === "horror" ? "text-[#c94a4a]" : "text-[#d7b46a]";
 
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, index) => (
         <Icon
           key={index}
@@ -86,15 +86,171 @@ function DrawerRatingIcons({
   );
 }
 
+function clampRating(value: number) {
+  return Math.max(0, Math.min(5, Number.isFinite(value) ? value : 0));
+}
+
+function formatReviewDate(value: string) {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 10).replaceAll("-", ".");
+
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join(".");
+}
+
+function getReviewerInitial(nickname: string) {
+  return nickname.trim().charAt(0) || "?";
+}
+
+function getReviewSummary(reviews: ThemeReview[]) {
+  const count = reviews.length;
+  const distribution = [5, 4, 3, 2, 1].map((score) => ({
+    score,
+    count: reviews.filter((review) => Math.round(clampRating(review.rating)) === score).length,
+  }));
+
+  if (count === 0) {
+    return {
+      averageRating: 0,
+      averageHorror: 0,
+      averageDifficulty: 0,
+      distribution,
+    };
+  }
+
+  const totals = reviews.reduce(
+    (acc, review) => ({
+      rating: acc.rating + clampRating(review.rating),
+      horror: acc.horror + clampRating(review.horrorRating),
+      difficulty: acc.difficulty + clampRating(review.difficultyRating),
+    }),
+    { rating: 0, horror: 0, difficulty: 0 },
+  );
+
+  return {
+    averageRating: Number((totals.rating / count).toFixed(1)),
+    averageHorror: Number((totals.horror / count).toFixed(1)),
+    averageDifficulty: Number((totals.difficulty / count).toFixed(1)),
+    distribution,
+  };
+}
+
+function SummaryMetricIcons({
+  value,
+  type,
+}: {
+  value: number;
+  type: "horror" | "difficulty";
+}) {
+  const Icon = type === "horror" ? DrawerSkullIcon : DrawerLockIcon;
+  const activeLevel = Math.round(clampRating(value));
+  const activeColor = type === "horror" ? "text-[#ef5353]" : "text-[#e8c766]";
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Icon
+          key={index}
+          className={[
+            "h-[16px] w-[16px]",
+            index < activeLevel ? activeColor : "text-[#3f3f3f] opacity-35",
+          ].join(" ")}
+        />
+      ))}
+    </span>
+  );
+}
+
+function ReviewSummary({
+  reviews,
+  reviewCount,
+}: {
+  reviews: ThemeReview[];
+  reviewCount: number;
+}) {
+  const summary = getReviewSummary(reviews);
+  const loadedReviewCount = Math.max(reviews.length, 1);
+
+  return (
+    <section className="rounded-[16px] border border-white/[0.08] bg-[#151515] p-5 shadow-[0_16px_42px_rgba(0,0,0,0.24)]">
+      <div className="grid gap-5 lg:grid-cols-[210px_1fr_240px] lg:items-center">
+        <div>
+          <p className="text-[11px] font-black tracking-[0.22em] text-[#cc2222]">
+            {"// REVIEW SCORE"}
+          </p>
+          <div className="mt-3 flex items-end gap-2">
+            <span className="text-[42px] font-black leading-none text-[#f5f5f5]">
+              {summary.averageRating.toFixed(1)}
+            </span>
+            <span className="pb-1 text-sm font-black text-[#e8c766]">★</span>
+          </div>
+          <p className="mt-2 text-xs font-bold text-[#777]">총 {reviewCount}개의 후기</p>
+        </div>
+
+        <div className="space-y-2.5">
+          {summary.distribution.map((item) => {
+            const width = `${Math.round((item.count / loadedReviewCount) * 100)}%`;
+
+            return (
+              <div key={item.score} className="grid grid-cols-[34px_1fr_28px] items-center gap-3">
+                <span className="text-xs font-black text-[#e8c766]">★ {item.score}</span>
+                <div className="h-2.5 overflow-hidden rounded-full bg-[#0b0b0b]">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#a8782a,#e8c766)]"
+                    style={{ width }}
+                  />
+                </div>
+                <span className="text-right text-xs font-bold text-[#777]">{item.count}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-white/[0.05] pt-4 lg:border-l lg:border-t-0 lg:py-1 lg:pl-5">
+          <p className="mb-3 text-[11px] font-black tracking-[0.16em] text-[#777]">
+            체감 지표
+          </p>
+          <div className="space-y-3">
+          {[
+            { label: "공포도", value: summary.averageHorror, tone: "text-[#ef5353]", type: "horror" as const },
+            { label: "난이도", value: summary.averageDifficulty, tone: "text-[#e8c766]", type: "difficulty" as const },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-3"
+            >
+              <div className="min-w-[74px]">
+                <p className="text-[11px] font-black text-[#777]">{item.label} 평균</p>
+                <p className={["mt-1 text-base font-black leading-none", item.tone].join(" ")}>
+                  {item.value.toFixed(1)}
+                </p>
+              </div>
+              <SummaryMetricIcons value={item.value} type={item.type} />
+            </div>
+          ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function ThemeDetailDrawer({
   theme,
   onClose,
+  initialTab = "info",
 }: {
   theme: Theme;
   onClose: () => void;
+  initialTab?: DrawerTab;
 }) {
   const [isVisible, setIsVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<DrawerTab>("info");
+  const [activeTab, setActiveTab] = useState<DrawerTab>(initialTab);
   const [selectedDate, setSelectedDate] = useState(() =>
     getDateValue(new Date()),
   );
@@ -154,6 +310,10 @@ export default function ThemeDetailDrawer({
 
     return () => window.cancelAnimationFrame(frameId);
   }, []);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab, theme.id]);
 
   useEffect(() => {
     let isMounted = true;
@@ -455,44 +615,56 @@ export default function ThemeDetailDrawer({
                   </div>
                 )}
 
+                {!isReviewsLoading && !reviewsError && reviews.length > 0 && (
+                  <ReviewSummary
+                    reviews={reviews}
+                    reviewCount={Math.max(reviewStats.reviewCount, reviews.length)}
+                  />
+                )}
+
                 {!isReviewsLoading && !reviewsError && reviews.map((review) => (
                   <article
                     key={review.id}
-                    className="rounded-[14px] border border-white/[0.08] bg-[#171717] p-5"
+                    className="rounded-[16px] border border-white/[0.08] bg-[#171717] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.18)] sm:px-4 sm:py-[17px]"
                   >
-                    <div className="mb-4 flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-black text-[#f4f4f4]">
-                          {review.nickname}
-                        </p>
-                        <p className="mt-1 text-xs font-medium text-[#777]">
-                          {review.createdAt}
-                        </p>
+                    <div className="mb-3 flex items-start justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[linear-gradient(135deg,#252525,#111)] text-sm font-black text-[#d8d8d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                          {getReviewerInitial(review.nickname)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-black text-[#f4f4f4]">
+                            {review.nickname}
+                          </p>
+                          <p className="mt-0.5 text-xs font-bold text-[#777]">
+                            {formatReviewDate(review.createdAt)}
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-sm font-black text-[#e8c766]">
+                      <span className="mr-1 shrink-0 rounded-full border border-[#e8c766]/25 bg-[#e8c766]/10 px-3 py-1 text-sm font-black text-[#e8c766]">
                         ★ {review.rating.toFixed(1)}
                       </span>
                     </div>
 
-                    <div className="mb-4 grid gap-2 rounded-[12px] border border-white/[0.06] bg-[#101010]/65 p-3 sm:grid-cols-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-bold text-[#888]">공포도</span>
+                    <p className="text-sm leading-6 text-[#b8b8b8]">{review.content}</p>
+
+                    <div className="mt-3.5 flex flex-wrap gap-2">
+                      <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.045] bg-[#101010]/52 px-3 py-2">
+                        <span className="shrink-0 text-xs font-black text-[#888]">공포도</span>
                         <DrawerRatingIcons level={review.horrorRating} type="horror" />
                       </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-bold text-[#888]">난이도</span>
+                      <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.045] bg-[#101010]/52 px-3 py-2">
+                        <span className="shrink-0 text-xs font-black text-[#888]">난이도</span>
                         <DrawerRatingIcons level={review.difficultyRating} type="difficulty" />
                       </div>
                     </div>
 
-                    <p className="text-sm leading-7 text-[#aaa]">{review.content}</p>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex flex-wrap gap-1.5">
+                    <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/[0.04] pt-3">
+                      <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                         {review.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-xs font-bold text-[#8f8f8f]"
+                            className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-xs font-bold text-[#8a8a8a]"
                           >
                             #{tag}
                           </span>
@@ -500,7 +672,7 @@ export default function ThemeDetailDrawer({
                       </div>
                       <button
                         type="button"
-                        className="text-xs font-bold text-[#666] transition-colors hover:text-[#aaa]"
+                        className="mr-1 shrink-0 text-xs font-bold text-[#5f5f5f] transition-colors hover:text-[#aaa]"
                       >
                         신고
                       </button>
@@ -735,7 +907,7 @@ export default function ThemeDetailDrawer({
             </button>
             {selectedDate && selectedTime && selectedTimeSlotId ? (
               <Link
-                href={`/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}&timeSlotId=${selectedTimeSlotId}`}
+                href={`/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}&timeSlotId=${selectedTimeSlotId}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${displayThemeId}&tab=reservation`)}`}
                 onClick={saveReservationDraft}
                 className="h-12 flex-[1.7] rounded-[10px] bg-[#cc2222] text-center text-sm font-black leading-[48px] text-white transition-all hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]"
               >

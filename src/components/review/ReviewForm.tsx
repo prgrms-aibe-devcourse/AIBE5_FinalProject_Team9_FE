@@ -2,14 +2,17 @@
 
 import { useState, FormEvent } from 'react';
 import Button from '@/components/common/Button';
-import { CreateReviewRequest } from '@/types/review';
+import { ReviewFormValues } from '@/types/review';
 
 interface ReviewFormProps {
-  themeId: number;
+  themeId?: number;
   themeTitle: string;
   reservationId: number;
   reservationDate: string;
-  onSubmit: (data: CreateReviewRequest) => Promise<void>;
+  initialValues?: Partial<ReviewFormValues>;
+  submitLabel?: string;
+  errorMessage?: string;
+  onSubmit: (data: ReviewFormValues) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -46,14 +49,25 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
   );
 }
 
-export default function ReviewForm({ themeId, themeTitle, reservationId, reservationDate, onSubmit, onCancel }: ReviewFormProps) {
-  const [rating, setRating] = useState(0);
-  const [difficulty, setDifficulty] = useState(0);
-  const [horrorLevel, setHorrorLevel] = useState(0);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [content, setContent] = useState('');
-  const [hasSpoiler, setHasSpoiler] = useState(false);
+export default function ReviewForm({
+  themeId,
+  themeTitle,
+  reservationId,
+  reservationDate,
+  initialValues,
+  submitLabel = '후기 등록',
+  errorMessage,
+  onSubmit,
+  onCancel,
+}: ReviewFormProps) {
+  const [rating, setRating] = useState(initialValues?.rating ?? 0);
+  const [difficulty, setDifficulty] = useState(initialValues?.difficulty ?? 0);
+  const [horrorLevel, setHorrorLevel] = useState(initialValues?.horrorLevel ?? 0);
+  const [selectedTags, setSelectedTags] = useState<string[]>(initialValues?.tags ?? []);
+  const [content, setContent] = useState(initialValues?.content ?? '');
+  const [hasSpoiler, setHasSpoiler] = useState(initialValues?.hasSpoiler ?? false);
   const [loading, setLoading] = useState(false);
+  const [validationMessage, setValidationMessage] = useState('');
 
   const toggleTag = (tag: string) =>
     setSelectedTags((prev) =>
@@ -62,9 +76,30 @@ export default function ReviewForm({ themeId, themeTitle, reservationId, reserva
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!rating || !difficulty || !horrorLevel) {
+      setValidationMessage('별점, 난이도, 공포도를 모두 선택해주세요.');
+      return;
+    }
+    if (!content.trim()) {
+      setValidationMessage('후기 내용을 입력해주세요.');
+      return;
+    }
+
+    setValidationMessage('');
     setLoading(true);
     try {
-      await onSubmit({ themeId, reservationId, rating, difficulty, horrorLevel, content, tags: selectedTags, hasSpoiler });
+      await onSubmit({
+        themeId,
+        reservationId,
+        rating,
+        difficulty,
+        horrorLevel,
+        content: content.trim(),
+        tags: selectedTags,
+        hasSpoiler,
+      });
+    } catch {
+      // Parent component owns API error messaging.
     } finally {
       setLoading(false);
     }
@@ -72,6 +107,12 @@ export default function ReviewForm({ themeId, themeTitle, reservationId, reserva
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {(errorMessage || validationMessage) && (
+        <div className="rounded-lg border border-[#e63946]/25 bg-[#e63946]/10 px-3 py-2 text-sm font-medium text-[#ff8a8a]">
+          {errorMessage || validationMessage}
+        </div>
+      )}
+
       {/* Theme info */}
       <div className="flex items-center gap-3 p-3 bg-[#111] rounded-lg border border-[#2a2a2a]">
         <div className="w-10 h-10 bg-[#2a2a2a] rounded flex items-center justify-center text-lg">🚪</div>
@@ -141,7 +182,7 @@ export default function ReviewForm({ themeId, themeTitle, reservationId, reserva
 
       <div className="flex gap-2 justify-end">
         <Button type="button" variant="ghost" onClick={onCancel}>취소</Button>
-        <Button type="submit" loading={loading}>후기 등록</Button>
+        <Button type="submit" loading={loading}>{submitLabel}</Button>
       </div>
     </form>
   );

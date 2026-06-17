@@ -71,12 +71,29 @@ export interface MateParticipant {
   id?: number;
   memberId: number;
   nickname: string;
+  status?: 'JOINED' | 'CANCELLED' | 'KICKED' | string;
   profileImageUrl?: string;
   joinedAt?: string;
+  openChatUrl?: string;
 }
 
 export interface MateParticipantListResponse {
   currentPeople: number;
   maxPeople: number;
   items: MateParticipant[];
+}
+
+export interface MyPageMatePost {
+  matePostId: number;
+  themeId?: number;
+  themeTitle?: string;
+  location?: string;
+  title: string;
+  status: MatePostStatus;
+  meetingTime: string;
+  currentPeople: number;
+  maxPeople: number;
+  createdAt: string;
+  tags: string[];
+  imageUrl?: string;
 }

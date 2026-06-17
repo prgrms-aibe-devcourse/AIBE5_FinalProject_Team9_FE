@@ -7,10 +7,18 @@ import {
   MatePost,
   MatePostListParams,
   MatePostListResponse,
+  MyPageMatePost,
   UpdateMatePostRequest,
 } from '@/types/mate';
 
 type ApiItemResponse<T> = T | { data?: T };
+type ApiListResponse<T> =
+  | T[]
+  | {
+      data?: T[] | { data?: T[]; items?: T[]; content?: T[] };
+      items?: T[];
+      content?: T[];
+    };
 
 interface MatePostApiResponse {
   id?: number;
@@ -50,10 +58,13 @@ interface MatePostListApiResponse {
 interface MateParticipantApiResponse {
   id?: number;
   memberId?: number;
+  memberNickname?: string;
   nickname?: string;
   userNickname?: string;
+  status?: MateParticipant['status'];
   profileImageUrl?: string;
   joinedAt?: string;
+  openChatUrl?: string;
 }
 
 interface MateParticipantListApiResponse {
@@ -62,6 +73,29 @@ interface MateParticipantListApiResponse {
   content?: MateParticipantApiResponse[];
   currentPeople?: number;
   maxPeople?: number;
+}
+
+interface MyPageMatePostApiResponse {
+  id?: number;
+  postId?: number;
+  matePostId?: number;
+  matePost?: MatePostApiResponse;
+  post?: MatePostApiResponse;
+  themeId?: number;
+  themeTitle?: string;
+  themeName?: string;
+  branchName?: string;
+  storeName?: string;
+  region?: string;
+  location?: string;
+  title?: string;
+  status?: MatePost['status'];
+  meetingTime?: string;
+  currentPeople?: number;
+  maxPeople?: number;
+  createdAt?: string;
+  tags?: string[] | string;
+  imageUrl?: string;
 }
 
 const unwrapItem = <T>(response: ApiItemResponse<T>): T => {
@@ -79,6 +113,16 @@ const parseTags = (tags?: string[] | string) => {
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean);
+};
+
+const unwrapList = <T>(response: ApiListResponse<T>): T[] => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response.data)) return response.data;
+  if (response.data && !Array.isArray(response.data)) {
+    return response.data.data ?? response.data.items ?? response.data.content ?? [];
+  }
+
+  return response.items ?? response.content ?? [];
 };
 
 const mapMatePost = (post: MatePostApiResponse): MatePost => ({
@@ -128,10 +172,44 @@ const unwrapMatePostList = (body: MatePostListApiResponse): MatePostListResponse
 const mapParticipant = (participant: MateParticipantApiResponse): MateParticipant => ({
   id: participant.id,
   memberId: participant.memberId ?? participant.id ?? 0,
-  nickname: repairMojibake(participant.nickname ?? participant.userNickname ?? '익명'),
+  nickname: repairMojibake(
+    participant.memberNickname ?? participant.nickname ?? participant.userNickname ?? '익명',
+  ),
+  status: participant.status,
   profileImageUrl: participant.profileImageUrl,
   joinedAt: participant.joinedAt,
+  openChatUrl: participant.openChatUrl,
 });
+
+const mapMyPageMatePost = (post: MyPageMatePostApiResponse): MyPageMatePost => {
+  const nestedPost = post.matePost ?? post.post;
+  const source = nestedPost ?? post;
+  const locationParts = [
+    post.storeName ?? nestedPost?.storeName,
+    post.branchName ?? nestedPost?.branchName,
+    post.region ?? nestedPost?.region,
+    post.location,
+  ]
+    .map(repairMojibake)
+    .filter(Boolean);
+
+  return {
+    matePostId: post.matePostId ?? post.postId ?? post.id ?? nestedPost?.id ?? 0,
+    themeId: post.themeId ?? nestedPost?.themeId,
+    themeTitle: repairMojibake(
+      post.themeTitle ?? post.themeName ?? nestedPost?.themeTitle,
+    ),
+    location: locationParts.join(' · ') || undefined,
+    title: repairMojibake(source.title),
+    status: source.status ?? 'RECRUITING',
+    meetingTime: source.meetingTime ?? '',
+    currentPeople: source.currentPeople ?? 0,
+    maxPeople: source.maxPeople ?? 0,
+    createdAt: source.createdAt ?? '',
+    tags: parseTags(source.tags),
+    imageUrl: source.imageUrl ?? undefined,
+  };
+};
 
 const unwrapParticipantList = (
   body: MateParticipantListApiResponse,
@@ -143,7 +221,9 @@ const unwrapParticipantList = (
   const rawItems = Array.isArray(body.data)
     ? body.data
     : source.items ?? source.content ?? [];
-  const items = rawItems.map(mapParticipant);
+  const items = rawItems
+    .map(mapParticipant)
+    .filter((participant) => !participant.status || participant.status === 'JOINED');
 
   return {
     currentPeople: source.currentPeople ?? items.length,
@@ -203,6 +283,14 @@ export const joinMatePost = async (postId: number): Promise<void> => {
 
 export const leaveMatePost = async (postId: number): Promise<void> => {
   await axiosInstance.delete(`/api/mate-posts/${postId}/join`);
+};
+
+export const getMyMateParticipations = async (): Promise<MyPageMatePost[]> => {
+  const { data } = await axiosInstance.get<ApiListResponse<MyPageMatePostApiResponse>>(
+    '/api/mypage/mate-participations',
+  );
+
+  return unwrapList(data).map(mapMyPageMatePost);
 };
 
 export const getMatePostParticipants = async (
