@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import RatingStars from '@/components/common/RatingStars';
 
 // ── Mock Data ──────────────────────────────────────────────────────
 const STAT_CARDS = [
@@ -54,16 +55,6 @@ const STATUS_MAP: Record<string, { label: string; cls: string }> = {
   CANCELLED: { label: '취소', cls: 'bg-[#e63946]/15 text-[#e63946]' },
   PENDING:   { label: '대기', cls: 'bg-[#888]/15 text-[#888]' },
 };
-
-function StarDisplay({ value }: { value: number }) {
-  return (
-    <span className="flex gap-px">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={['text-sm', i < value ? 'text-[#f39c12]' : 'text-[#333]'].join(' ')}>★</span>
-      ))}
-    </span>
-  );
-}
 
 export default function OwnerDashboardPage() {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
@@ -159,7 +150,7 @@ export default function OwnerDashboardPage() {
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-[#f5f5f5]">{r.theme}</span>
-                    <StarDisplay value={r.rating} />
+                    <RatingStars value={r.rating} size="xs" />
                     {r.hasSpoiler && (
                       <span className="text-[10px] bg-[#f39c12]/20 text-[#f39c12] border border-[#f39c12]/40 px-1.5 py-0.5 rounded font-medium">스포일러</span>
                     )}

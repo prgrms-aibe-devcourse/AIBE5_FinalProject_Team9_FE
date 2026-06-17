@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import RatingStars from "@/components/common/RatingStars";
 import { enrichMyPageReviewsWithThemeImages, parseReviewTags } from "@/lib/myPageReview";
 import { useAuthStore } from "@/stores/authStore";
 import { getMatePostById } from "@/services/mateService";
@@ -331,32 +332,6 @@ function ActivityLineIcon({
       <path {...line} d="M4 4h12v8.7H8.2L4 16V4Z" />
       <path {...line} d="M7.1 7.5h5.8M7.1 10h3.7" />
     </svg>
-  );
-}
-
-function StarRating({ rating }: { rating: number }) {
-  return (
-    <span
-      className="inline-flex items-center gap-0.5"
-      aria-label={`별점 ${rating}점`}
-    >
-      {Array.from({ length: 5 }).map((_, index) => (
-        <svg
-          key={index}
-          viewBox="0 0 16 16"
-          className={[
-            "h-4 w-4",
-            index < rating ? "text-[#e2bd63]" : "text-[#363636]",
-          ].join(" ")}
-          aria-hidden="true"
-        >
-          <path
-            fill="currentColor"
-            d="m8 1.4 1.9 4 4.4.6-3.2 3.1.8 4.4L8 11.4l-3.9 2.1.8-4.4L1.7 6l4.4-.6L8 1.4Z"
-          />
-        </svg>
-      ))}
-    </span>
   );
 }
 
@@ -1827,7 +1802,7 @@ function ReviewActivityCard({ review }: { review: ActivityReview }) {
         </div>
 
         <div className="mb-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-white/[0.055] bg-black/[0.16] px-3 py-2">
-          <StarRating rating={review.rating} />
+          <RatingStars value={review.rating} size="xs" />
           <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#898989]">
             <span className="text-[#777]">공포도</span>
             <RatingIcons level={review.horrorLevel} type="horror" />

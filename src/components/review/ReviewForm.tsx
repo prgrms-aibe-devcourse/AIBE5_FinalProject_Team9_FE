@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import Button from '@/components/common/Button';
+import RatingStars from '@/components/common/RatingStars';
 import { ReviewFormValues } from '@/types/review';
 
 interface ReviewFormProps {
@@ -32,18 +33,6 @@ function DotRating({ value, onChange, color = '#e63946' }: { value: number; onCh
             borderColor: color,
           }}
         />
-      ))}
-    </span>
-  );
-}
-
-function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  return (
-    <span className="flex gap-1 text-2xl">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <button key={i} type="button" onClick={() => onChange(i + 1)}>
-          <span className={i < value ? 'text-[#f39c12]' : 'text-[#2a2a2a]'}>★</span>
-        </button>
       ))}
     </span>
   );
@@ -126,7 +115,7 @@ export default function ReviewForm({
       <div className="flex items-center gap-4 flex-wrap">
         <div>
           <p className="text-xs text-[#888] mb-1">별점</p>
-          <StarRating value={rating} onChange={setRating} />
+          <RatingStars value={rating} size="lg" interactive onChange={setRating} />
         </div>
         <div>
           <p className="text-xs text-[#888] mb-1">난이도</p>

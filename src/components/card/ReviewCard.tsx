@@ -1,17 +1,9 @@
+import RatingStars from "@/components/common/RatingStars";
 import { Review } from "@/types/review";
 
 interface ReviewCardProps {
   review: Review;
   onReport?: (id: number) => void;
-}
-
-function StarScore({ value }: { value: number }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-black text-[#f2c15f]">
-      <span>★</span>
-      <span>{value.toFixed(1)}</span>
-    </span>
-  );
 }
 
 function RatingGlyphs({
@@ -67,7 +59,7 @@ export default function ReviewCard({ review, onReport }: ReviewCardProps) {
           </div>
         </div>
 
-        <StarScore value={review.rating} />
+        <RatingStars value={review.rating} showValue size="xs" className="shrink-0" />
       </div>
 
       <div className="mt-4">

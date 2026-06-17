@@ -12,7 +12,7 @@ const quickPrompts = [
   "폐병원 느낌 좋아해요",
 ];
 
-const recommendTags = ["난이도 ★★★☆☆", "3인 추천", "미스터리", "스토리 중심"];
+const recommendTags = ["난이도 보통", "3인 추천", "미스터리", "스토리 중심"];
 
 export default function AiRecommendSection() {
   return (

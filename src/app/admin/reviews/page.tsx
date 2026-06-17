@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import RatingStars from '@/components/common/RatingStars';
 
 const MOCK_REVIEWS = [
   { id: 1, no: 'RV20240520-001', theme: '새벽의 저택', user: '김민수', rating: 5, hasSpoiler: false, content: '정말 즐겁고 재있었어요! 직원분도 친절하시고 공포 연출도 완벽했습니다. 다음에 또 올게요!', date: '2024.05.20', hideRequest: null },
@@ -22,16 +23,6 @@ const MOCK_REVIEWS = [
 const THEMES_OPTS = ['전체', '새벽의 저택', '피의 연회', '망자의 서재', '감금된 연구소'];
 const RATING_OPTS = ['전체', '5점', '4점', '3점', '2점', '1점'];
 const PAGE_SIZES = [8, 10, 16];
-
-function StarRow({ value }: { value: number }) {
-  return (
-    <span className="flex gap-px">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={['text-sm', i < value ? 'text-[#f39c12]' : 'text-[#333]'].join(' ')}>★</span>
-      ))}
-    </span>
-  );
-}
 
 type Review = typeof MOCK_REVIEWS[number];
 
@@ -164,7 +155,7 @@ export default function OwnerReviewsPage() {
                   <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{r.no}</td>
                   <td className="px-4 py-3 text-xs font-bold text-[#f5f5f5] whitespace-nowrap">{r.theme}</td>
                   <td className="px-4 py-3 text-xs text-[#ccc]">{r.user}</td>
-                  <td className="px-4 py-3"><StarRow value={r.rating} /></td>
+                  <td className="px-4 py-3"><RatingStars value={r.rating} size="xs" /></td>
                   <td className="px-4 py-3 max-w-xs">
                     <div className="flex items-center gap-2 text-xs text-[#888]">
                       {r.hasSpoiler && (
@@ -239,7 +230,7 @@ export default function OwnerReviewsPage() {
                   </div>
                 ))}
                 <span className="text-gray-500">평점</span>
-                <span><StarRow value={viewTarget.rating} /></span>
+                <span><RatingStars value={viewTarget.rating} size="xs" /></span>
                 <span className="text-gray-500 pt-1">후기 내용</span>
                 <p className="text-gray-700 leading-relaxed">{viewTarget.content}</p>
               </div>

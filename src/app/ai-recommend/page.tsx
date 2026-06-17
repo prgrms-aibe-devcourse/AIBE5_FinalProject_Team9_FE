@@ -301,7 +301,7 @@ function ChatMessage({
 }
 
 function RecommendedThemeCard() {
-  const tags = ["난이도 ★★★☆☆", "3인 추천", "미스터리", "스토리 중심"];
+  const tags = ["난이도 보통", "3인 추천", "미스터리", "스토리 중심"];
 
   return (
     <article className="mt-5 rounded-[16px] border border-[#cc2222]/28 bg-[linear-gradient(135deg,rgba(204,34,34,0.1),rgba(27,27,27,0.97)_34%,rgba(18,18,18,0.98))] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.3),0_0_24px_rgba(204,34,34,0.1)]">

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import RatingStars from "@/components/common/RatingStars";
 import {
   getThemeBranchInfo,
   getThemeById,
@@ -187,7 +188,7 @@ function ReviewSummary({
             <span className="text-[42px] font-black leading-none text-[#f5f5f5]">
               {summary.averageRating.toFixed(1)}
             </span>
-            <span className="pb-1 text-sm font-black text-[#e8c766]">★</span>
+            <RatingStars value={1} max={1} size="sm" className="pb-1" />
           </div>
           <p className="mt-2 text-xs font-bold text-[#777]">총 {reviewCount}개의 후기</p>
         </div>
@@ -198,7 +199,10 @@ function ReviewSummary({
 
             return (
               <div key={item.score} className="grid grid-cols-[34px_1fr_28px] items-center gap-3">
-                <span className="text-xs font-black text-[#e8c766]">★ {item.score}</span>
+                <span className="inline-flex items-center gap-1 text-xs font-black text-[#e8c766]">
+                  <RatingStars value={1} max={1} size="xs" />
+                  {item.score}
+                </span>
                 <div className="h-2.5 overflow-hidden rounded-full bg-[#0b0b0b]">
                   <div
                     className="h-full rounded-full bg-[linear-gradient(90deg,#a8782a,#e8c766)]"
@@ -522,7 +526,7 @@ export default function ThemeDetailDrawer({
           <div className="relative border-b border-white/[0.08] bg-[#111]/95">
             <div className="grid grid-cols-4">
               {[
-                { label: "평점", value: `★ ${displayRating.toFixed(1)}` },
+                { label: "평점", value: <RatingStars value={displayRating} showValue size="xs" valueClassName="text-[15px] text-[#f4f4f4]" /> },
                 { label: "리뷰", value: String(displayReviewCount) },
                 { label: "공포도", value: `${displayTheme.horrorLevel}/5` },
                 { label: "난이도", value: `${displayTheme.difficulty}/5` },
@@ -531,7 +535,7 @@ export default function ThemeDetailDrawer({
                   key={stat.label}
                   className="border-r border-white/[0.08] px-4 py-4 text-center last:border-r-0"
                 >
-                  <p className="text-[15px] font-black text-[#f4f4f4]">{stat.value}</p>
+                  <div className="flex min-h-5 items-center justify-center text-[15px] font-black text-[#f4f4f4]">{stat.value}</div>
                   <p className="mt-1 text-[11px] font-bold text-[#777]">{stat.label}</p>
                 </div>
               ))}
@@ -641,8 +645,8 @@ export default function ThemeDetailDrawer({
                           </p>
                         </div>
                       </div>
-                      <span className="mr-1 shrink-0 rounded-full border border-[#e8c766]/25 bg-[#e8c766]/10 px-3 py-1 text-sm font-black text-[#e8c766]">
-                        ★ {review.rating.toFixed(1)}
+                      <span className="mr-1 shrink-0 rounded-full border border-[#e8c766]/25 bg-[#e8c766]/10 px-3 py-1">
+                        <RatingStars value={review.rating} showValue size="xs" />
                       </span>
                     </div>
 

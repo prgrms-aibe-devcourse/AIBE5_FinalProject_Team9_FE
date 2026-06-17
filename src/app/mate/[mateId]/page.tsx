@@ -5,6 +5,7 @@ import { AxiosError } from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import RatingStars from "@/components/common/RatingStars";
 import {
   deleteMatePost,
   getMatePostById,
@@ -108,6 +109,57 @@ function Badge({ children, className = "" }: { children: React.ReactNode; classN
   );
 }
 
+function MateSkullIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
+      <path
+        fill="currentColor"
+        d="M8 1.7c-3.1 0-5.2 2.1-5.2 5.1 0 1.8.8 3.2 2 4v2.1c0 .8.6 1.4 1.4 1.4h3.6c.8 0 1.4-.6 1.4-1.4v-2.1c1.2-.8 2-2.2 2-4 0-3-2.1-5.1-5.2-5.1Zm-2.1 7.6c-.8 0-1.4-.6-1.4-1.4s.6-1.4 1.4-1.4 1.4.6 1.4 1.4-.6 1.4-1.4 1.4Zm2.1 1.5c-.4 0-.8-.3-.8-.7 0-.3.5-1.2.8-1.7.3.5.8 1.4.8 1.7 0 .4-.4.7-.8.7Zm2.1-1.5c-.8 0-1.4-.6-1.4-1.4s.6-1.4 1.4-1.4 1.4.6 1.4 1.4-.6 1.4-1.4 1.4ZM6.1 12.1h.8v1h-.8v-1Zm1.5 0h.8v1h-.8v-1Zm1.5 0h.8v1h-.8v-1Z"
+      />
+    </svg>
+  );
+}
+
+function MateLockIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
+      <path
+        fill="currentColor"
+        d="M4.2 6.7V5.2C4.2 3 5.8 1.5 8 1.5s3.8 1.5 3.8 3.7v1.5h.4c.8 0 1.3.6 1.3 1.3v5.1c0 .8-.6 1.4-1.4 1.4H3.9c-.8 0-1.4-.6-1.4-1.4V8c0-.8.6-1.3 1.3-1.3h.4Zm1.7 0h4.2V5.2c0-1.2-.8-2-2.1-2s-2.1.8-2.1 2v1.5Z"
+      />
+    </svg>
+  );
+}
+
+function MateRatingIcons({
+  level,
+  type,
+}: {
+  level: number;
+  type: "horror" | "difficulty";
+}) {
+  const Icon = type === "horror" ? MateSkullIcon : MateLockIcon;
+  const activeColor = type === "horror" ? "text-[#c94a4a]" : "text-[#d7b46a]";
+  const activeShadow =
+    type === "horror"
+      ? "drop-shadow-[0_0_5px_rgba(204,34,34,0.16)]"
+      : "drop-shadow-[0_0_5px_rgba(215,180,106,0.2)]";
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Icon
+          key={index}
+          className={[
+            "h-4 w-4 transition-all",
+            index < level ? `${activeColor} ${activeShadow} opacity-100` : "text-[#303030] opacity-45",
+          ].join(" ")}
+        />
+      ))}
+    </span>
+  );
+}
+
 function SummaryItem({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="min-w-0">
@@ -147,12 +199,12 @@ function ThemePreviewModal({
   const maxPlayers = theme?.maxPlayers ?? 0;
   const detailItems = theme
     ? [
-        ["공포도", `${theme.horrorLevel || 0}/5`],
-        ["난이도", `${theme.difficulty || 0}/5`],
-        ["인원", isValidPeopleRange(minPlayers, maxPlayers) ? `${minPlayers}~${maxPlayers}명` : "정보 없음"],
-        ["플레이타임", isValidDuration(theme.duration) ? `${theme.duration}분` : "정보 없음"],
-        ["가격", formatPrice(theme.price)],
-        ["평점", `${(theme.rating || 0).toFixed(1)} (${theme.reviewCount || 0})`],
+        { label: "공포도", value: <MateRatingIcons level={theme.horrorLevel || 0} type="horror" /> },
+        { label: "난이도", value: <MateRatingIcons level={theme.difficulty || 0} type="difficulty" /> },
+        { label: "인원", value: isValidPeopleRange(minPlayers, maxPlayers) ? `${minPlayers}~${maxPlayers}명` : "정보 없음" },
+        { label: "플레이타임", value: isValidDuration(theme.duration) ? `${theme.duration}분` : "정보 없음" },
+        { label: "가격", value: formatPrice(theme.price) },
+        { label: "평점", value: <RatingStars value={theme.rating || 0} showValue reviewCount={theme.reviewCount || 0} size="xs" /> },
       ]
     : [];
 
@@ -211,10 +263,10 @@ function ThemePreviewModal({
                 </p>
 
                 <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
-                  {detailItems.map(([label, value]) => (
+                  {detailItems.map(({ label, value }) => (
                     <div key={label} className="rounded-lg border border-white/[0.06] bg-[#101010]/70 px-3 py-2">
                       <p className="mb-1 text-[11px] font-black text-[#626262]">{label}</p>
-                      <p className="truncate text-sm font-bold text-[#e7e7e7]">{value}</p>
+                      <div className="min-h-5 text-sm font-bold text-[#e7e7e7]">{value}</div>
                     </div>
                   ))}
                 </div>
@@ -643,11 +695,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <SummaryItem label="모임 시간" value={formatDateTime(post.meetingTime)} />
                 <SummaryItem label="모집 마감" value={formatDateTime(post.deadline)} />
-                <SummaryItem label="모집 인원" value={`${currentPeople}/${maxPeople}명`} />
                 <SummaryItem label="남은 자리" value={isClosed ? "마감" : `${remaining}자리 남음`} />
-              </div>
-
-              <div className="mt-4">
                 <SummaryItem label="경험 레벨" value={EXPERIENCE_LABEL[post.experienceLevel]} />
               </div>
 

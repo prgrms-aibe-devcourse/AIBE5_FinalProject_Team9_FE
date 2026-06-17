@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
+import RatingStars from '@/components/common/RatingStars';
 import ReviewForm from '@/components/review/ReviewForm';
 import { enrichMyPageReviewsWithThemeImages, parseReviewTags } from '@/lib/myPageReview';
 import { getMyPageReviews, type MyPageReview } from '@/services/mypageService';
@@ -61,21 +62,6 @@ function DotRating({
         />
       ))}
     </span>
-  );
-}
-
-function StarDisplay({ value }: { value: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <span
-          key={index}
-          className={index < value ? 'text-[#f39c12]' : 'text-[#333]'}
-        >
-          ★
-        </span>
-      ))}
-    </div>
   );
 }
 
@@ -392,8 +378,7 @@ export default function MyReviewsPage() {
 
                     <div className="mb-3 flex flex-wrap items-center gap-5 rounded-xl border border-white/[0.06] bg-black/[0.16] px-3 py-2.5">
                       <div className="flex items-center gap-2">
-                        <StarDisplay value={review.rating} />
-                        <span className="text-xs font-bold text-[#f39c12]">{review.rating.toFixed(1)}</span>
+                        <RatingStars value={review.rating} showValue size="xs" />
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-[#8b8b8b]">
                         <span>공포도</span>

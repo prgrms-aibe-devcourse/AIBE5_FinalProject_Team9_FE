@@ -5,6 +5,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
+import RatingStars from '@/components/common/RatingStars';
 import { useReservationStore } from '@/stores/reservationStore';
 import {
   AvailableSlotTheme,
@@ -375,11 +376,14 @@ function ThemeListRow({
             <div className="mt-4 space-y-2.5 text-[12px] leading-none text-[#888]">
               <div className="grid grid-cols-[48px_1fr]">
                 <span>별점</span>
-                <span className="flex items-center gap-3">
-                  <span className="text-[15px] tracking-[0.08em] text-[#f39c12]">★★★★★</span>
-                  <strong className="text-[14px] font-black text-[#f5f5f5]">{(item.rating ?? 0).toFixed(1)}</strong>
-                  <span className="text-[#5f5f5f]">({item.reviewCount ?? 0})</span>
-                </span>
+                <RatingStars
+                  value={item.rating ?? 0}
+                  showValue
+                  reviewCount={item.reviewCount ?? 0}
+                  size="xs"
+                  valueClassName="text-[14px] text-[#f5f5f5]"
+                  reviewClassName="text-[#5f5f5f]"
+                />
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                 <span className="inline-flex items-center gap-3">
