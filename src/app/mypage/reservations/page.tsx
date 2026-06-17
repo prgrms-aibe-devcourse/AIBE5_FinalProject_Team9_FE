@@ -118,7 +118,7 @@ export default function MyReservationsPage() {
                         </div>
                       </div>
                       <button className="shrink-0 text-xs bg-[#e63946] hover:bg-[#c1121f] text-white px-3 py-2 rounded-lg transition-colors font-medium">
-                        예약 취소
+                        취소/환불 요청
                       </button>
                     </div>
                   );

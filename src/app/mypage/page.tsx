@@ -19,6 +19,7 @@ import {
   type MyPageReservation,
   type MyPageReview,
 } from "@/services/mypageService";
+import { cancelReservation } from "@/services/reservationService";
 import { getThemeById, getThemes } from "@/services/themeService";
 import { repairMojibake } from "@/lib/text";
 import type { MatePostStatus, MyPageMatePost } from "@/types/mate";
@@ -719,6 +720,7 @@ function mapReservationToUi(
     status,
     clearTime: reservation.clearTime ? formatSeconds(reservation.clearTime) : undefined,
     imageUrl: theme?.imageUrl || "/images/theme-placeholder.png",
+    hasReview: reservation.hasReview,
   };
 }
 
@@ -975,6 +977,8 @@ function ReservationSection({
   isLoading,
   errorMessage,
   emptyMessage,
+  cancellingId,
+  onCancel,
 }: {
   title: string;
   count: number;
@@ -983,6 +987,8 @@ function ReservationSection({
   isLoading?: boolean;
   errorMessage?: string;
   emptyMessage: string;
+  cancellingId?: number | null;
+  onCancel?: (reservation: Reservation) => void;
 }) {
   return (
     <section className={tone === "upcoming" ? "mt-5" : "mt-8"}>
@@ -1016,6 +1022,8 @@ function ReservationSection({
               key={reservation.id}
               reservation={reservation}
               isLast={index === reservations.length - 1}
+              isCancelling={cancellingId === reservation.id}
+              onCancel={onCancel}
             />
           ))
         )}
@@ -1027,15 +1035,20 @@ function ReservationSection({
 function ReservationRowCard({
   reservation,
   isLast,
+  isCancelling = false,
+  onCancel,
 }: {
   reservation: Reservation;
   isLast?: boolean;
+  isCancelling?: boolean;
+  onCancel?: (reservation: Reservation) => void;
 }) {
   const status = getStatusStyle(reservation);
   const action = getActionText(reservation);
   const showStatusBadge = reservation.status !== "upcoming";
+  const canCancel = reservation.status === "upcoming" && Boolean(onCancel);
   const reviewWriteHref =
-    reservation.themeId && reservation.status !== "upcoming"
+    reservation.themeId && reservation.status !== "upcoming" && !reservation.hasReview
       ? `/mypage/reviews/write?reservationId=${reservation.id}&themeId=${reservation.themeId}&themeTitle=${encodeURIComponent(reservation.themeTitle)}&reservationDate=${encodeURIComponent(`${reservation.date} (${reservation.day}) ${reservation.time}`)}`
       : null;
   return (
@@ -1112,14 +1125,27 @@ function ReservationRowCard({
             {getStatusText(reservation.status)}
           </span>
         )}
-        {reviewWriteHref ? (
+        {canCancel ? (
+          <button
+            type="button"
+            onClick={() => onCancel?.(reservation)}
+            disabled={isCancelling}
+            className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:text-[#666] max-sm:flex-1"
+          >
+            {isCancelling ? "요청 중..." : "취소/환불 요청"}
+          </button>
+        ) : reviewWriteHref ? (
           <Link
             href={reviewWriteHref}
             className="inline-flex h-9 min-w-[104px] items-center justify-center rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
           >
             {action}
           </Link>
-        ) : (
+        ) : reservation.status !== "upcoming" && reservation.hasReview ? (
+          <span className="inline-flex h-9 min-w-[104px] items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.035] px-4 text-[13px] font-black text-[#8d8d8d] max-sm:flex-1">
+            후기 작성됨
+          </span>
+        ) : reservation.status === "upcoming" ? null : (
           <button
             type="button"
             className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
@@ -1173,20 +1199,20 @@ function ReservationTabContent() {
   const [past, setPast] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [noticeMessage, setNoticeMessage] = useState("");
+  const [cancellingId, setCancellingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-
+  const loadReservations = (isMounted: () => boolean) => {
     setIsLoading(true);
     setErrorMessage("");
 
-    Promise.all([
+    return Promise.all([
       getMyPageReservations("UPCOMING"),
       getMyPageReservations("PAST"),
       getThemes(),
     ])
       .then(([upcomingReservations, pastReservations, themes]) => {
-        if (!isMounted) return;
+        if (!isMounted()) return;
         setUpcoming(
           upcomingReservations.map((reservation) =>
             mapReservationToUi(
@@ -1207,19 +1233,53 @@ function ReservationTabContent() {
         );
       })
       .catch(() => {
-        if (isMounted) setErrorMessage("예약 정보를 불러오지 못했습니다.");
+        if (isMounted()) setErrorMessage("예약 정보를 불러오지 못했습니다.");
       })
       .finally(() => {
-        if (isMounted) setIsLoading(false);
+        if (isMounted()) setIsLoading(false);
       });
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    loadReservations(() => isMounted);
 
     return () => {
       isMounted = false;
     };
   }, []);
 
+  const handleCancelReservation = async (reservation: Reservation) => {
+    const confirmed = window.confirm(
+      "예약 취소/환불을 요청하시겠습니까?\n환불 가능 여부는 예약일 기준 환불 정책에 따라 적용됩니다.",
+    );
+
+    if (!confirmed) return;
+
+    setCancellingId(reservation.id);
+    setNoticeMessage("");
+    setErrorMessage("");
+
+    try {
+      await cancelReservation(reservation.id);
+      setUpcoming((current) => current.filter((item) => item.id !== reservation.id));
+      setNoticeMessage("예약 취소 요청이 완료되었습니다. 환불은 결제 상태에 따라 처리됩니다.");
+      await loadReservations(() => true);
+    } catch {
+      setErrorMessage("예약 취소 요청에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   return (
     <div>
+      {noticeMessage && (
+        <div className="mt-5 rounded-xl border border-[#65d6aa]/25 bg-[#65d6aa]/10 px-4 py-3 text-sm font-bold text-[#8de4c1]">
+          {noticeMessage}
+        </div>
+      )}
       <ReservationSection
         title={K.upcoming}
         count={upcoming.length}
@@ -1228,6 +1288,8 @@ function ReservationTabContent() {
         isLoading={isLoading}
         errorMessage={errorMessage}
         emptyMessage="아직 예정된 예약이 없습니다."
+        cancellingId={cancellingId}
+        onCancel={handleCancelReservation}
       />
       <ReservationSection
         title={K.past}

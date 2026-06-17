@@ -1,7 +1,5 @@
 import axiosInstance from '@/lib/axios';
 import { repairMojibake } from '@/lib/text';
-import { getThemeReviews } from '@/services/themeService';
-import type { MyPageReview } from '@/services/mypageService';
 import type {
   Review,
   ReviewCreateRequest,
@@ -190,61 +188,4 @@ export const updateReview = async (
 
 export const deleteReview = async (reviewId: number): Promise<void> => {
   await axiosInstance.delete(`/api/reviews/${reviewId}`);
-};
-
-const themeReviewCache = new Map<number, Promise<Review[]>>();
-
-const getCachedThemeReviews = (themeId: number) => {
-  const cached = themeReviewCache.get(themeId);
-  if (cached) return cached;
-
-  const request = getThemeReviews(themeId).then((response) =>
-    response.reviews.map((review) => ({
-      id: review.id,
-      themeId,
-      themeTitle: '',
-      userId: 0,
-      userNickname: review.nickname,
-      rating: review.rating,
-      difficulty: review.difficultyRating,
-      horrorLevel: review.horrorRating,
-      content: review.content,
-      tags: review.tags,
-      imageUrls: review.imageUrls,
-      hasSpoiler: review.spoiler,
-      createdAt: review.createdAt,
-    })),
-  );
-
-  themeReviewCache.set(themeId, request);
-  return request;
-};
-
-export const resolveMyPageReviewId = async (review: MyPageReview): Promise<number | null> => {
-  if ((review as MyPageReview & { reviewId?: number }).reviewId) {
-    return (review as MyPageReview & { reviewId?: number }).reviewId ?? null;
-  }
-
-  if (!review.themeId) return null;
-
-  const themeReviews = await getCachedThemeReviews(review.themeId);
-  const matched = themeReviews.find((themeReview) => {
-    const sameCreatedAt = themeReview.createdAt === review.createdAt;
-    const sameNickname = themeReview.userNickname === review.nickname;
-    const sameContent = themeReview.content === review.content;
-    const sameRating = themeReview.rating === review.rating;
-    const sameHorror = themeReview.horrorLevel === review.horrorRating;
-    const sameDifficulty = themeReview.difficulty === review.difficultyRating;
-
-    return (
-      sameCreatedAt &&
-      sameNickname &&
-      sameContent &&
-      sameRating &&
-      sameHorror &&
-      sameDifficulty
-    );
-  });
-
-  return matched?.id ?? null;
 };

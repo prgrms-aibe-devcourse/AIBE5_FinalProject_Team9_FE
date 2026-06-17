@@ -49,9 +49,7 @@ export interface PaymentRefundRequest {
 
 export interface PaymentRefundResponse {
   paymentId: number;
-  reservationId: number;
   orderId: string;
-  amount: number;
   status: 'PAY_REFUND_PENDING' | 'PAY_REFUNDED' | 'PAY_FAILED';
   refundAmount?: number;
   refundedAt?: string;

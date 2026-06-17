@@ -9,14 +9,13 @@ import { enrichMyPageReviewsWithThemeImages, parseReviewTags } from '@/lib/myPag
 import { getMyPageReviews, type MyPageReview } from '@/services/mypageService';
 import {
   deleteReview,
-  resolveMyPageReviewId,
   toUpdateReviewRequest,
   updateReview,
 } from '@/services/reviewService';
 import type { ReviewFormValues } from '@/types/review';
 import { AxiosError } from 'axios';
 
-const REVIEW_ACTION_UNAVAILABLE_MESSAGE = '현재 이 후기는 수정/삭제할 수 없습니다.';
+const REVIEW_ID_MISSING_MESSAGE = '후기 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.';
 
 function getApiErrorMessage(error: unknown, fallback: string) {
   if (error instanceof AxiosError) {
@@ -148,8 +147,6 @@ export default function MyReviewsPage() {
   const [pageError, setPageError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [editTarget, setEditTarget] = useState<MyPageReview | null>(null);
-  const [editTargetId, setEditTargetId] = useState<number | null>(null);
-  const [isResolving, setIsResolving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const handledQueryAction = useRef(false);
@@ -176,50 +173,36 @@ export default function MyReviewsPage() {
     void loadReviews();
   }, [loadReviews]);
 
-  const openEditModal = useCallback(async (review: MyPageReview) => {
+  const openEditModal = useCallback((review: MyPageReview) => {
     setModalError('');
     setPageError('');
-    setIsResolving(true);
-
-    try {
-      const reviewId = await resolveMyPageReviewId(review);
-      if (!reviewId) {
-        setPageError(REVIEW_ACTION_UNAVAILABLE_MESSAGE);
-        return;
-      }
-
-      setEditTarget(review);
-      setEditTargetId(reviewId);
-    } catch (error) {
-      setPageError(getApiErrorMessage(error, '후기 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.'));
-    } finally {
-      setIsResolving(false);
+    if (!review.reviewId) {
+      setPageError(REVIEW_ID_MISSING_MESSAGE);
+      return;
     }
+
+    setEditTarget(review);
   }, []);
 
   const handleDelete = useCallback(
     async (review: MyPageReview) => {
       setActionMessage('');
       setPageError('');
-      setIsResolving(true);
 
       try {
-        const reviewId = await resolveMyPageReviewId(review);
-        if (!reviewId) {
-          setPageError(REVIEW_ACTION_UNAVAILABLE_MESSAGE);
+        if (!review.reviewId) {
+          setPageError(REVIEW_ID_MISSING_MESSAGE);
           return;
         }
 
         const confirmed = window.confirm('이 후기를 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.');
         if (!confirmed) return;
 
-        await deleteReview(reviewId);
+        await deleteReview(review.reviewId);
         setActionMessage('후기를 삭제했습니다.');
         await loadReviews();
       } catch (error) {
         setPageError(getApiErrorMessage(error, '후기 삭제에 실패했습니다.'));
-      } finally {
-        setIsResolving(false);
       }
     },
     [loadReviews],
@@ -251,7 +234,7 @@ export default function MyReviewsPage() {
     if (!target) return;
 
     if (action === 'edit') {
-      void openEditModal(target);
+      openEditModal(target);
       return;
     }
 
@@ -271,8 +254,9 @@ export default function MyReviewsPage() {
   );
 
   const handleUpdateSubmit = async (values: ReviewFormValues) => {
-    if (!editTarget || !editTargetId) {
-      setModalError('현재 이 후기는 수정할 수 없습니다.');
+    if (!editTarget) return;
+    if (!editTarget.reviewId) {
+      setModalError(REVIEW_ID_MISSING_MESSAGE);
       return;
     }
 
@@ -281,7 +265,7 @@ export default function MyReviewsPage() {
 
     try {
       await updateReview(
-        editTargetId,
+        editTarget.reviewId,
         toUpdateReviewRequest({
           rating: values.rating,
           difficulty: values.difficulty,
@@ -294,7 +278,6 @@ export default function MyReviewsPage() {
 
       setActionMessage('후기를 수정했습니다.');
       setEditTarget(null);
-      setEditTargetId(null);
       await loadReviews();
     } catch (error) {
       const message = getApiErrorMessage(error, '후기 수정에 실패했습니다.');
@@ -390,8 +373,8 @@ export default function MyReviewsPage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => void openEditModal(review)}
-                          disabled={isResolving}
+                          onClick={() => openEditModal(review)}
+                          disabled={isSubmitting}
                           className="rounded-lg border border-white/[0.11] bg-[#101010]/55 px-3 py-2 text-xs font-black text-[#aaa] transition-all hover:border-white/[0.2] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           수정
@@ -399,7 +382,7 @@ export default function MyReviewsPage() {
                         <button
                           type="button"
                           onClick={() => void handleDelete(review)}
-                          disabled={isResolving}
+                          disabled={isSubmitting}
                           className="rounded-lg border border-[#cc2222]/45 bg-[#101010]/55 px-3 py-2 text-xs font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           삭제
@@ -451,7 +434,6 @@ export default function MyReviewsPage() {
           errorMessage={modalError}
           onClose={() => {
             setEditTarget(null);
-            setEditTargetId(null);
             setModalError('');
           }}
           onSubmit={handleUpdateSubmit}

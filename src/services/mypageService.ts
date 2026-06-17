@@ -34,6 +34,7 @@ export interface MyPageReservation {
   reservationTime: string;
   peopleCount: number;
   status: string;
+  hasReview: boolean;
   isCleared?: boolean | null;
   clearTime?: number | null;
 }
@@ -49,7 +50,7 @@ export interface MyPageAchievement {
 }
 
 export interface MyPageReview {
-  reviewId?: number;
+  reviewId: number;
   themeTitle: string;
   themeId: number;
   nickname: string;
@@ -216,7 +217,7 @@ export const getMyPageReviews = async (): Promise<MyPageReview[]> => {
 
   return unwrapList(data).map((review) => ({
     ...review,
-    reviewId: (review as MyPageReview & { id?: number }).reviewId ?? (review as MyPageReview & { id?: number }).id,
+    reviewId: review.reviewId ?? 0,
     themeTitle: repairMojibake(review.themeTitle),
     nickname: repairMojibake(review.nickname),
     tags: repairMojibake(review.tags),

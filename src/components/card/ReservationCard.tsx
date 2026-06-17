@@ -49,7 +49,7 @@ export default function ReservationCard({ reservation, onCancel, onWriteReview }
             onClick={() => onCancel(reservation.id)}
             className="text-xs text-[#888] hover:text-[#e63946] transition-colors border border-[#2a2a2a] px-2 py-1 rounded"
           >
-            예약 취소
+            취소/환불 요청
           </button>
         )}
         {reservation.status === 'COMPLETED' && !reservation.hasReview && onWriteReview && (
