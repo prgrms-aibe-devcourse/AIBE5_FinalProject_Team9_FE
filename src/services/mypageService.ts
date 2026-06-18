@@ -28,6 +28,7 @@ export interface MyPageMain {
 
 export interface MyPageReservation {
   reservationId: number;
+  themeId?: number;
   themeName: string;
   branchName: string;
   reservationDate: string;
@@ -37,6 +38,10 @@ export interface MyPageReservation {
   hasReview: boolean;
   isCleared?: boolean | null;
   clearTime?: number | null;
+  thumbnailUrl?: string;
+  imageUrl?: string;
+  horrorLevel?: number;
+  difficulty?: number;
 }
 
 export interface MyPageAchievement {
@@ -46,7 +51,8 @@ export interface MyPageAchievement {
   conditionType: string;
   conditionValue?: number | null;
   acquiredAt?: string | null;
-  acquired: boolean;
+  acquired?: boolean;
+  isAcquired?: boolean;
 }
 
 export interface MyPageReview {
@@ -80,8 +86,11 @@ interface MyPageMatePostApiResponse {
 interface MyPageMateParticipationApiResponse {
   id?: number;
   matePostId?: number;
+  memberId?: number;
+  memberNickname?: string;
   status?: string;
   joinedAt?: string;
+  cancelledAt?: string;
 }
 
 const unwrap = <T>(response: ApiResponse<T>): T => {
@@ -184,7 +193,7 @@ export const getMyPageAchievements = async (): Promise<MyPageAchievement[]> => {
     ...achievement,
     name: repairMojibake(achievement.name),
     description: repairMojibake(achievement.description),
-    acquired: achievement.acquired ?? Boolean((achievement as { isAcquired?: boolean }).isAcquired),
+    acquired: achievement.acquired ?? achievement.isAcquired ?? false,
   }));
 };
 
@@ -203,8 +212,10 @@ export const getMyPageMateParticipations = async (): Promise<MyPageMatePost[]> =
 
   return unwrapList(data).map((participation) => ({
     matePostId: participation.matePostId ?? 0,
-    title: '',
-    status: 'RECRUITING',
+    title: participation.matePostId
+      ? `참여한 메이트 모집 #${participation.matePostId}`
+      : '참여한 메이트 모집',
+    status: participation.status === 'CANCELLED' ? 'CLOSED' : 'RECRUITING',
     meetingTime: '',
     currentPeople: 0,
     maxPeople: 0,

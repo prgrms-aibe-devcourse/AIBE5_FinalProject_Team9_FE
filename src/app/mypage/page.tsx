@@ -3,12 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
-import ConfirmModal from "@/components/common/ConfirmModal";
-import ImageWithFallback from "@/components/common/ImageWithFallback";
-import RatingStars from "@/components/common/RatingStars";
-import { enrichMyPageReviewsWithThemeImages, parseReviewTags } from "@/lib/myPageReview";
-import { useAuthStore } from "@/stores/authStore";
-import { getMatePostById } from "@/services/mateService";
 import {
   getMyPageAchievements,
   getMyPageMain,
@@ -16,15 +10,15 @@ import {
   getMyPageMatePosts,
   getMyPageReservations,
   getMyPageReviews,
+  getMyPageStats,
   type MyPageAchievement,
-  type MyPageMain,
+  type MyPageProfile,
   type MyPageReservation,
   type MyPageReview,
+  type MyPageStats,
 } from "@/services/mypageService";
-import { cancelReservation } from "@/services/reservationService";
-import { getThemeById, getThemes } from "@/services/themeService";
-import { repairMojibake } from "@/lib/text";
-import type { MatePostStatus, MyPageMatePost } from "@/types/mate";
+import { getThemes } from "@/services/themeService";
+import type { MyPageMatePost } from "@/types/mate";
 import type { Theme } from "@/types/theme";
 
 type TabKey = "reservation" | "achievement" | "activity";
@@ -45,8 +39,8 @@ type IconName =
   | "key"
   | "search"
   | "crown";
+type PostCategory = "모집" | "정보";
 type MateActivityStatus = "open" | "joined" | "closed";
-const ACTIVITY_REVIEW_PREVIEW_COUNT = 5;
 
 type Reservation = {
   id: number;
@@ -94,10 +88,7 @@ type AchievementItem = {
 
 type ActivityReview = {
   id: number;
-  themeId: number;
   themeTitle: string;
-  createdAt: string;
-  dateLabel: string;
   date: string;
   rating: number;
   horrorLevel: number;
@@ -109,10 +100,10 @@ type ActivityReview = {
 
 type ActivityPost = {
   id: number;
-  status: MatePostStatus;
+  category: PostCategory;
   date: string;
   title: string;
-  comments?: number;
+  comments: number;
 };
 
 type ActivityMate = {
@@ -139,19 +130,11 @@ const K = {
   titleRest: "\ud398\uc774\uc9c0",
   subtitle:
     "\ub098\uc758 \uc608\uc57d \ud604\ud669\uacfc \uc608\uc57d \uae30\ub85d\uc744 \ud655\uc778\ud558\uc138\uc694.",
-  name: "\uae40\uacf5\ud3ec",
-  branch: "\uac15\ub0a8\uc810",
-  gender: "\uc131\ubcc4 \ubbf8\uc785\ub825",
-  age: "\ub098\uc774 \ubbf8\uc785\ub825",
-  settings: "\uc124\uc815",
   totalPlay: "\ucd1d \ud50c\ub808\uc774",
   successRate: "\uc131\uacf5\ub960",
   bestClear: "\ucd5c\ub2e8 \ud074\ub9ac\uc5b4",
   achievements: "\ud68d\ub4dd \uc5c5\uc801",
   rankLabel: "\ud604\uc7ac \ub4f1\uae09",
-  rank: "오컬트 동호회장",
-  topRank: "상위 12%",
-  rankRule: "성공률 70% 이상 ~ 85% 미만",
   upcoming: "\uc608\uc815\ub41c \uc608\uc57d",
   past: "\uc9c0\ub09c \uc608\uc57d",
   horror: "\uacf5\ud3ec\ub3c4",
@@ -172,6 +155,38 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "achievement", label: K.achievement },
   { key: "activity", label: K.activity },
 ];
+
+const DEFAULT_PROFILE: MyPageProfile = {
+  nickname: "-",
+};
+
+const DEFAULT_STATS: MyPageStats = {
+  totalPlayCount: 0,
+  successRate: 0,
+  bestClearTime: null,
+  acquiredAchievementCount: 0,
+  totalAchievementCount: 0,
+};
+
+const ACHIEVEMENT_ICON_BY_CONDITION: Partial<Record<string, IconName>> = {
+  TOTAL_PLAY_COUNT: "foot",
+  CLEAR_TIME_UNDER: "timer",
+  HORROR_LEVEL_SUCCESS: "skull",
+  MATE_PARTICIPATE_COUNT: "group",
+  SAME_MATE_COUNT: "heart",
+};
+
+const ACHIEVEMENT_ACCENTS: NonNullable<AchievementItem["accent"]>[] = [
+  "lime",
+  "red",
+  "teal",
+  "rose",
+  "deepRed",
+  "amber",
+  "orange",
+  "gold",
+];
+const ACTIVITY_REVIEW_PREVIEW_COUNT = 5;
 
 function SkullIcon({ className }: { className?: string }) {
   return (
@@ -209,9 +224,8 @@ function ThemeThumbnail({
       ].join(" ")}
       style={style}
     >
-      <ImageWithFallback
+      <Image
         src={src}
-        fallbackSrc="/images/theme-placeholder.png"
         alt={alt ?? ""}
         fill
         sizes={width ? `${width}px` : "100vw"}
@@ -334,6 +348,32 @@ function ActivityLineIcon({
       <path {...line} d="M4 4h12v8.7H8.2L4 16V4Z" />
       <path {...line} d="M7.1 7.5h5.8M7.1 10h3.7" />
     </svg>
+  );
+}
+
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <span
+      className="inline-flex items-center gap-0.5"
+      aria-label={`별점 ${rating}점`}
+    >
+      {Array.from({ length: 5 }).map((_, index) => (
+        <svg
+          key={index}
+          viewBox="0 0 16 16"
+          className={[
+            "h-4 w-4",
+            index < rating ? "text-[#e2bd63]" : "text-[#363636]",
+          ].join(" ")}
+          aria-hidden="true"
+        >
+          <path
+            fill="currentColor"
+            d="m8 1.4 1.9 4 4.4.6-3.2 3.1.8 4.4L8 11.4l-3.9 2.1.8-4.4L1.7 6l4.4-.6L8 1.4Z"
+          />
+        </svg>
+      ))}
+    </span>
   );
 }
 
@@ -628,31 +668,22 @@ function RatingIcons({
   );
 }
 
-function formatGender(gender?: string) {
-  const normalized = gender?.toLowerCase();
-  if (!normalized) return K.gender;
-  if (normalized === "male" || normalized === "m" || gender === "남자") return "남자";
-  if (normalized === "female" || normalized === "f" || gender === "여자") return "여자";
-  return gender;
-}
+const THEME_PLACEHOLDER_IMAGE = "/images/theme-placeholder.png";
 
-function formatAge(age?: number | string) {
-  if (age === undefined || age === null || age === "") return K.age;
-  return `${age}세`;
-}
-
-function formatSeconds(value?: number | null) {
-  if (value === undefined || value === null) return "-";
-  const minutes = Math.floor(value / 60);
-  const seconds = value % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+function normalizeCompareText(value?: string | null) {
+  return (value ?? "").trim().toLowerCase();
 }
 
 function getDateParts(value?: string) {
   if (!value) return { date: "-", day: "-" };
-  const date = new Date(value);
+
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  const date = year && month && day ? new Date(year, month - 1, day) : new Date(value);
   const days = ["일", "월", "화", "수", "목", "금", "토"];
-  if (Number.isNaN(date.getTime())) return { date: value, day: "-" };
+
+  if (Number.isNaN(date.getTime())) {
+    return { date: value.slice(0, 10), day: "-" };
+  }
 
   return {
     date: value.slice(0, 10),
@@ -660,19 +691,48 @@ function getDateParts(value?: string) {
   };
 }
 
-function formatTime(value?: string) {
-  return value ? value.slice(0, 5) : "-";
+function formatReservationTime(value?: string) {
+  if (!value) return "-";
+  return value.includes("T") ? value.split("T")[1].slice(0, 5) : value.slice(0, 5);
+}
+
+function formatClearTime(value?: number | null) {
+  if (value === undefined || value === null) return undefined;
+  const minutes = Math.floor(value / 60);
+  const seconds = value % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getDDayLabel(value?: string) {
+  if (!value) return undefined;
+
+  const today = new Date();
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+
+  const target = new Date(year, month - 1, day);
+  const diff = Math.ceil((target.getTime() - todayOnly.getTime()) / 86400000);
+  if (diff < 0) return undefined;
+  if (diff === 0) return "D-Day";
+  return `D-${diff}`;
 }
 
 function findThemeForReservation(reservation: MyPageReservation, themes: Theme[]) {
-  return themes.find((theme) => {
-    const sameTitle = repairMojibake(theme.title) === repairMojibake(reservation.themeName);
+  const reservationTitle = normalizeCompareText(reservation.themeName);
+  const reservationBranch = normalizeCompareText(reservation.branchName);
+
+  const exactBranchMatch = themes.find((theme) => {
+    const sameTitle = normalizeCompareText(theme.title) === reservationTitle;
     const sameBranch =
-      !reservation.branchName ||
-      repairMojibake(theme.branchName) === repairMojibake(reservation.branchName);
+      !reservationBranch ||
+      normalizeCompareText(theme.branchName) === reservationBranch ||
+      normalizeCompareText(theme.locationName) === reservationBranch;
 
     return sameTitle && sameBranch;
   });
+
+  return exactBranchMatch ?? themes.find((theme) => normalizeCompareText(theme.title) === reservationTitle);
 }
 
 function mapReservationToUi(
@@ -683,125 +743,191 @@ function mapReservationToUi(
   const dateParts = getDateParts(reservation.reservationDate);
   const status: ReservationStatus =
     type === "UPCOMING" ? "upcoming" : reservation.isCleared ? "cleared" : "failed";
+  const apiReservation = reservation as MyPageReservation & {
+    themeId?: number;
+    thumbnailUrl?: string;
+    imageUrl?: string;
+    horrorLevel?: number;
+    difficulty?: number;
+  };
 
   return {
     id: reservation.reservationId,
-    themeId: theme?.id,
+    themeId: apiReservation.themeId ?? theme?.id,
     themeTitle: reservation.themeName || "예약 테마",
     date: dateParts.date,
     day: dateParts.day,
-    time: formatTime(reservation.reservationTime),
+    time: formatReservationTime(reservation.reservationTime),
     location: reservation.branchName || "-",
-    horrorLevel: theme?.horrorLevel ?? 0,
-    difficulty: theme?.difficulty ?? 0,
+    horrorLevel: apiReservation.horrorLevel ?? theme?.horrorLevel ?? 0,
+    difficulty: apiReservation.difficulty ?? theme?.difficulty ?? 0,
     status,
-    clearTime: reservation.clearTime ? formatSeconds(reservation.clearTime) : undefined,
-    imageUrl: theme?.imageUrl || "/images/theme-placeholder.png",
+    clearTime: status === "cleared" ? formatClearTime(reservation.clearTime) : undefined,
+    dday: type === "UPCOMING" ? getDDayLabel(reservation.reservationDate) : undefined,
+    imageUrl: apiReservation.thumbnailUrl || apiReservation.imageUrl || theme?.imageUrl || THEME_PLACEHOLDER_IMAGE,
     hasReview: reservation.hasReview,
   };
 }
 
-function mapAchievementToUi(achievement: MyPageAchievement): AchievementItem {
-  const typeIconMap: Record<string, IconName> = {
-    TOTAL_PLAY_COUNT: "foot",
-    CLEAR_TIME_UNDER: "timer",
-    HORROR_LEVEL_SUCCESS: "skull",
-    MATE_PARTICIPATE_COUNT: "group",
-    SAME_MATE_COUNT: "heart",
+function formatBestClearTime(value?: number | null) {
+  if (value === undefined || value === null) return "-";
+  const minutes = Math.floor(value / 60);
+  const seconds = value % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatProfileGender(value?: string) {
+  if (!value) return "성별 미공개";
+  const upper = value.toUpperCase();
+  if (upper === "FEMALE" || value === "여자") return "성별 여자";
+  if (upper === "MALE" || value === "남자") return "성별 남자";
+  return `성별 ${value}`;
+}
+
+function formatProfileAge(value?: number) {
+  return value ? `나이 ${value}` : "나이 미공개";
+}
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  return value.includes("T") ? value.split("T")[0] : value.slice(0, 10);
+}
+
+function formatTime(value?: string) {
+  if (!value) return "-";
+  const timePart = value.includes("T") ? value.split("T")[1] : value;
+  return timePart.slice(0, 5) || "-";
+}
+
+function parseActivityTags(value?: string) {
+  return (value ?? "")
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function getStatsItems(stats: MyPageStats, isLoading = false) {
+  if (isLoading) {
+    return [
+      { label: K.totalPlay, value: "-", accent: "text-[#f5f5f5]" },
+      { label: K.successRate, value: "-", accent: "text-[#2ecc71]" },
+      { label: K.bestClear, value: "-", accent: "text-[#3498db]" },
+      { label: K.achievements, value: "-", accent: "text-[#b66ae0]" },
+    ];
+  }
+
+  return [
+    { label: K.totalPlay, value: String(stats.totalPlayCount), accent: "text-[#f5f5f5]" },
+    { label: K.successRate, value: `${stats.successRate}%`, accent: "text-[#2ecc71]" },
+    { label: K.bestClear, value: formatBestClearTime(stats.bestClearTime), accent: "text-[#3498db]" },
+    {
+      label: K.achievements,
+      value: stats.totalAchievementCount
+        ? `${stats.acquiredAchievementCount}/${stats.totalAchievementCount}`
+        : String(stats.acquiredAchievementCount),
+      accent: "text-[#b66ae0]",
+    },
+  ];
+}
+
+function getCurrentTitleItem(profile: MyPageProfile, stats: MyPageStats): TitleItem {
+  const titleName = profile.titleName || "칭호 정보 없음";
+  const condition = stats.totalAchievementCount
+    ? `획득 업적 ${stats.acquiredAchievementCount}/${stats.totalAchievementCount} · 성공률 ${stats.successRate}%`
+    : `성공률 ${stats.successRate}%`;
+
+  return {
+    id: 1,
+    name: titleName,
+    condition,
+    status: profile.titleName ? "current" : "locked",
+    icon: profile.titleName ? "group" : "lock",
   };
-  const accentMap: Record<string, AchievementItem["accent"]> = {
-    TOTAL_PLAY_COUNT: "amber",
-    CLEAR_TIME_UNDER: "red",
-    HORROR_LEVEL_SUCCESS: "deepRed",
-    MATE_PARTICIPATE_COUNT: "teal",
-    SAME_MATE_COUNT: "rose",
-  };
+}
+
+function mapAchievementToUi(achievement: MyPageAchievement, index: number): AchievementItem {
+  const acquired = achievement.acquired ?? achievement.isAcquired ?? false;
+  const total = achievement.conditionValue ?? undefined;
 
   return {
     id: achievement.id,
     name: achievement.name || "업적",
-    condition: achievement.description || "달성 조건 정보가 없습니다.",
-    status: achievement.acquired ? "complete" : "locked",
-    icon: typeIconMap[achievement.conditionType] ?? "key",
-    accent: accentMap[achievement.conditionType] ?? "gold",
+    condition: achievement.description || achievement.conditionType || "업적 조건 정보가 없습니다.",
+    status: acquired ? "complete" : total ? "progress" : "locked",
+    icon: ACHIEVEMENT_ICON_BY_CONDITION[achievement.conditionType] ?? "key",
+    progress: acquired ? total : total ? 0 : undefined,
+    total,
+    accent: ACHIEVEMENT_ACCENTS[index % ACHIEVEMENT_ACCENTS.length],
   };
 }
 
-function mapReviewToUi(review: MyPageReview, index: number): ActivityReview {
+function mapReviewToActivity(review: MyPageReview): ActivityReview {
   return {
-    id: review.reviewId ?? (review.themeId ? Number(`${review.themeId}${index}`) : index),
-    themeId: review.themeId,
+    id: review.reviewId,
     themeTitle: review.themeTitle || "후기 테마",
-    createdAt: review.createdAt ?? "",
-    dateLabel: review.visitedAt ? "방문일" : "작성일",
-    date: (review.visitedAt || review.createdAt)
-      ? (review.visitedAt || review.createdAt).slice(0, 10).replaceAll("-", ".")
-      : "-",
-    rating: review.rating ?? 0,
-    horrorLevel: review.horrorRating ?? 0,
-    difficulty: review.difficultyRating ?? 0,
-    content: review.content || "",
-    tags: parseReviewTags(review.tags),
-    imageUrl: review.imageUrls[0] || "/images/theme-placeholder.png",
+    date: formatDate(review.visitedAt ?? review.createdAt),
+    rating: review.rating,
+    horrorLevel: review.horrorRating,
+    difficulty: review.difficultyRating,
+    content: review.content,
+    tags: parseActivityTags(review.tags),
+    imageUrl: review.imageUrls[0] || THEME_PLACEHOLDER_IMAGE,
   };
 }
 
 function mapMatePostToActivityPost(post: MyPageMatePost): ActivityPost {
   return {
     id: post.matePostId,
-    status: post.status,
-    date: post.createdAt ? post.createdAt.slice(0, 10) : "-",
-    title: post.title || "제목 없는 메이트 모집",
+    category: "모집",
+    date: formatDate(post.createdAt),
+    title: post.title || "메이트 모집글",
+    comments: 0,
+  };
+}
+
+function mapMatePostToActivityMate(post: MyPageMatePost, isAuthor = false): ActivityMate {
+  const isClosed = ["CLOSED", "MATCHED", "DELETED"].includes(post.status);
+
+  return {
+    id: post.matePostId,
+    themeTitle: post.themeTitle || (isAuthor ? "내 모집" : "참여 모집"),
+    location: post.location || "-",
+    title: post.title || "메이트 모집",
+    date: formatDate(post.meetingTime || post.createdAt),
+    time: formatTime(post.meetingTime),
+    currentMembers: post.currentPeople,
+    totalMembers: post.maxPeople,
+    status: isAuthor ? (isClosed ? "closed" : "open") : "joined",
+    isAuthor,
+    imageUrl: post.imageUrl || THEME_PLACEHOLDER_IMAGE,
   };
 }
 
 function ProfileSummaryCard({
-  main,
+  profile,
+  stats,
   isLoading,
   errorMessage,
 }: {
-  main: MyPageMain | null;
+  profile: MyPageProfile;
+  stats: MyPageStats;
   isLoading: boolean;
   errorMessage: string;
 }) {
-  const user = useAuthStore((state) => state.user);
   const [avatarSrc, setAvatarSrc] = useState(
-    main?.profile.profileCharacterImageUrl ||
-      user?.profileImageUrl ||
-      "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
+    "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
   );
+  const statsItems = getStatsItems(stats, isLoading);
 
   useEffect(() => {
     setAvatarSrc(
-      main?.profile.profileCharacterImageUrl ||
-        user?.profileImageUrl ||
+      profile.profileCharacterImageUrl ||
         "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
     );
-  }, [main?.profile.profileCharacterImageUrl, user?.profileImageUrl]);
-
-  const displayName = repairMojibake(main?.profile.nickname || user?.nickname) || "회원";
-  const genderLabel = formatGender(main?.profile.gender);
-  const ageLabel = formatAge(main?.profile.age);
-  const stats = [
-    { label: K.totalPlay, value: isLoading ? "-" : String(main?.stats.totalPlayCount ?? 0), accent: "text-[#f5f5f5]" },
-    { label: K.successRate, value: isLoading ? "-" : `${main?.stats.successRate ?? 0}%`, accent: "text-[#2ecc71]" },
-    { label: K.bestClear, value: isLoading ? "-" : formatSeconds(main?.stats.bestClearTime), accent: "text-[#3498db]" },
-    {
-      label: K.achievements,
-      value: isLoading
-        ? "-"
-        : `${main?.stats.acquiredAchievementCount ?? 0}/${main?.stats.totalAchievementCount ?? 0}`,
-      accent: "text-[#b66ae0]",
-    },
-  ];
+  }, [profile.profileCharacterImageUrl]);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-white/[0.075] bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.05),transparent_36%),linear-gradient(112deg,rgba(23,23,23,0.96),rgba(17,17,17,0.92)_48%,rgba(20,12,12,0.94)),rgba(18,18,18,0.9)] shadow-[0_28px_95px_rgba(0,0,0,0.48),0_0_34px_rgba(204,34,34,0.035)] backdrop-blur-md">
-      {errorMessage && (
-        <div className="border-b border-[#cc2222]/20 bg-[#cc2222]/8 px-5 py-3 text-sm font-bold text-[#ef5353]">
-          {errorMessage}
-        </div>
-      )}
       <div className="grid min-h-[156px] items-stretch lg:grid-cols-[350px_1fr_286px]">
         <div className="flex items-center gap-5 border-b border-white/[0.035] px-7 py-6 lg:border-b-0 lg:border-r lg:border-white/[0.035]">
           <div className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-white/[0.1] bg-[#1b1b1b] shadow-[inset_0_0_32px_rgba(255,255,255,0.045),0_14px_32px_rgba(0,0,0,0.42)]">
@@ -821,46 +947,31 @@ function ProfileSummaryCard({
           <div className="min-w-0">
             <div className="mb-3 flex items-center gap-3">
               <h2 className="text-[30px] font-black leading-none text-[#f5f5f5]">
-                {displayName}
+                {isLoading ? "불러오는 중" : profile.nickname || "-"}
               </h2>
-              <Link
-                href="/mypage/settings"
-                aria-label={K.settings}
-                title={K.settings}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-[#9a9a9a] transition-all hover:bg-white/[0.045] hover:text-[#ef5353]"
-              >
-                <svg
-                  viewBox="-2 -2 28 28"
-                  className="h-[22px] w-[22px]"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.6"
-                    d="M9.6 2.8h4.8l.7 3.1c.5.2 1 .5 1.4.8l3-.9 2.4 4.2-2.3 2.1a7 7 0 0 1 0 1.8l2.3 2.1-2.4 4.2-3-.9c-.4.3-.9.6-1.4.8l-.7 3.1H9.6l-.7-3.1c-.5-.2-1-.5-1.4-.8l-3 .9L2.1 16l2.3-2.1a7 7 0 0 1 0-1.8L2.1 10l2.4-4.2 3 .9c.4-.3.9-.6 1.4-.8l.7-3.1Z"
-                  />
-                  <path
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.6"
-                    d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"
-                  />
-                </svg>
-              </Link>
+              <span className="rounded-md border border-[#cc2222]/58 bg-[#101010]/60 px-2.5 py-1 text-xs font-black text-[#ef5353] shadow-[0_0_14px_rgba(204,34,34,0.08)]">
+                {profile.titleName || "칭호 없음"}
+              </span>
             </div>
-            <div className="text-[13px] font-bold text-[#aaa]">
-              {genderLabel} <span className="mx-1.5 text-[#4d4d4d]">·</span> {ageLabel}
+            {errorMessage && (
+              <p className="mb-2 text-xs font-bold text-[#ef5353]">{errorMessage}</p>
+            )}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-bold text-[#aaa]">
+              <span className="inline-flex items-center gap-1.5">
+                <MetaIcon type="gender" />
+                {formatProfileGender(profile.gender)}
+              </span>
+              <span className="text-[#4d4d4d]">|</span>
+              <span className="inline-flex items-center gap-1.5">
+                <MetaIcon type="age" />
+                {formatProfileAge(profile.age)}
+              </span>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 divide-x divide-y divide-white/[0.032] sm:grid-cols-4 sm:divide-y-0">
-          {stats.map((stat) => (
+          {statsItems.map((stat) => (
             <div
               key={stat.label}
               className="flex min-h-[132px] flex-col items-center justify-center px-4 text-center sm:min-h-[156px]"
@@ -880,20 +991,20 @@ function ProfileSummaryCard({
           ))}
         </div>
 
-        <RankBadgeCard titleName={main?.profile.titleName} isLoading={isLoading} />
+        <RankBadgeCard profile={profile} stats={stats} />
       </div>
     </section>
   );
 }
 
 function RankBadgeCard({
-  titleName,
-  isLoading,
+  profile,
+  stats,
 }: {
-  titleName?: string;
-  isLoading: boolean;
+  profile: MyPageProfile;
+  stats: MyPageStats;
 }) {
-  const displayTitle = isLoading ? "불러오는 중" : titleName || "대표 칭호 없음";
+  const title = getCurrentTitleItem(profile, stats);
   return (
     <div className="m-4 flex min-h-[132px] flex-col items-center justify-center rounded-xl border border-[#cc2222]/68 bg-[radial-gradient(circle_at_50%_0%,rgba(229,57,57,0.24),transparent_66%),linear-gradient(180deg,rgba(204,34,34,0.065),rgba(0,0,0,0.16)),#171010] px-5 text-center shadow-[0_0_34px_rgba(204,34,34,0.16),inset_0_0_24px_rgba(204,34,34,0.04)]">
       <p className="mb-3 text-[11px] font-black tracking-[0.16em] text-[#c09a9a]">
@@ -901,18 +1012,18 @@ function RankBadgeCard({
       </p>
       <div className="mb-2 flex items-center justify-center gap-2">
         <TitleSymbol
-          type="group"
+          type={title.icon}
           className="h-9 w-9 shrink-0 text-[#ef5353] drop-shadow-[0_0_16px_rgba(239,83,83,0.2)]"
         />
         <span className="whitespace-nowrap text-[21px] font-black text-[#f5f5f5]">
-          {displayTitle}
+          {title.name}
         </span>
       </div>
       <p className="text-sm font-black text-[#ef5353]">
-        {titleName ? "프로필 대표 칭호" : "칭호 API 추가 필요"}
+        획득 업적 {stats.acquiredAchievementCount}/{stats.totalAchievementCount}
       </p>
       <p className="mt-1 text-xs font-black text-[#d58a80]">
-        전체 칭호 목록은 현재 응답에 포함되지 않습니다.
+        성공률 {stats.successRate}%
       </p>
     </div>
   );
@@ -954,21 +1065,13 @@ function ReservationSection({
   count,
   tone,
   reservations,
-  isLoading,
-  errorMessage,
   emptyMessage,
-  cancellingId,
-  onCancel,
 }: {
   title: string;
   count: number;
   tone: "upcoming" | "past";
   reservations: Reservation[];
-  isLoading?: boolean;
-  errorMessage?: string;
   emptyMessage: string;
-  cancellingId?: number | null;
-  onCancel?: (reservation: Reservation) => void;
 }) {
   return (
     <section className={tone === "upcoming" ? "mt-5" : "mt-8"}>
@@ -990,47 +1093,68 @@ function ReservationSection({
         </span>
       </div>
       <div className="overflow-hidden rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_20px_58px_rgba(0,0,0,0.38),0_0_28px_rgba(204,34,34,0.025)]">
-        {isLoading ? (
-          <ActivityStateCard title="예약 내역을 불러오는 중입니다" description="잠시만 기다려주세요." />
-        ) : errorMessage ? (
-          <ActivityStateCard title="예약 내역을 불러오지 못했습니다" description={errorMessage} />
-        ) : reservations.length === 0 ? (
-          <ActivityStateCard title={emptyMessage} description="새로운 예약이 생기면 이곳에 표시됩니다." />
-        ) : (
+        {reservations.length > 0 ? (
           reservations.map((reservation, index) => (
             <ReservationRowCard
               key={reservation.id}
               reservation={reservation}
               isLast={index === reservations.length - 1}
-              isCancelling={cancellingId === reservation.id}
-              onCancel={onCancel}
             />
           ))
+        ) : (
+          <ReservationStateCard message={emptyMessage} />
         )}
       </div>
     </section>
   );
 }
 
+function ReservationStateCard({ message }: { message: string }) {
+  return (
+    <div className="flex min-h-[108px] items-center justify-center px-5 py-8 text-center">
+      <p className="text-sm font-bold text-[#858585]">{message}</p>
+    </div>
+  );
+}
+
+function ReservationCountSummary({
+  upcomingCount,
+  pastCount,
+}: {
+  upcomingCount: number;
+  pastCount: number;
+}) {
+  const items = [
+    { label: "전체", value: upcomingCount + pastCount },
+    { label: K.upcoming, value: upcomingCount },
+    { label: K.past, value: pastCount },
+  ];
+
+  return (
+    <div className="mt-5 flex flex-wrap gap-2">
+      {items.map((item) => (
+        <span
+          key={item.label}
+          className="inline-flex h-8 items-center gap-2 rounded-lg border border-white/[0.08] bg-[#151515]/72 px-3 text-xs font-black text-[#9a9a9a]"
+        >
+          {item.label}
+          <span className="text-[#ef5353]">{item.value}건</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function ReservationRowCard({
   reservation,
   isLast,
-  isCancelling = false,
-  onCancel,
 }: {
   reservation: Reservation;
   isLast?: boolean;
-  isCancelling?: boolean;
-  onCancel?: (reservation: Reservation) => void;
 }) {
   const status = getStatusStyle(reservation);
   const action = getActionText(reservation);
   const showStatusBadge = reservation.status !== "upcoming";
-  const canCancel = reservation.status === "upcoming" && Boolean(onCancel);
-  const reviewWriteHref =
-    reservation.themeId && reservation.status !== "upcoming" && !reservation.hasReview
-      ? `/mypage/reviews/write?reservationId=${reservation.id}&themeId=${reservation.themeId}&themeTitle=${encodeURIComponent(reservation.themeTitle)}&reservationDate=${encodeURIComponent(`${reservation.date} (${reservation.day}) ${reservation.time}`)}`
-      : null;
   return (
     <div
       className={[
@@ -1105,34 +1229,12 @@ function ReservationRowCard({
             {getStatusText(reservation.status)}
           </span>
         )}
-        {canCancel ? (
-          <button
-            type="button"
-            onClick={() => onCancel?.(reservation)}
-            disabled={isCancelling}
-            className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white disabled:cursor-not-allowed disabled:border-white/[0.08] disabled:text-[#666] max-sm:flex-1"
-          >
-            {isCancelling ? "요청 중..." : "취소/환불 요청"}
-          </button>
-        ) : reviewWriteHref ? (
-          <Link
-            href={reviewWriteHref}
-            className="inline-flex h-9 min-w-[104px] items-center justify-center rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
-          >
-            {action}
-          </Link>
-        ) : reservation.status !== "upcoming" && reservation.hasReview ? (
-          <span className="inline-flex h-9 min-w-[104px] items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.035] px-4 text-[13px] font-black text-[#8d8d8d] max-sm:flex-1">
-            후기 작성됨
-          </span>
-        ) : reservation.status === "upcoming" ? null : (
-          <button
-            type="button"
-            className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
-          >
-            {action}
-          </button>
-        )}
+        <button
+          type="button"
+          className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
+        >
+          {action}
+        </button>
       </div>
     </div>
   );
@@ -1175,27 +1277,29 @@ function getActionText(reservation: Reservation) {
 }
 
 function ReservationTabContent() {
-  const [upcoming, setUpcoming] = useState<Reservation[]>([]);
-  const [past, setPast] = useState<Reservation[]>([]);
+  const [upcomingReservations, setUpcomingReservations] = useState<Reservation[]>([]);
+  const [pastReservations, setPastReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [noticeMessage, setNoticeMessage] = useState("");
-  const [cancellingId, setCancellingId] = useState<number | null>(null);
-  const [cancelTarget, setCancelTarget] = useState<Reservation | null>(null);
 
-  const loadReservations = (isMounted: () => boolean) => {
-    setIsLoading(true);
-    setErrorMessage("");
+  useEffect(() => {
+    let isMounted = true;
 
-    return Promise.all([
-      getMyPageReservations("UPCOMING"),
-      getMyPageReservations("PAST"),
-      getThemes(),
-    ])
-      .then(([upcomingReservations, pastReservations, themes]) => {
-        if (!isMounted()) return;
-        setUpcoming(
-          upcomingReservations.map((reservation) =>
+    const loadReservations = async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const [upcoming, past, themes] = await Promise.all([
+          getMyPageReservations("UPCOMING"),
+          getMyPageReservations("PAST"),
+          getThemes().catch(() => [] as Theme[]),
+        ]);
+
+        if (!isMounted) return;
+
+        setUpcomingReservations(
+          upcoming.map((reservation) =>
             mapReservationToUi(
               reservation,
               "UPCOMING",
@@ -1203,8 +1307,8 @@ function ReservationTabContent() {
             ),
           ),
         );
-        setPast(
-          pastReservations.map((reservation) =>
+        setPastReservations(
+          past.map((reservation) =>
             mapReservationToUi(
               reservation,
               "PAST",
@@ -1212,106 +1316,106 @@ function ReservationTabContent() {
             ),
           ),
         );
-      })
-      .catch(() => {
-        if (isMounted()) setErrorMessage("예약 정보를 불러오지 못했습니다.");
-      })
-      .finally(() => {
-        if (isMounted()) setIsLoading(false);
-      });
-  };
+      } catch {
+        if (!isMounted) return;
+        setUpcomingReservations([]);
+        setPastReservations([]);
+        setErrorMessage("예약 내역을 불러오지 못했습니다.");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    let isMounted = true;
-
-    loadReservations(() => isMounted);
+    void loadReservations();
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const handleCancelReservation = (reservation: Reservation) => {
-    setCancelTarget(reservation);
-  };
-
-  const confirmCancelReservation = async () => {
-    if (!cancelTarget) return;
-    const reservation = cancelTarget;
-    setCancellingId(reservation.id);
-    setNoticeMessage("");
-    setErrorMessage("");
-
-    try {
-      await cancelReservation(reservation.id);
-      setCancelTarget(null);
-      setUpcoming((current) => current.filter((item) => item.id !== reservation.id));
-      setNoticeMessage("예약 취소 요청이 완료되었습니다. 환불은 결제 상태에 따라 처리됩니다.");
-      await loadReservations(() => true);
-    } catch {
-      setErrorMessage("예약 취소 요청에 실패했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setCancellingId(null);
-    }
-  };
+  if (isLoading) {
+    return (
+      <div>
+        <ReservationCountSummary upcomingCount={0} pastCount={0} />
+        <ReservationSection
+          title={K.upcoming}
+          count={0}
+          tone="upcoming"
+          reservations={[]}
+          emptyMessage="예정된 예약을 불러오는 중입니다."
+        />
+        <ReservationSection
+          title={K.past}
+          count={0}
+          tone="past"
+          reservations={[]}
+          emptyMessage="지난 예약을 불러오는 중입니다."
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
-      {noticeMessage && (
-        <div className="mt-5 rounded-xl border border-[#65d6aa]/25 bg-[#65d6aa]/10 px-4 py-3 text-sm font-bold text-[#8de4c1]">
-          {noticeMessage}
+      <ReservationCountSummary
+        upcomingCount={upcomingReservations.length}
+        pastCount={pastReservations.length}
+      />
+      {errorMessage && (
+        <div className="mt-5 rounded-xl border border-[#cc2222]/24 bg-[#cc2222]/8 px-4 py-3 text-sm font-bold text-[#ef5353]">
+          {errorMessage}
         </div>
       )}
       <ReservationSection
         title={K.upcoming}
-        count={upcoming.length}
+        count={upcomingReservations.length}
         tone="upcoming"
-        reservations={upcoming}
-        isLoading={isLoading}
-        errorMessage={errorMessage}
-        emptyMessage="아직 예정된 예약이 없습니다."
-        cancellingId={cancellingId}
-        onCancel={handleCancelReservation}
+        reservations={upcomingReservations}
+        emptyMessage="예정된 예약이 없습니다."
       />
       <ReservationSection
         title={K.past}
-        count={past.length}
+        count={pastReservations.length}
         tone="past"
-        reservations={past}
-        isLoading={isLoading}
-        errorMessage={errorMessage}
-        emptyMessage="아직 지난 예약 내역이 없습니다."
-      />
-      <ConfirmModal
-        open={Boolean(cancelTarget)}
-        title="예약을 취소하시겠어요?"
-        description="예약 취소/환불 가능 여부는 예약일 기준 환불 정책에 따라 적용됩니다."
-        cancelText="닫기"
-        confirmText="취소 요청"
-        onCancel={() => {
-          if (!cancellingId) setCancelTarget(null);
-        }}
-        onConfirm={confirmCancelReservation}
-        isLoading={Boolean(cancellingId)}
-        variant="danger"
+        reservations={pastReservations}
+        emptyMessage="지난 예약이 없습니다."
       />
     </div>
   );
 }
 
-function AchievementTabContent({ titleName }: { titleName?: string }) {
+function StateMessageCard({
+  message,
+  tone = "normal",
+}: {
+  message: string;
+  tone?: "normal" | "error";
+}) {
+  return (
+    <div
+      className={[
+        "rounded-xl border bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] px-5 py-8 text-center text-sm font-black shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
+        tone === "error"
+          ? "border-[#cc2222]/35 text-[#ef5353]"
+          : "border-white/[0.075] text-[#898989]",
+      ].join(" ")}
+    >
+      {message}
+    </div>
+  );
+}
+
+function AchievementTabContent({
+  profile,
+  stats,
+}: {
+  profile: MyPageProfile;
+  stats: MyPageStats;
+}) {
   const [achievements, setAchievements] = useState<AchievementItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const currentTitle: TitleItem | null = titleName
-    ? {
-        id: 1,
-        name: titleName,
-        condition: "프로필에 설정된 대표 칭호입니다.",
-        status: "current",
-        icon: "group",
-      }
-    : null;
+  const currentTitle = getCurrentTitleItem(profile, stats);
 
   useEffect(() => {
     let isMounted = true;
@@ -1320,11 +1424,14 @@ function AchievementTabContent({ titleName }: { titleName?: string }) {
     setErrorMessage("");
 
     getMyPageAchievements()
-      .then((items) => {
-        if (isMounted) setAchievements(items.map(mapAchievementToUi));
+      .then((data) => {
+        if (!isMounted) return;
+        setAchievements(data.map(mapAchievementToUi));
       })
       .catch(() => {
-        if (isMounted) setErrorMessage("업적 정보를 불러오지 못했습니다.");
+        if (!isMounted) return;
+        setAchievements([]);
+        setErrorMessage("업적 정보를 불러오지 못했습니다.");
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -1338,24 +1445,17 @@ function AchievementTabContent({ titleName }: { titleName?: string }) {
   return (
     <div className="mt-5 space-y-8">
       <AchievementSectionTitle title="칭호" tone="red" />
-      {currentTitle ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <TitleCard title={currentTitle} />
-        </div>
-      ) : (
-        <ActivityStateCard
-          title="대표 칭호가 없습니다"
-          description="전체 칭호 목록 API가 없어 프로필 대표 칭호만 표시합니다."
-        />
-      )}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <TitleCard title={currentTitle} />
+      </div>
 
       <AchievementSectionTitle title="업적" tone="red" className="pt-1" />
       {isLoading ? (
-        <ActivityStateCard title="업적 정보를 불러오는 중입니다" description="잠시만 기다려주세요." />
+        <StateMessageCard message="업적 정보를 불러오는 중입니다." />
       ) : errorMessage ? (
-        <ActivityStateCard title="업적 정보를 불러오지 못했습니다" description={errorMessage} />
+        <StateMessageCard message={errorMessage} tone="error" />
       ) : achievements.length === 0 ? (
-        <ActivityStateCard title="아직 달성한 업적이 없습니다" description="조건을 달성하면 업적이 표시됩니다." />
+        <StateMessageCard message="아직 표시할 업적이 없습니다." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {achievements.map((achievement) => (
@@ -1468,9 +1568,8 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
             "flex h-14 w-14 shrink-0 items-center justify-center rounded-full border",
             getAchievementIconStyle(achievement),
           ].join(" ")}
-        >
-          <AchievementIcon type={achievement.icon} className="h-8 w-8" />
-        </div>
+        ></div>
+        <AchievementIcon type={achievement.icon} className="h-8 w-8" />
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-start justify-between gap-3">
             <h4 className="text-[16px] font-black text-[#f5f5f5]">
@@ -1544,144 +1643,81 @@ function getProgressBarStyle() {
   return "h-full rounded-full bg-[#ef3f4b] shadow-[0_0_12px_rgba(239,63,75,0.28)]";
 }
 
-function formatMateDateTime(value: string) {
-  if (!value) return { date: "-", time: "-" };
-
-  const parsed = new Date(value);
-  if (!Number.isNaN(parsed.getTime())) {
-    const year = parsed.getFullYear();
-    const month = String(parsed.getMonth() + 1).padStart(2, "0");
-    const day = String(parsed.getDate()).padStart(2, "0");
-    const hour = String(parsed.getHours()).padStart(2, "0");
-    const minute = String(parsed.getMinutes()).padStart(2, "0");
-
-    return {
-      date: `${year}-${month}-${day}`,
-      time: `${hour}:${minute}`,
-    };
-  }
-
-  const [date = "-", rawTime = "-"] = value.split("T");
-  return {
-    date,
-    time: rawTime.slice(0, 5) || "-",
-  };
-}
-
-function mapMateActivityStatus(status: MatePostStatus): MateActivityStatus {
-  if (status === "CLOSED" || status === "MATCHED" || status === "DELETED") {
-    return "closed";
-  }
-
-  return "joined";
-}
-
-function mapMyPageMateToActivityMate(post: MyPageMatePost): ActivityMate {
-  const { date, time } = formatMateDateTime(post.meetingTime);
-  const [primaryTag, ...restTags] = post.tags;
-
-  return {
-    id: post.matePostId,
-    themeTitle: post.themeTitle || primaryTag || "메이트 모집",
-    location: post.location || restTags.slice(0, 2).join(" · ") || "참여한 모집",
-    title: post.title || "제목 없는 메이트 모집",
-    date,
-    time,
-    currentMembers: post.currentPeople,
-    totalMembers: post.maxPeople,
-    status: mapMateActivityStatus(post.status),
-    imageUrl: post.imageUrl || "/images/theme-placeholder.png",
-  };
-}
-
-async function enrichMyPageMatePost(post: MyPageMatePost): Promise<MyPageMatePost> {
-  if (!post.matePostId) return post;
-
-  try {
-    const detail = await getMatePostById(post.matePostId);
-    const theme = detail.themeId ? await getThemeById(detail.themeId).catch(() => null) : null;
-
-    return {
-      ...post,
-      themeId: post.themeId ?? detail.themeId,
-      themeTitle: post.themeTitle || theme?.title || detail.themeTitle,
-      location:
-        post.location ||
-        [
-          theme?.storeName || detail.storeName,
-          theme?.branchName || detail.branchName,
-          theme?.locationName || detail.region,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-      title: post.title || detail.title,
-      status: post.status || detail.status,
-      meetingTime: post.meetingTime || detail.meetingTime,
-      currentPeople: post.currentPeople || detail.currentPeople,
-      maxPeople: post.maxPeople || detail.maxPeople,
-      createdAt: post.createdAt || detail.createdAt,
-      tags: post.tags.length > 0 ? post.tags : detail.tags,
-      imageUrl: post.imageUrl || detail.imageUrl || theme?.imageUrl,
-    };
-  } catch (error) {
-    console.error("Failed to enrich my mate participation", error);
-    return post;
-  }
-}
-
 function ActivityTabContent() {
   const [reviews, setReviews] = useState<ActivityReview[]>([]);
-  const [writtenPosts, setWrittenPosts] = useState<ActivityPost[]>([]);
-  const [joinedMates, setJoinedMates] = useState<ActivityMate[]>([]);
-  const [isActivityLoading, setIsActivityLoading] = useState(true);
-  const [activityError, setActivityError] = useState("");
+  const [posts, setPosts] = useState<ActivityPost[]>([]);
+  const [mates, setMates] = useState<ActivityMate[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadActivity = async () => {
-      setIsActivityLoading(true);
-      setActivityError("");
+    setIsLoading(true);
+    setErrorMessage("");
 
-      try {
-        const [reviewItems, writtenMatePosts, joinedPosts] = await Promise.all([
-          getMyPageReviews(),
-          getMyPageMatePosts(),
-          getMyPageMateParticipations(),
-        ]);
+    Promise.allSettled([
+      getMyPageReviews(),
+      getMyPageMatePosts(),
+      getMyPageMateParticipations(),
+    ])
+      .then(([reviewResult, postResult, participationResult]) => {
         if (!isMounted) return;
 
-        setReviews(reviewItems.map(mapReviewToUi));
+        setReviews(
+          reviewResult.status === "fulfilled"
+            ? reviewResult.value.map(mapReviewToActivity)
+            : [],
+        );
+        setPosts(
+          postResult.status === "fulfilled"
+            ? postResult.value.map(mapMatePostToActivityPost)
+            : [],
+        );
+        setMates(
+          participationResult.status === "fulfilled"
+            ? participationResult.value.map((post) => mapMatePostToActivityMate(post))
+            : [],
+        );
 
-        void enrichMyPageReviewsWithThemeImages(reviewItems).then((enrichedReviews) => {
-          if (!isMounted) return;
-          setReviews(enrichedReviews.map(mapReviewToUi));
-        });
-
-        const enrichedJoinedPosts = await Promise.all(joinedPosts.map(enrichMyPageMatePost));
-        if (!isMounted) return;
-        setWrittenPosts(writtenMatePosts.map(mapMatePostToActivityPost));
-        setJoinedMates(enrichedJoinedPosts.map(mapMyPageMateToActivityMate));
-      } catch (error) {
-        console.error("Failed to load mypage activity", error);
-        if (!isMounted) return;
-        setActivityError("내 활동 정보를 불러오지 못했습니다.");
-      } finally {
-        if (isMounted) {
-          setIsActivityLoading(false);
+        if (
+          reviewResult.status === "rejected" &&
+          postResult.status === "rejected" &&
+          participationResult.status === "rejected"
+        ) {
+          setErrorMessage("내 활동 정보를 불러오지 못했습니다.");
         }
-      }
-    };
-
-    loadActivity();
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
 
     return () => {
       isMounted = false;
     };
   }, []);
 
+  if (isLoading) {
+    return (
+      <div className="mt-5">
+        <StateMessageCard message="내 활동 정보를 불러오는 중입니다." />
+      </div>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="mt-5">
+        <StateMessageCard message={errorMessage} tone="error" />
+      </div>
+    );
+  }
+
   const previewReviews = reviews.slice(0, ACTIVITY_REVIEW_PREVIEW_COUNT);
-  const hiddenReviewCount = Math.max(reviews.length - ACTIVITY_REVIEW_PREVIEW_COUNT, 0);
+  const hiddenReviewCount = Math.max(
+    0,
+    reviews.length - ACTIVITY_REVIEW_PREVIEW_COUNT,
+  );
 
   return (
     <div className="mt-5 space-y-8">
@@ -1693,16 +1729,12 @@ function ActivityTabContent() {
             href="/mypage/reviews"
             className="inline-flex h-9 items-center justify-center rounded-lg border border-[#cc2222]/46 bg-[#101010]/55 px-3.5 text-[12px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
           >
-            후기 전체 보기
+            내 후기 관리
           </Link>
         }
       >
-        {isActivityLoading ? (
-          <ActivityStateCard title="내 후기를 불러오는 중입니다" description="잠시만 기다려주세요." />
-        ) : activityError ? (
-          <ActivityStateCard title="내 후기를 불러오지 못했습니다" description={activityError} />
-        ) : reviews.length === 0 ? (
-          <ActivityStateCard title="작성한 후기가 없습니다" description="후기를 작성하면 이곳에 표시됩니다." />
+        {reviews.length === 0 ? (
+          <StateMessageCard message="아직 작성한 후기가 없습니다." />
         ) : (
           <div className="space-y-3.5">
             {previewReviews.map((review) => (
@@ -1711,13 +1743,13 @@ function ActivityTabContent() {
             {hiddenReviewCount > 0 && (
               <div className="flex flex-col gap-3 rounded-xl border border-white/[0.075] bg-black/[0.18] px-4 py-4 text-sm font-bold text-[#8c8c8c] sm:flex-row sm:items-center sm:justify-between">
                 <span>
-                  최근 {ACTIVITY_REVIEW_PREVIEW_COUNT}개만 표시 중입니다. 나머지 {hiddenReviewCount}개 후기는 전체 보기에서 확인할 수 있어요.
+                  최근 {ACTIVITY_REVIEW_PREVIEW_COUNT}개만 표시 중입니다. 나머지 {hiddenReviewCount}개 후기는 전체 후기 관리에서 확인할 수 있어요.
                 </span>
                 <Link
                   href="/mypage/reviews"
                   className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-[#cc2222]/46 px-3.5 text-[12px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
                 >
-                  전체 보기
+                  전체 후기 보기
                 </Link>
               </div>
             )}
@@ -1726,19 +1758,15 @@ function ActivityTabContent() {
       </ActivitySection>
 
       <ActivitySection title="내가 쓴 글" icon="post">
-        {isActivityLoading ? (
-          <ActivityStateCard title="작성한 메이트 모집글을 불러오는 중입니다" description="잠시만 기다려주세요." />
-        ) : activityError ? (
-          <ActivityStateCard title="작성한 글을 불러오지 못했습니다" description={activityError} />
-        ) : writtenPosts.length === 0 ? (
-          <ActivityStateCard title="작성한 메이트 모집글이 없습니다" description="메이트 모집글을 작성하면 이곳에 표시됩니다." />
+        {posts.length === 0 ? (
+          <StateMessageCard message="아직 작성한 메이트 모집글이 없습니다." />
         ) : (
           <div className="overflow-hidden rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_20px_58px_rgba(0,0,0,0.34)]">
-            {writtenPosts.map((post, index) => (
+            {posts.map((post, index) => (
               <PostActivityRow
                 key={post.id}
                 post={post}
-                isLast={index === writtenPosts.length - 1}
+                isLast={index === posts.length - 1}
               />
             ))}
           </div>
@@ -1746,44 +1774,16 @@ function ActivityTabContent() {
       </ActivitySection>
 
       <ActivitySection title="내가 참여한 메이트 모집" icon="mate">
-        {isActivityLoading ? (
-          <ActivityStateCard
-            title="참여한 메이트 모집을 불러오는 중입니다"
-            description="잠시만 기다려주세요."
-          />
-        ) : activityError ? (
-          <ActivityStateCard
-            title="목록을 불러오지 못했습니다"
-            description={activityError}
-          />
-        ) : joinedMates.length === 0 ? (
-          <ActivityStateCard
-            title="아직 참여한 메이트 모집이 없습니다"
-            description="메이트 찾기에서 참여 신청한 모집이 이곳에 표시됩니다."
-          />
+        {mates.length === 0 ? (
+          <StateMessageCard message="아직 참여 중인 메이트 모집이 없습니다." />
         ) : (
           <div className="grid gap-4 lg:grid-cols-3">
-            {joinedMates.map((mate) => (
+            {mates.map((mate) => (
               <MateActivityCard key={mate.id} mate={mate} />
             ))}
           </div>
         )}
       </ActivitySection>
-    </div>
-  );
-}
-
-function ActivityStateCard({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] px-5 py-8 text-center shadow-[0_18px_42px_rgba(0,0,0,0.28)]">
-      <p className="text-[15px] font-black text-[#e8e8e8]">{title}</p>
-      <p className="mt-2 text-sm font-bold text-[#858585]">{description}</p>
     </div>
   );
 }
@@ -1832,13 +1832,27 @@ function ReviewActivityCard({ review }: { review: ActivityReview }) {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <span className="text-xs font-bold text-[#747474]">
-              {review.dateLabel} {review.date}
+              {review.date}
             </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="h-8 rounded-md border border-white/[0.11] bg-[#101010]/55 px-3 text-xs font-black text-[#aaa] transition-all hover:border-white/[0.2] hover:text-white"
+              >
+                수정
+              </button>
+              <button
+                type="button"
+                className="h-8 rounded-md border border-[#cc2222]/45 bg-[#101010]/55 px-3 text-xs font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
+              >
+                삭제
+              </button>
+            </div>
           </div>
         </div>
 
         <div className="mb-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-white/[0.055] bg-black/[0.16] px-3 py-2">
-          <RatingStars value={review.rating} size="xs" />
+          <StarRating rating={review.rating} />
           <span className="inline-flex items-center gap-1.5 text-xs font-black text-[#898989]">
             <span className="text-[#777]">공포도</span>
             <RatingIcons level={review.horrorLevel} type="horror" />
@@ -1867,27 +1881,6 @@ function ReviewActivityCard({ review }: { review: ActivityReview }) {
   );
 }
 
-function getPostActivityStatusMeta(status: MatePostStatus) {
-  if (status === "CLOSED" || status === "MATCHED" || status === "DELETED") {
-    return {
-      label: "마감",
-      className: "border-white/[0.1] bg-white/[0.035] text-[#7f7f7f]",
-    };
-  }
-
-  if (status === "CLOSING_SOON") {
-    return {
-      label: "마감임박",
-      className: "border-[#f39c12]/35 bg-[#f39c12]/10 text-[#f0b35f]",
-    };
-  }
-
-  return {
-    label: "모집",
-    className: "border-[#d7b46a]/35 bg-[#d7b46a]/8 text-[#d7b46a]",
-  };
-}
-
 function PostActivityRow({
   post,
   isLast,
@@ -1895,7 +1888,10 @@ function PostActivityRow({
   post: ActivityPost;
   isLast?: boolean;
 }) {
-  const statusMeta = getPostActivityStatusMeta(post.status);
+  const categoryStyle =
+    post.category === "모집"
+      ? "border-[#d7b46a]/35 bg-[#d7b46a]/8 text-[#d7b46a]"
+      : "border-[#5d8fd8]/35 bg-[#5d8fd8]/8 text-[#7fa8df]";
   return (
     <article
       className={[
@@ -1906,10 +1902,10 @@ function PostActivityRow({
       <span
         className={[
           "inline-flex h-8 w-fit items-center justify-center rounded-md border px-3 text-xs font-black",
-          statusMeta.className,
+          categoryStyle,
         ].join(" ")}
       >
-        {statusMeta.label}
+        {post.category}
       </span>
       <span className="text-sm font-bold text-[#777]">{post.date}</span>
       <h4 className="min-w-0 truncate text-[15px] font-black text-[#e7e7e7]">
@@ -1944,29 +1940,22 @@ function MateActivityCard({ mate }: { mate: ActivityMate }) {
         alt={mate.themeTitle}
         className="group-hover:scale-[1.035]"
       >
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.02)_0%,rgba(0,0,0,0.12)_42%,rgba(0,0,0,0.78)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <p className="line-clamp-1 text-[20px] font-black leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.72)]">
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.18)_44%,rgba(18,18,18,0.96))]" />
+        <div className="absolute left-4 top-4 flex gap-2">
+          <span className="rounded-md border border-[#cc2222]/45 bg-[#cc2222]/18 px-2.5 py-1 text-[11px] font-black text-[#ef5353]">
             {mate.themeTitle}
-          </p>
-          <p className="mt-1.5 line-clamp-1 text-xs font-bold text-[#d0d0d0]">
+          </span>
+          <span className="rounded-md border border-white/[0.14] bg-black/35 px-2.5 py-1 text-[11px] font-bold text-[#c7c7c7]">
             {mate.location}
-          </p>
+          </span>
         </div>
       </ThemeThumbnail>
 
-      <div className="p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <MateStatusBadge status={mate.status} />
-          <span className="rounded-md border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[11px] font-black text-[#bdbdbd]">
-            {mate.currentMembers}/{mate.totalMembers}명
-          </span>
-        </div>
-
-        <h4 className="line-clamp-2 text-[20px] font-black leading-snug text-[#f5f5f5]">
+      <div className="p-4">
+        <h4 className="line-clamp-2 min-h-[44px] text-[17px] font-black leading-snug text-[#f5f5f5]">
           {mate.title}
         </h4>
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm font-bold text-[#8f8f8f]">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-[#858585]">
           <span className="inline-flex items-center gap-1.5">
             <MetaIcon type="date" />
             {mate.date}
@@ -1976,8 +1965,10 @@ function MateActivityCard({ mate }: { mate: ActivityMate }) {
             {mate.time}
           </span>
         </div>
+      </div>
 
-        <div className="mt-5 flex items-center justify-between gap-3 text-xs font-black">
+      <div className="border-t border-white/[0.06] px-4 py-4">
+        <div className="mb-3 flex items-center justify-between gap-3 text-xs font-black">
           <span className="inline-flex items-center gap-1.5 text-[#8d8d8d]">
             <ActivityLineIcon type="users" className="h-4 w-4" />
             현재 인원
@@ -1986,19 +1977,23 @@ function MateActivityCard({ mate }: { mate: ActivityMate }) {
             {mate.currentMembers}/{mate.totalMembers}명
           </span>
         </div>
-        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
+        <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
           <span
             className="block h-full rounded-full bg-[#b93a3a] shadow-[0_0_12px_rgba(204,34,34,0.28)]"
             style={{ width: `${progress}%` }}
           />
         </div>
-
-        <Link
-          href={`/mate/${mate.id}`}
-          className="mt-5 flex h-11 items-center justify-center rounded-lg border border-[#cc2222]/48 bg-[#cc2222]/8 px-4 text-sm font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/14 hover:text-white"
-        >
-          {isAuthor ? "모집 관리하기" : "모집 상세보기"}
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <MateStatusBadge status={mate.status} />
+          <button
+            type="button"
+            className={
+              "h-9 rounded-md border px-4 text-xs font-black transition-all border-[#cc2222]/58 bg-[#101010]/55 text-[#ef5353] hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white"
+            }
+          >
+            {isAuthor ? "관리하기" : "상세보기"}
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -2026,9 +2021,10 @@ function MateStatusBadge({ status }: { status: MateActivityStatus }) {
 
 export default function MyPage() {
   const [tab, setTab] = useState<TabKey>("reservation");
-  const [main, setMain] = useState<MyPageMain | null>(null);
-  const [isMainLoading, setIsMainLoading] = useState(true);
-  const [mainError, setMainError] = useState("");
+  const [profile, setProfile] = useState<MyPageProfile>(DEFAULT_PROFILE);
+  const [stats, setStats] = useState<MyPageStats>(DEFAULT_STATS);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [profileErrorMessage, setProfileErrorMessage] = useState("");
   const currentTabLabel =
     TABS.find((item) => item.key === tab)?.label ?? K.reservation;
   const currentSubtitle =
@@ -2039,26 +2035,54 @@ export default function MyPage() {
         : K.subtitle;
 
   useEffect(() => {
+    const queryTab = new URLSearchParams(window.location.search).get("tab");
+    if (queryTab === "reservation" || queryTab === "achievement" || queryTab === "activity") {
+      setTab(queryTab);
+    }
+  }, []);
+
+  useEffect(() => {
     let isMounted = true;
 
-    setIsMainLoading(true);
-    setMainError("");
+    setIsProfileLoading(true);
+    setProfileErrorMessage("");
 
-    getMyPageMain()
-      .then((data) => {
-        if (isMounted) setMain(data);
-      })
-      .catch(() => {
-        if (isMounted) setMainError("마이페이지 정보를 불러오지 못했습니다.");
+    Promise.allSettled([getMyPageMain(), getMyPageStats()])
+      .then(([mainResult, statsResult]) => {
+        if (!isMounted) return;
+
+        if (mainResult.status === "fulfilled") {
+          setProfile(mainResult.value.profile);
+          setStats(mainResult.value.stats);
+        }
+
+        if (statsResult.status === "fulfilled") {
+          setStats(statsResult.value);
+        }
+
+        if (mainResult.status === "rejected" && statsResult.status === "rejected") {
+          setProfile(DEFAULT_PROFILE);
+          setStats(DEFAULT_STATS);
+          setProfileErrorMessage("마이페이지 정보를 불러오지 못했습니다.");
+        } else if (mainResult.status === "rejected") {
+          setProfile(DEFAULT_PROFILE);
+          setProfileErrorMessage("프로필 정보를 불러오지 못했습니다.");
+        }
       })
       .finally(() => {
-        if (isMounted) setIsMainLoading(false);
+        if (isMounted) setIsProfileLoading(false);
       });
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  const handleTabChange = (nextTab: TabKey) => {
+    setTab(nextTab);
+    const url = nextTab === "reservation" ? "/mypage?tab=reservation" : `/mypage?tab=${nextTab}`;
+    window.history.replaceState(null, "", url);
+  };
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#0b0b0b] text-[#f5f5f5]">
@@ -2092,14 +2116,15 @@ export default function MyPage() {
         </header>
 
         <ProfileSummaryCard
-          main={main}
-          isLoading={isMainLoading}
-          errorMessage={mainError}
+          profile={profile}
+          stats={stats}
+          isLoading={isProfileLoading}
+          errorMessage={profileErrorMessage}
         />
-        <ReservationTabs active={tab} onChange={setTab} />
+        <ReservationTabs active={tab} onChange={handleTabChange} />
 
         {tab === "reservation" && <ReservationTabContent />}
-        {tab === "achievement" && <AchievementTabContent titleName={main?.profile.titleName} />}
+        {tab === "achievement" && <AchievementTabContent profile={profile} stats={stats} />}
         {tab === "activity" && <ActivityTabContent />}
       </div>
     </main>

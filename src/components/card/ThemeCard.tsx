@@ -146,7 +146,7 @@ export default function ThemeCard({
         </div>
 
         <Link
-          href={`/themes/${theme.id}`}
+          href={`/themes?themeId=${theme.id}`}
           onClick={(event) => {
             if (!onAction) return;
             event.preventDefault();

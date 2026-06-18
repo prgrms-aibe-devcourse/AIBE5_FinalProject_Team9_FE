@@ -287,7 +287,7 @@ function ThemePreviewModal({
                     닫기
                   </button>
                   <Link
-                    href={`/themes/${theme.id}`}
+                    href={`/themes?themeId=${theme.id}`}
                     className="rounded-lg bg-[#e63946] px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#c1121f]"
                   >
                     전체 테마에서 보기

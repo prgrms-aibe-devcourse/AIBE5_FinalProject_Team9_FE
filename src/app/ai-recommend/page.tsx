@@ -3,9 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, ReactNode, useState } from "react";
+import {
+  getAiRecommendErrorInfo,
+  logAiRecommendError,
+  requestAiRecommendation,
+  type AiRecommendedTheme,
+} from "@/services/aiRecommendService";
 
-const mascotSrc = "/images/\uB839\uB0E5/\uB839\uB0E52_\uD22C\uBA85.png";
-const avatarSrc = "/images/\uB839\uB0E5/ghost-cat-avatar.png";
+const mascotSrc = "/images/령냥/령냥2_투명.png";
+const avatarSrc = "/images/령냥/ghost-cat-avatar.png";
+const placeholderImageSrc = "/images/theme-placeholder.png";
 
 const promptSuggestions = [
   "무서운 거 잘 못해도 가능해?",
@@ -36,24 +43,70 @@ export default function AIRecommendPage() {
 function ChatBotPage() {
   const [messages, setMessages] = useState<ChatMessageItem[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
+  const [recommendations, setRecommendations] = useState<AiRecommendedTheme[]>([]);
   const [hasRecommendation, setHasRecommendation] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const sendMessage = (message: string) => {
+  const sendMessage = async (message: string) => {
     const trimmedMessage = message.trim();
-    if (!trimmedMessage) return;
+    if (!trimmedMessage || isLoading) return;
 
     const nextId = Date.now();
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      { id: nextId, speaker: "user", text: trimmedMessage },
-      {
-        id: nextId + 1,
-        speaker: "ai",
-        text: "좋아요. 말씀해주신 조건을 기준으로 령냥이가 어울리는 공포 테마를 찾아봤어요.",
-      },
-    ]);
-    setHasRecommendation(true);
+    const userMessage: ChatMessageItem = {
+      id: nextId,
+      speaker: "user",
+      text: trimmedMessage,
+    };
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
     setInputValue("");
+    setHasRecommendation(true);
+    setRecommendations([]);
+    setErrorMessage("");
+    setIsLoading(true);
+
+    try {
+      const response = await requestAiRecommendation({
+        messages: nextMessages
+          .filter((item) => item.id !== 1 || item.speaker !== "ai")
+          .map((item) => ({
+            role: item.speaker === "ai" ? "assistant" : "user",
+            content: item.text,
+          })),
+      });
+      const responseText =
+        response.message ||
+        (response.themes.length > 0
+          ? "조건에 맞는 테마를 찾아봤어요."
+          : "조건을 조금 더 자세히 알려주시면 더 잘 추천할 수 있어요.");
+
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: nextId + 1,
+          speaker: "ai",
+          text: responseText,
+        },
+      ]);
+      setRecommendations(response.themes);
+    } catch (error) {
+      logAiRecommendError("requestAiRecommendation", error);
+      const fallbackMessage = getAiRecommendErrorInfo(error).message;
+
+      setErrorMessage(fallbackMessage);
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: nextId + 1,
+          speaker: "ai",
+          text: fallbackMessage,
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -130,6 +183,9 @@ function ChatBotPage() {
             messages={messages}
             inputValue={inputValue}
             hasRecommendation={hasRecommendation}
+            recommendations={recommendations}
+            isLoading={isLoading}
+            errorMessage={errorMessage}
             suggestions={promptSuggestions}
             onInputChange={setInputValue}
             onSubmit={handleSubmit}
@@ -143,9 +199,11 @@ function ChatBotPage() {
 
 function PromptSuggestionButtons({
   suggestions,
+  disabled,
   onSelect,
 }: {
   suggestions: string[];
+  disabled: boolean;
   onSelect: (message: string) => void;
 }) {
   return (
@@ -158,8 +216,9 @@ function PromptSuggestionButtons({
           <button
             key={suggestion}
             type="button"
+            disabled={disabled}
             onClick={() => onSelect(suggestion)}
-            className="min-h-8 rounded-full border border-white/[0.1] bg-[#1a1a1a]/78 px-3 text-left text-[11px] font-semibold text-[#d8d8d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:border-[#cc2222]/70 hover:bg-[#cc2222]/13 hover:text-white hover:shadow-[0_0_18px_rgba(204,34,34,0.14),inset_0_1px_0_rgba(255,255,255,0.06)]"
+            className="min-h-8 rounded-full border border-white/[0.1] bg-[#1a1a1a]/78 px-3 text-left text-[11px] font-semibold text-[#d8d8d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:border-[#cc2222]/70 hover:bg-[#cc2222]/13 hover:text-white hover:shadow-[0_0_18px_rgba(204,34,34,0.14),inset_0_1px_0_rgba(255,255,255,0.06)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {suggestion}
           </button>
@@ -173,6 +232,9 @@ function ChatWindow({
   messages,
   inputValue,
   hasRecommendation,
+  recommendations,
+  isLoading,
+  errorMessage,
   suggestions,
   onInputChange,
   onSubmit,
@@ -181,6 +243,9 @@ function ChatWindow({
   messages: ChatMessageItem[];
   inputValue: string;
   hasRecommendation: boolean;
+  recommendations: AiRecommendedTheme[];
+  isLoading: boolean;
+  errorMessage: string;
   suggestions: string[];
   onInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -225,6 +290,7 @@ function ChatWindow({
             <div className="space-y-3">
               <PromptSuggestionButtons
                 suggestions={suggestions}
+                disabled={isLoading}
                 onSelect={onSuggestionSelect}
               />
               <div className="flex min-h-[190px] items-center justify-center px-4">
@@ -236,7 +302,19 @@ function ChatWindow({
             </div>
           )}
 
-          {hasRecommendation && <RecommendedThemeCard />}
+          {isLoading && (
+            <StatusPanel>령냥이가 어울리는 테마를 찾고 있어요...</StatusPanel>
+          )}
+
+          {!isLoading && !errorMessage && hasRecommendation && recommendations.length === 0 && (
+            <StatusPanel>아직 표시할 추천 테마가 없어요.</StatusPanel>
+          )}
+
+          {errorMessage && <StatusPanel tone="error">{errorMessage}</StatusPanel>}
+
+          {recommendations.map((theme) => (
+            <RecommendedThemeCard key={theme.id} theme={theme} />
+          ))}
         </div>
 
         <form
@@ -246,14 +324,16 @@ function ChatWindow({
           <div className="flex items-center gap-3 rounded-[14px] border border-white/[0.1] bg-[#181818] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition-colors focus-within:border-[#cc2222]/55">
             <input
               value={inputValue}
+              disabled={isLoading}
               onChange={(event) => onInputChange(event.target.value)}
               placeholder="메시지를 입력하세요..."
-              className="min-w-0 flex-1 bg-transparent text-[14px] font-semibold text-[#f0f0f0] outline-none placeholder:text-[#777]"
+              className="min-w-0 flex-1 bg-transparent text-[14px] font-semibold text-[#f0f0f0] outline-none placeholder:text-[#777] disabled:cursor-not-allowed disabled:opacity-60"
             />
             <button
               type="submit"
+              disabled={isLoading}
               aria-label="메시지 보내기"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#cc2222] text-[18px] font-black text-white transition-all hover:bg-[#e12a2a] hover:shadow-[0_0_18px_rgba(204,34,34,0.32)]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#cc2222] text-[18px] font-black text-white transition-all hover:bg-[#e12a2a] hover:shadow-[0_0_18px_rgba(204,34,34,0.32)] disabled:cursor-not-allowed disabled:bg-[#662222] disabled:shadow-none"
             >
               {"\u2192"}
             </button>
@@ -300,8 +380,37 @@ function ChatMessage({
   );
 }
 
-function RecommendedThemeCard() {
-  const tags = ["난이도 보통", "3인 추천", "미스터리", "스토리 중심"];
+function StatusPanel({
+  children,
+  tone = "default",
+}: {
+  children: ReactNode;
+  tone?: "default" | "error";
+}) {
+  return (
+    <div
+      className={[
+        "mt-5 rounded-[16px] border p-4 text-[13px] font-semibold leading-6",
+        tone === "error"
+          ? "border-[#cc2222]/32 bg-[#cc2222]/10 text-[#ffb0b0]"
+          : "border-white/[0.08] bg-white/[0.035] text-[#a8a8a8]",
+      ].join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
+function RecommendedThemeCard({ theme }: { theme: AiRecommendedTheme }) {
+  const tags = [
+    theme.difficulty ? `난이도 ${theme.difficulty}` : null,
+    theme.horrorLevel ? `공포도 ${theme.horrorLevel}` : null,
+    theme.rating ? `평점 ${theme.rating.toFixed(1)}` : null,
+    theme.region ?? theme.branchName ?? null,
+    theme.playTime ? `${theme.playTime}분` : null,
+    theme.price ? `${theme.price.toLocaleString()}원` : null,
+  ].filter(Boolean);
+  const detailHref = theme.id ? `/themes?themeId=${theme.id}` : "/themes";
 
   return (
     <article className="mt-5 rounded-[16px] border border-[#cc2222]/28 bg-[linear-gradient(135deg,rgba(204,34,34,0.1),rgba(27,27,27,0.97)_34%,rgba(18,18,18,0.98))] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.3),0_0_24px_rgba(204,34,34,0.1)]">
@@ -312,8 +421,8 @@ function RecommendedThemeCard() {
       <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
         <div className="relative h-[134px] overflow-hidden rounded-[12px] border border-white/[0.08] bg-[#1b1b1b] sm:h-full sm:min-h-[150px]">
           <Image
-            src="/images/horror/theme-smoke.png"
-            alt="잊혀진 기록관 테마 이미지"
+            src={theme.thumbnailUrl || placeholderImageSrc}
+            alt={`${theme.title} 테마 이미지`}
             fill
             sizes="160px"
             className="object-cover brightness-110 contrast-110 saturate-[0.7]"
@@ -324,31 +433,32 @@ function RecommendedThemeCard() {
         <div className="min-w-0">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-[21px] font-black leading-tight text-[#f4f4f4]">
-              잊혀진 기록관
+              {theme.title}
             </h2>
             <span className="shrink-0 rounded-full border border-[#cc2222]/45 bg-[#cc2222]/18 px-2.5 py-1 text-[10px] font-black text-[#ffb0b0]">
               추천
             </span>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-white/[0.08] bg-white/[0.055] px-2.5 py-1 text-[11px] font-semibold text-[#bdbdbd]"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+          {tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/[0.08] bg-white/[0.055] px-2.5 py-1 text-[11px] font-semibold text-[#bdbdbd]"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
 
           <p className="mt-4 text-[13px] leading-6 text-[#a0a0a0]">
-            폐쇄된 기록관에 남겨진 비밀을 파헤치는 미스터리 테마. 단서
-            수집과 협력으로 진실에 다가가세요.
+            {theme.reason || theme.description || "추천 설명이 아직 준비되지 않았어요."}
           </p>
 
           <Link
-            href="/themes"
+            href={detailHref}
             className="mt-4 inline-flex text-[13px] font-black text-[#ff4a4a] transition-colors hover:text-[#ff6a6a]"
           >
             자세히 보기 {"\u2192"}

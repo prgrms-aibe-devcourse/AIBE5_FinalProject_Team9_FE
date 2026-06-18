@@ -80,11 +80,14 @@ export interface AuthResponse {
 
 export interface UpdateProfileRequest {
   nickname?: string;
-  currentPassword?: string;
-  newPassword?: string;
-  isEmailPublic?: boolean;
-  isAgePublic?: boolean;
-  isGenderPublic?: boolean;
   age?: number;
   gender?: string;
+  emailVisible?: boolean;
+  ageVisible?: boolean;
+  genderVisible?: boolean;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }

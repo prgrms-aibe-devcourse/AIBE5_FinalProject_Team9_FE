@@ -7,6 +7,7 @@ import {
   AuthResponse,
   AuthRole,
   AuthUserPayload,
+  ChangePasswordRequest,
   LoginRequest,
   SignupRequest,
   User,
@@ -126,6 +127,16 @@ export const logoutUser = async (): Promise<void> => {
   await axiosInstance.post('/api/auth/logout', {
     refreshToken: getRefreshToken(),
   });
+};
+
+export const changePassword = async (
+  payload: ChangePasswordRequest,
+): Promise<void> => {
+  await axiosInstance.patch('/api/auth/password', payload);
+};
+
+export const withdrawAccount = async (): Promise<void> => {
+  await axiosInstance.delete('/api/auth/withdraw');
 };
 
 export const getMe = async (): Promise<Partial<User>> => {
