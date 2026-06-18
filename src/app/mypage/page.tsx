@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 import RatingStars from "@/components/common/RatingStars";
 import { enrichMyPageReviewsWithThemeImages, parseReviewTags } from "@/lib/myPageReview";
@@ -44,8 +45,8 @@ type IconName =
   | "key"
   | "search"
   | "crown";
-type PostCategory = "모집" | "정보";
 type MateActivityStatus = "open" | "joined" | "closed";
+const ACTIVITY_REVIEW_PREVIEW_COUNT = 5;
 
 type Reservation = {
   id: number;
@@ -96,6 +97,7 @@ type ActivityReview = {
   themeId: number;
   themeTitle: string;
   createdAt: string;
+  dateLabel: string;
   date: string;
   rating: number;
   horrorLevel: number;
@@ -107,7 +109,7 @@ type ActivityReview = {
 
 type ActivityPost = {
   id: number;
-  category: PostCategory;
+  status: MatePostStatus;
   date: string;
   title: string;
   comments?: number;
@@ -731,7 +733,10 @@ function mapReviewToUi(review: MyPageReview, index: number): ActivityReview {
     themeId: review.themeId,
     themeTitle: review.themeTitle || "후기 테마",
     createdAt: review.createdAt ?? "",
-    date: review.createdAt ? review.createdAt.slice(0, 10).replaceAll("-", ".") : "-",
+    dateLabel: review.visitedAt ? "방문일" : "작성일",
+    date: (review.visitedAt || review.createdAt)
+      ? (review.visitedAt || review.createdAt).slice(0, 10).replaceAll("-", ".")
+      : "-",
     rating: review.rating ?? 0,
     horrorLevel: review.horrorRating ?? 0,
     difficulty: review.difficultyRating ?? 0,
@@ -744,7 +749,7 @@ function mapReviewToUi(review: MyPageReview, index: number): ActivityReview {
 function mapMatePostToActivityPost(post: MyPageMatePost): ActivityPost {
   return {
     id: post.matePostId,
-    category: "모집",
+    status: post.status,
     date: post.createdAt ? post.createdAt.slice(0, 10) : "-",
     title: post.title || "제목 없는 메이트 모집",
   };
@@ -1176,6 +1181,7 @@ function ReservationTabContent() {
   const [errorMessage, setErrorMessage] = useState("");
   const [noticeMessage, setNoticeMessage] = useState("");
   const [cancellingId, setCancellingId] = useState<number | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Reservation | null>(null);
 
   const loadReservations = (isMounted: () => boolean) => {
     setIsLoading(true);
@@ -1225,19 +1231,20 @@ function ReservationTabContent() {
     };
   }, []);
 
-  const handleCancelReservation = async (reservation: Reservation) => {
-    const confirmed = window.confirm(
-      "예약 취소/환불을 요청하시겠습니까?\n환불 가능 여부는 예약일 기준 환불 정책에 따라 적용됩니다.",
-    );
+  const handleCancelReservation = (reservation: Reservation) => {
+    setCancelTarget(reservation);
+  };
 
-    if (!confirmed) return;
-
+  const confirmCancelReservation = async () => {
+    if (!cancelTarget) return;
+    const reservation = cancelTarget;
     setCancellingId(reservation.id);
     setNoticeMessage("");
     setErrorMessage("");
 
     try {
       await cancelReservation(reservation.id);
+      setCancelTarget(null);
       setUpcoming((current) => current.filter((item) => item.id !== reservation.id));
       setNoticeMessage("예약 취소 요청이 완료되었습니다. 환불은 결제 상태에 따라 처리됩니다.");
       await loadReservations(() => true);
@@ -1274,6 +1281,19 @@ function ReservationTabContent() {
         isLoading={isLoading}
         errorMessage={errorMessage}
         emptyMessage="아직 지난 예약 내역이 없습니다."
+      />
+      <ConfirmModal
+        open={Boolean(cancelTarget)}
+        title="예약을 취소하시겠어요?"
+        description="예약 취소/환불 가능 여부는 예약일 기준 환불 정책에 따라 적용됩니다."
+        cancelText="닫기"
+        confirmText="취소 요청"
+        onCancel={() => {
+          if (!cancellingId) setCancelTarget(null);
+        }}
+        onConfirm={confirmCancelReservation}
+        isLoading={Boolean(cancellingId)}
+        variant="danger"
       />
     </div>
   );
@@ -1660,6 +1680,9 @@ function ActivityTabContent() {
     };
   }, []);
 
+  const previewReviews = reviews.slice(0, ACTIVITY_REVIEW_PREVIEW_COUNT);
+  const hiddenReviewCount = Math.max(reviews.length - ACTIVITY_REVIEW_PREVIEW_COUNT, 0);
+
   return (
     <div className="mt-5 space-y-8">
       <ActivitySection
@@ -1670,7 +1693,7 @@ function ActivityTabContent() {
             href="/mypage/reviews"
             className="inline-flex h-9 items-center justify-center rounded-lg border border-[#cc2222]/46 bg-[#101010]/55 px-3.5 text-[12px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
           >
-            내 후기 관리
+            후기 전체 보기
           </Link>
         }
       >
@@ -1682,9 +1705,22 @@ function ActivityTabContent() {
           <ActivityStateCard title="작성한 후기가 없습니다" description="후기를 작성하면 이곳에 표시됩니다." />
         ) : (
           <div className="space-y-3.5">
-            {reviews.map((review) => (
+            {previewReviews.map((review) => (
               <ReviewActivityCard key={review.id} review={review} />
             ))}
+            {hiddenReviewCount > 0 && (
+              <div className="flex flex-col gap-3 rounded-xl border border-white/[0.075] bg-black/[0.18] px-4 py-4 text-sm font-bold text-[#8c8c8c] sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  최근 {ACTIVITY_REVIEW_PREVIEW_COUNT}개만 표시 중입니다. 나머지 {hiddenReviewCount}개 후기는 전체 보기에서 확인할 수 있어요.
+                </span>
+                <Link
+                  href="/mypage/reviews"
+                  className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-[#cc2222]/46 px-3.5 text-[12px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
+                >
+                  전체 보기
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </ActivitySection>
@@ -1796,7 +1832,7 @@ function ReviewActivityCard({ review }: { review: ActivityReview }) {
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <span className="text-xs font-bold text-[#747474]">
-              {review.date}
+              {review.dateLabel} {review.date}
             </span>
           </div>
         </div>
@@ -1831,6 +1867,27 @@ function ReviewActivityCard({ review }: { review: ActivityReview }) {
   );
 }
 
+function getPostActivityStatusMeta(status: MatePostStatus) {
+  if (status === "CLOSED" || status === "MATCHED" || status === "DELETED") {
+    return {
+      label: "마감",
+      className: "border-white/[0.1] bg-white/[0.035] text-[#7f7f7f]",
+    };
+  }
+
+  if (status === "CLOSING_SOON") {
+    return {
+      label: "마감임박",
+      className: "border-[#f39c12]/35 bg-[#f39c12]/10 text-[#f0b35f]",
+    };
+  }
+
+  return {
+    label: "모집",
+    className: "border-[#d7b46a]/35 bg-[#d7b46a]/8 text-[#d7b46a]",
+  };
+}
+
 function PostActivityRow({
   post,
   isLast,
@@ -1838,10 +1895,7 @@ function PostActivityRow({
   post: ActivityPost;
   isLast?: boolean;
 }) {
-  const categoryStyle =
-    post.category === "모집"
-      ? "border-[#d7b46a]/35 bg-[#d7b46a]/8 text-[#d7b46a]"
-      : "border-[#5d8fd8]/35 bg-[#5d8fd8]/8 text-[#7fa8df]";
+  const statusMeta = getPostActivityStatusMeta(post.status);
   return (
     <article
       className={[
@@ -1852,10 +1906,10 @@ function PostActivityRow({
       <span
         className={[
           "inline-flex h-8 w-fit items-center justify-center rounded-md border px-3 text-xs font-black",
-          categoryStyle,
+          statusMeta.className,
         ].join(" ")}
       >
-        {post.category}
+        {statusMeta.label}
       </span>
       <span className="text-sm font-bold text-[#777]">{post.date}</span>
       <h4 className="min-w-0 truncate text-[15px] font-black text-[#e7e7e7]">

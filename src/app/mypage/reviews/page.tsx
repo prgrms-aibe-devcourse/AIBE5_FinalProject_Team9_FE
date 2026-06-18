@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import ConfirmModal from '@/components/common/ConfirmModal';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
 import RatingStars from '@/components/common/RatingStars';
 import ReviewForm from '@/components/review/ReviewForm';
@@ -84,7 +85,7 @@ function ReviewEditModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#141414] p-6 shadow-[0_28px_64px_rgba(0,0,0,0.45)]"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/[0.08] bg-[#141414] p-6 shadow-[0_28px_64px_rgba(0,0,0,0.45)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between gap-4">
@@ -106,8 +107,9 @@ function ReviewEditModal({
         <ReviewForm
           themeId={review.themeId}
           themeTitle={review.themeTitle}
+          themeImageUrl={review.imageUrls[0]}
           reservationId={0}
-          reservationDate={formatReviewDate(review.createdAt)}
+          reservationDate={`방문일 ${formatReviewDate(review.visitedAt || review.createdAt)}`}
           initialValues={{
             rating: review.rating,
             difficulty: review.difficultyRating,
@@ -133,6 +135,7 @@ export default function MyReviewsPage() {
   const [pageError, setPageError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [editTarget, setEditTarget] = useState<MyPageReview | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MyPageReview | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const handledQueryAction = useRef(false);
@@ -170,29 +173,40 @@ export default function MyReviewsPage() {
     setEditTarget(review);
   }, []);
 
-  const handleDelete = useCallback(
-    async (review: MyPageReview) => {
-      setActionMessage('');
-      setPageError('');
+  const handleDelete = useCallback((review: MyPageReview) => {
+    setActionMessage('');
+    setPageError('');
 
-      try {
-        if (!review.reviewId) {
-          setPageError(REVIEW_ID_MISSING_MESSAGE);
-          return;
-        }
+    if (!review.reviewId) {
+      setPageError(REVIEW_ID_MISSING_MESSAGE);
+      return;
+    }
 
-        const confirmed = window.confirm('이 후기를 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.');
-        if (!confirmed) return;
+    setDeleteTarget(review);
+  }, []);
 
-        await deleteReview(review.reviewId);
-        setActionMessage('후기를 삭제했습니다.');
-        await loadReviews();
-      } catch (error) {
-        setPageError(getApiErrorMessage(error, '후기 삭제에 실패했습니다.'));
-      }
-    },
-    [loadReviews],
-  );
+  const confirmDelete = useCallback(async () => {
+    if (!deleteTarget?.reviewId) {
+      setDeleteTarget(null);
+      setPageError(REVIEW_ID_MISSING_MESSAGE);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setActionMessage('');
+    setPageError('');
+
+    try {
+      await deleteReview(deleteTarget.reviewId);
+      setActionMessage('후기를 삭제했습니다.');
+      setDeleteTarget(null);
+      await loadReviews();
+    } catch (error) {
+      setPageError(getApiErrorMessage(error, '후기 삭제에 실패했습니다.'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [deleteTarget, loadReviews]);
 
   useEffect(() => {
     if (handledQueryAction.current || isLoading || reviews.length === 0) return;
@@ -332,7 +346,7 @@ export default function MyReviewsPage() {
           <div className="space-y-4">
             {reviewCards.map((review) => (
               <article
-                key={`${review.themeId}-${review.createdAt}-${review.content.slice(0, 20)}`}
+                key={review.reviewId || `${review.themeId}-${review.createdAt}-${review.content.slice(0, 20)}`}
                 className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[radial-gradient(circle_at_10%_0%,rgba(255,255,255,0.04),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
               >
                 <div className="grid gap-0 md:grid-cols-[220px_1fr]">
@@ -352,9 +366,17 @@ export default function MyReviewsPage() {
                     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-lg font-black text-[#f5f5f5]">{review.themeTitle}</p>
-                        <p className="mt-1 text-xs font-bold text-[#777]">
-                          {formatReviewDate(review.createdAt)}
-                        </p>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-bold text-[#777]">
+                          <span>
+                            <span className="text-[#858585]">방문일</span>{" "}
+                            <span className="text-[#c4c4c4]">{formatReviewDate(review.visitedAt || review.createdAt)}</span>
+                          </span>
+                          <span className="hidden text-[#444] sm:inline">·</span>
+                          <span>
+                            <span className="text-[#6f6f6f]">작성일</span>{" "}
+                            <span className="text-[#929292]">{formatReviewDate(review.createdAt)}</span>
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -424,6 +446,20 @@ export default function MyReviewsPage() {
           onSubmit={handleUpdateSubmit}
         />
       )}
+
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="후기를 삭제할까요?"
+        description="삭제한 후기는 다시 복구할 수 없습니다."
+        cancelText="취소"
+        confirmText="삭제하기"
+        onCancel={() => {
+          if (!isSubmitting) setDeleteTarget(null);
+        }}
+        onConfirm={confirmDelete}
+        isLoading={isSubmitting}
+        variant="danger"
+      />
     </main>
   );
 }

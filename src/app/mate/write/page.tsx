@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AxiosError } from 'axios';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,7 +9,40 @@ import { getThemes } from '@/services/themeService';
 import { MateExperienceLevel } from '@/types/mate';
 import { Theme } from '@/types/theme';
 
-const ALL_TAGS = ['진지하게', '즐겁게', '공략 위주', '분위기 위주', '처음 만난 팬텀', '여성만', '사진 촬영'];
+const ALL_TAGS = [
+  '초보 환영',
+  '숙련자 환영',
+  '첫 방탈출 환영',
+  '성별 무관',
+  '여성만',
+  '남성만',
+  '또래 선호',
+  '쫄보 가능',
+  '공포 잘 버팀',
+  '탱커 구함',
+  '탱커 가능',
+  '즐겜 지향',
+  '빡겜 지향',
+  '스토리 몰입',
+  '문제풀이 집중',
+  '힌트 적극 사용',
+  '노힌트 도전',
+  '역할분담 선호',
+  '천천히 진행',
+  '편하게 가요',
+  '친목 가능',
+  '조용히 플레이',
+];
+
+const OPEN_CHAT_PREFIX = 'https://open.kakao.com/o/';
+const MAX_TAG_COUNT = 5;
+
+const TIME_OPTIONS = Array.from({ length: 28 }, (_, index) => {
+  const totalMinutes = 10 * 60 + index * 30;
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+});
 
 const EXPERIENCE_OPTIONS: { value: MateExperienceLevel; label: string; desc: string }[] = [
   { value: 'ANY', label: '무관', desc: '경험 여부에 관계없이 모집합니다' },
@@ -23,12 +56,91 @@ function toIsoString(date: string, time: string) {
   return new Date(`${date}T${time}:00`).toISOString();
 }
 
+function getTodayValue() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function toDateValue(date: Date) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function parseDateValue(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getDateRangeEnd() {
+  const today = parseDateValue(getTodayValue()) ?? new Date();
+  return toDateValue(addDays(today, 30));
+}
+
+function getCalendarDays(monthDate: Date) {
+  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const startDate = addDays(firstDay, -firstDay.getDay());
+  return Array.from({ length: 42 }, (_, index) => addDays(startDate, index));
+}
+
+function formatCalendarTitle(date: Date) {
+  return `${date.getFullYear()}년 ${date.getMonth() + 1}월`;
+}
+
+function formatSelectedDate(value: string) {
+  if (!value) return '';
+  return value.replaceAll('-', '.');
+}
+
+function isPreviousMonthDisabled(monthDate: Date, minDate: string) {
+  const previousMonth = addMonths(monthDate, -1);
+  const previousMonthEnd = new Date(previousMonth.getFullYear(), previousMonth.getMonth() + 1, 0);
+  return toDateValue(previousMonthEnd) < minDate;
+}
+
+function isNextMonthDisabled(monthDate: Date, maxDate: string) {
+  const nextMonth = addMonths(monthDate, 1);
+  return toDateValue(nextMonth) > maxDate;
+}
+
+function normalizeTimeOption(value: string) {
+  return TIME_OPTIONS.includes(value) ? value : '';
+}
+
+function normalizeOpenChatUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return OPEN_CHAT_PREFIX;
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('open.kakao.com/o/')) return `https://${trimmed}`;
+  if (trimmed.startsWith('/o/')) return `https://open.kakao.com${trimmed}`;
+  return `${OPEN_CHAT_PREFIX}${trimmed.replace(/^\/+/, '')}`;
+}
+
+function getOpenChatCode(value: string) {
+  const normalized = normalizeOpenChatUrl(value);
+  return normalized.startsWith(OPEN_CHAT_PREFIX) ? normalized.slice(OPEN_CHAT_PREFIX.length) : normalized;
+}
+
 function splitDateTime(value?: string) {
   if (!value) return { date: '', time: '' };
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     const [rawDate, rawTime = ''] = value.split('T');
-    return { date: rawDate ?? '', time: rawTime.slice(0, 5) };
+    return { date: rawDate ?? '', time: normalizeTimeOption(rawTime.slice(0, 5)) };
   }
 
   const yyyy = date.getFullYear();
@@ -37,12 +149,254 @@ function splitDateTime(value?: string) {
   const hh = String(date.getHours()).padStart(2, '0');
   const mi = String(date.getMinutes()).padStart(2, '0');
 
-  return { date: `${yyyy}-${mm}-${dd}`, time: `${hh}:${mi}` };
+  return { date: `${yyyy}-${mm}-${dd}`, time: normalizeTimeOption(`${hh}:${mi}`) };
 }
 
 function getApiErrorMessage(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<{ message?: string; data?: { message?: string } }>;
   return axiosError.response?.data?.message ?? axiosError.response?.data?.data?.message ?? fallback;
+}
+
+function ChevronDownIcon({ isOpen = false, className = '' }: { isOpen?: boolean; className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={[
+        'h-[18px] w-[18px] transition-transform duration-200',
+        isOpen ? 'rotate-180' : '',
+        className,
+      ].join(' ')}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function DarkDatePicker({
+  label,
+  value,
+  onChange,
+  maxDate = getDateRangeEnd(),
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  maxDate?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const minDate = getTodayValue();
+  const selectedDate = parseDateValue(value);
+  const initialMonth = selectedDate && value >= minDate ? selectedDate : parseDateValue(minDate) ?? new Date();
+  const [visibleMonth, setVisibleMonth] = useState(new Date(initialMonth.getFullYear(), initialMonth.getMonth(), 1));
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const calendarDays = getCalendarDays(visibleMonth);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const openDate = parseDateValue(value);
+    const nextMonth = openDate && value >= minDate ? openDate : parseDateValue(minDate) ?? new Date();
+    setVisibleMonth(new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 1));
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!popoverRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, minDate, value]);
+
+  return (
+    <div ref={popoverRef} className="relative">
+      <label className="mb-2 block text-xs text-[#888]">
+        {label} <span className="text-[#e63946]">*</span>
+      </label>
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className={[
+          'relative flex h-[46px] w-full items-center rounded-lg border bg-[#0d0d0d] px-3 pr-12 text-left text-sm outline-none transition-colors',
+          isOpen || value ? 'border-[#3a3a3a] text-[#f5f5f5]' : 'border-[#2a2a2a] text-[#555]',
+          'hover:border-[#444] focus:border-[#e63946]',
+        ].join(' ')}
+      >
+        <span className={value ? 'font-bold' : ''}>{value ? formatSelectedDate(value) : '날짜 선택'}</span>
+        <ChevronDownIcon
+          isOpen={isOpen}
+          className={[
+            'pointer-events-none absolute right-5 top-1/2 -translate-y-1/2',
+            isOpen ? 'text-[#e63946]' : 'text-[#aaa]',
+          ].join(' ')}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[76px] z-30 rounded-xl border border-[#303030] bg-[#111] p-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <button
+              type="button"
+              onClick={() => setVisibleMonth((current) => addMonths(current, -1))}
+              disabled={isPreviousMonthDisabled(visibleMonth, minDate)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-lg leading-none text-[#aaa] transition-colors hover:bg-[#1b1b1b] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 disabled:hover:bg-transparent"
+              aria-label="이전 달"
+            >
+              ‹
+            </button>
+            <div className="text-sm font-black text-[#f5f5f5]">{formatCalendarTitle(visibleMonth)}</div>
+            <button
+              type="button"
+              onClick={() => setVisibleMonth((current) => addMonths(current, 1))}
+              disabled={isNextMonthDisabled(visibleMonth, maxDate)}
+              className="flex h-7 w-7 items-center justify-center rounded-full text-lg leading-none text-[#aaa] transition-colors hover:bg-[#1b1b1b] hover:text-white disabled:cursor-not-allowed disabled:opacity-20 disabled:hover:bg-transparent"
+              aria-label="다음 달"
+            >
+              ›
+            </button>
+          </div>
+          <div className="mb-1 grid grid-cols-7 gap-0.5 text-center text-[10px] font-bold text-[#666]">
+            {['일', '월', '화', '수', '목', '금', '토'].map((weekday) => (
+              <span key={weekday} className="py-1">{weekday}</span>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-0.5">
+            {calendarDays.map((date) => {
+              const dateValue = toDateValue(date);
+              const isCurrentMonth = date.getMonth() === visibleMonth.getMonth();
+              const isToday = dateValue === minDate;
+              const isSelected = value === dateValue;
+              const isDisabled = dateValue < minDate || dateValue > maxDate;
+
+              return (
+                <button
+                  key={dateValue}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => {
+                    onChange(dateValue);
+                    setIsOpen(false);
+                  }}
+                  className={[
+                    'flex h-7 items-center justify-center rounded-md border text-xs font-bold transition-colors',
+                    isSelected
+                      ? 'border-[#e63946] bg-[#e63946] text-white shadow-[0_0_16px_rgba(230,57,70,0.24)]'
+                      : isToday
+                        ? 'border-[#e63946]/40 bg-[#e63946]/10 text-[#ff8a92]'
+                        : 'border-transparent bg-transparent text-[#aaa] hover:border-[#333] hover:bg-[#181818]',
+                    !isCurrentMonth && 'text-[#444]',
+                    isDisabled && 'cursor-not-allowed border-transparent bg-transparent text-[#333] opacity-45 hover:border-transparent hover:bg-transparent',
+                  ].filter(Boolean).join(' ')}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DarkTimePicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!popoverRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={popoverRef} className="relative">
+      <label className="mb-2 block text-xs text-[#888]">
+        {label} <span className="text-[#e63946]">*</span>
+      </label>
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        className={[
+          'relative flex h-[46px] w-full items-center rounded-lg border bg-[#0d0d0d] px-3 pr-12 text-left text-sm outline-none transition-colors',
+          isOpen || value ? 'border-[#3a3a3a] text-[#f5f5f5]' : 'border-[#2a2a2a] text-[#555]',
+          'hover:border-[#444] focus:border-[#e63946]',
+        ].join(' ')}
+      >
+        <span className={value ? 'font-bold' : ''}>{value || '시간 선택'}</span>
+        <ChevronDownIcon
+          isOpen={isOpen}
+          className={[
+            'pointer-events-none absolute right-5 top-1/2 -translate-y-1/2',
+            isOpen ? 'text-[#e63946]' : 'text-[#aaa]',
+          ].join(' ')}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[76px] z-30 rounded-xl border border-[#303030] bg-[#111] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
+          <div className="max-h-[236px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-1">
+              {TIME_OPTIONS.map((timeValue) => {
+                const isSelected = value === timeValue;
+
+                return (
+                  <button
+                    key={timeValue}
+                    type="button"
+                    onClick={() => {
+                      onChange(timeValue);
+                      setIsOpen(false);
+                  }}
+                  className={[
+                      'rounded-md border px-3 py-2 text-left text-sm font-bold transition-colors',
+                      isSelected
+                        ? 'border-[#e63946]/70 bg-[#e63946]/15 text-[#ff6b74]'
+                        : 'border-transparent bg-transparent text-[#aaa] hover:bg-[#1a1a1a] hover:text-white',
+                    ].join(' ')}
+                  >
+                    {timeValue}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function MateWritePage() {
@@ -63,7 +417,7 @@ export default function MateWritePage() {
   const [experienceLevel, setExperienceLevel] = useState<MateExperienceLevel>('ANY');
   const [tags, setTags] = useState<string[]>([]);
   const [content, setContent] = useState('');
-  const [openChatUrl, setOpenChatUrl] = useState('');
+  const [openChatUrl, setOpenChatUrl] = useState(OPEN_CHAT_PREFIX);
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -107,7 +461,7 @@ export default function MateWritePage() {
         setExperienceLevel(post.experienceLevel);
         setTags(post.tags);
         setContent(post.content);
-        setOpenChatUrl(post.openChatUrl ?? '');
+        setOpenChatUrl(post.openChatUrl ?? OPEN_CHAT_PREFIX);
         setImageUrl(post.imageUrl ?? '');
       })
       .catch((error) => {
@@ -127,18 +481,35 @@ export default function MateWritePage() {
     [themeId, themes],
   );
 
+  useEffect(() => {
+    if (meetingDate && deadlineDate && deadlineDate > meetingDate) {
+      setDeadlineDate(meetingDate);
+    }
+  }, [deadlineDate, meetingDate]);
+
   const toggleTag = (tag: string) => {
-    setTags((prev) => prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag]);
+    setTags((prev) => {
+      if (prev.includes(tag)) return prev.filter((item) => item !== tag);
+      if (prev.length >= MAX_TAG_COUNT) return prev;
+      return [...prev, tag];
+    });
   };
 
   const validationMessage = useMemo(() => {
+    const todayValue = getTodayValue();
     if (!themeId) return '테마를 선택해주세요.';
     if (!title.trim()) return '제목을 입력해주세요.';
     if (!content.trim()) return '내용을 입력해주세요.';
     if (!meetingDate || !meetingTime) return '모임 날짜와 시간을 입력해주세요.';
     if (!deadlineDate || !deadlineTime) return '모집 마감 날짜와 시간을 입력해주세요.';
+    if (meetingDate < todayValue) return '오늘 이전 날짜는 선택할 수 없습니다.';
+    if (deadlineDate < todayValue) return '오늘 이전 날짜는 선택할 수 없습니다.';
+    if (deadlineDate > meetingDate) return '모집 마감일은 모임 날짜보다 늦을 수 없습니다.';
+    if (!TIME_OPTIONS.includes(meetingTime) || !TIME_OPTIONS.includes(deadlineTime)) {
+      return '시간은 30분 단위로 선택해주세요.';
+    }
     if (maxPeople < 2) return '최대 인원은 2명 이상이어야 합니다.';
-    if (!openChatUrl.trim()) return '오픈채팅 링크를 입력해주세요.';
+    if (!getOpenChatCode(openChatUrl).trim()) return '오픈채팅 코드를 입력해주세요.';
     return '';
   }, [content, deadlineDate, deadlineTime, maxPeople, meetingDate, meetingTime, openChatUrl, themeId, title]);
 
@@ -160,7 +531,7 @@ export default function MateWritePage() {
         maxPeople,
         tags,
         experienceLevel,
-        openChatUrl: openChatUrl.trim(),
+        openChatUrl: normalizeOpenChatUrl(openChatUrl),
         imageUrl: imageUrl.trim() || undefined,
       };
       if (isEditMode) await updateMatePost(editId, payload);
@@ -237,18 +608,21 @@ export default function MateWritePage() {
 
           <div className="mb-5">
             <label className="mb-2 block text-xs text-[#888]">테마 <span className="text-[#e63946]">*</span></label>
-            <select
-              value={themeId}
-              onChange={(event) => setThemeId(event.target.value)}
-              className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none focus:border-[#e63946]"
-            >
-              <option value="">{isThemesLoading ? '테마 불러오는 중' : '테마 선택'}</option>
-              {themes.map((theme) => (
-                <option key={theme.id} value={theme.id}>
-                  #{theme.id} {theme.title}{theme.branchName ? ` · ${theme.branchName}` : ''}
-                </option>
-              ))}
-            </select>
+            <div className="group relative">
+              <select
+                value={themeId}
+                onChange={(event) => setThemeId(event.target.value)}
+                className="h-[46px] w-full appearance-none rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 pr-12 text-sm text-[#f5f5f5] outline-none transition-colors focus:border-[#e63946]"
+              >
+                <option value="">{isThemesLoading ? '테마 불러오는 중' : '테마 선택'}</option>
+                {themes.map((theme) => (
+                  <option key={theme.id} value={theme.id}>
+                    #{theme.id} {theme.title}{theme.branchName ? ` · ${theme.branchName}` : ''}
+                  </option>
+                ))}
+              </select>
+              <ChevronDownIcon className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-[#aaa] group-focus-within:text-[#e63946]" />
+            </div>
             {selectedTheme && (
               <p className="mt-2 text-xs text-[#777]">
                 {selectedTheme.branchName || '지점 정보 없음'} · {selectedTheme.minPlayers}~{selectedTheme.maxPlayers}인 · {selectedTheme.duration}분
@@ -256,43 +630,11 @@ export default function MateWritePage() {
             )}
           </div>
 
-          <div className="mb-5 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-xs text-[#888]">모임 날짜 <span className="text-[#e63946]">*</span></label>
-              <input
-                type="date"
-                value={meetingDate}
-                onChange={(event) => setMeetingDate(event.target.value)}
-                className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none [color-scheme:dark] focus:border-[#e63946]"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs text-[#888]">모임 시간 <span className="text-[#e63946]">*</span></label>
-              <input
-                type="time"
-                value={meetingTime}
-                onChange={(event) => setMeetingTime(event.target.value)}
-                className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none [color-scheme:dark] focus:border-[#e63946]"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs text-[#888]">모집 마감일 <span className="text-[#e63946]">*</span></label>
-              <input
-                type="date"
-                value={deadlineDate}
-                onChange={(event) => setDeadlineDate(event.target.value)}
-                className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none [color-scheme:dark] focus:border-[#e63946]"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-xs text-[#888]">마감 시간 <span className="text-[#e63946]">*</span></label>
-              <input
-                type="time"
-                value={deadlineTime}
-                onChange={(event) => setDeadlineTime(event.target.value)}
-                className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none [color-scheme:dark] focus:border-[#e63946]"
-              />
-            </div>
+          <div className="mb-5 grid gap-4 lg:grid-cols-2">
+            <DarkDatePicker label="모임 날짜" value={meetingDate} onChange={setMeetingDate} />
+            <DarkTimePicker label="모임 시간" value={meetingTime} onChange={setMeetingTime} />
+            <DarkDatePicker label="모집 마감일" value={deadlineDate} onChange={setDeadlineDate} maxDate={meetingDate || getDateRangeEnd()} />
+            <DarkTimePicker label="마감 시간" value={deadlineTime} onChange={setDeadlineTime} />
           </div>
 
           <div>
@@ -341,21 +683,29 @@ export default function MateWritePage() {
           </div>
 
           <div className="mb-5">
-            <label className="mb-3 block text-xs text-[#888]">태그</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <label className="block text-xs text-[#888]">모집 태그</label>
+              <span className="text-[11px] text-[#555]">최대 {MAX_TAG_COUNT}개 선택</span>
+            </div>
+            <div className="rounded-lg border border-[#252525] bg-[#0d0d0d] p-3">
+              <div className="flex flex-wrap gap-2">
               {ALL_TAGS.map((tag) => (
                 <button
                   key={tag}
                   type="button"
                   onClick={() => toggleTag(tag)}
+                  disabled={!tags.includes(tag) && tags.length >= MAX_TAG_COUNT}
                   className={[
-                    'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                    tags.includes(tag) ? 'border-[#e63946] bg-[#e63946]/10 text-[#e63946]' : 'border-[#2a2a2a] text-[#888] hover:border-[#444]',
+                    'rounded-full border px-3 py-1.5 text-xs font-bold transition-colors sm:text-sm',
+                    tags.includes(tag)
+                      ? 'border-[#e63946] bg-[#e63946]/15 text-[#ff6b74] shadow-[0_0_14px_rgba(230,57,70,0.12)]'
+                      : 'border-[#2a2a2a] bg-[#151515] text-[#888] hover:border-[#444] hover:text-[#bbb] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-[#2a2a2a] disabled:hover:text-[#888]',
                   ].join(' ')}
                 >
                   {tag}
                 </button>
               ))}
+              </div>
             </div>
           </div>
 
@@ -381,22 +731,34 @@ export default function MateWritePage() {
           <div className="mb-4">
             <label className="mb-2 block text-xs text-[#888]">오픈채팅 링크 <span className="text-[#e63946]">*</span></label>
             <input
-              type="url"
+              type="text"
               value={openChatUrl}
               onChange={(event) => setOpenChatUrl(event.target.value)}
-              placeholder="https://open.kakao.com/o/..."
-              className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none placeholder:text-[#555] focus:border-[#e63946]"
+              onFocus={(event) => {
+                const cursorPosition = event.currentTarget.value.length;
+                event.currentTarget.setSelectionRange(cursorPosition, cursorPosition);
+              }}
+              onBlur={() => setOpenChatUrl(normalizeOpenChatUrl(openChatUrl))}
+              placeholder={OPEN_CHAT_PREFIX}
+              className="w-full rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none placeholder:text-[#555] focus:border-[#e63946]"
             />
+            <p className="mt-2 text-xs text-[#666]">
+              전체 URL을 붙여넣어도 되고, 오픈채팅 코드만 입력해도 됩니다.
+            </p>
           </div>
           <div>
-            <label className="mb-2 block text-xs text-[#888]">이미지 URL</label>
+            <label className="mb-2 block text-xs text-[#888]">이미지 URL <span className="text-[#666]">(선택)</span></label>
+            {/* TODO: mate-post API가 multipart 업로드를 지원하면 파일 첨부 UI로 전환 예정 */}
             <input
               type="url"
               value={imageUrl}
               onChange={(event) => setImageUrl(event.target.value)}
               placeholder="https://..."
-              className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none placeholder:text-[#555] focus:border-[#e63946]"
+              className="w-full rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none placeholder:text-[#555] focus:border-[#e63946]"
             />
+            <p className="mt-2 text-xs text-[#666]">
+              현재는 이미지 URL만 지원합니다. 파일 업로드는 추후 전환 예정입니다.
+            </p>
           </div>
         </section>
 
@@ -408,7 +770,7 @@ export default function MateWritePage() {
             type="button"
             onClick={handleSubmit}
             disabled={!isValid || isSubmitting}
-            className="flex-1 rounded bg-[#e63946] py-3 text-sm font-bold text-white transition-colors hover:bg-[#c1121f] disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex-1 rounded bg-[#e63946] py-3 text-sm font-bold text-white transition-colors hover:bg-[#c1121f] disabled:cursor-not-allowed disabled:bg-[#2a1719] disabled:text-[#b9a4a6] disabled:hover:bg-[#2a1719]"
           >
             {isSubmitting ? '저장 중...' : isEditMode ? '모집 글 수정하기' : '모집 글 등록하기'}
           </button>

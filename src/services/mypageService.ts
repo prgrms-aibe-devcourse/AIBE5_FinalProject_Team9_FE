@@ -60,6 +60,7 @@ export interface MyPageReview {
   tags: string;
   content: string;
   spoiler: boolean;
+  visitedAt?: string;
   createdAt: string;
   imageUrls: string[];
 }
@@ -222,6 +223,7 @@ export const getMyPageReviews = async (): Promise<MyPageReview[]> => {
     nickname: repairMojibake(review.nickname),
     tags: repairMojibake(review.tags),
     content: repairMojibake(review.content),
+    visitedAt: review.visitedAt,
     imageUrls: review.imageUrls ?? [],
   }));
 };

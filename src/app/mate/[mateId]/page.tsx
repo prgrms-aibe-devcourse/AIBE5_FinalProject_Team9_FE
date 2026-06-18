@@ -4,9 +4,11 @@ import { use, useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 import RatingStars from "@/components/common/RatingStars";
 import {
+  closeMatePost,
   deleteMatePost,
   getMatePostById,
   getMatePostParticipants,
@@ -107,6 +109,11 @@ function Badge({ children, className = "" }: { children: React.ReactNode; classN
       {children}
     </span>
   );
+}
+
+function isMyMatePost(post: MatePost | null, userId?: number) {
+  if (!post) return false;
+  return Boolean(post.openChatUrl || (userId && userId === post.memberId));
 }
 
 function MateSkullIcon({ className }: { className?: string }) {
@@ -364,6 +371,8 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
   const [isParticipantsLoading, setIsParticipantsLoading] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<"close" | "delete" | null>(null);
   const [joined, setJoined] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [actionError, setActionError] = useState("");
@@ -427,7 +436,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     if (!post) return;
 
     let isMounted = true;
-    const canViewParticipants = Boolean(user?.id && user.id === post.memberId);
+    const canViewParticipants = isMyMatePost(post, user?.id);
 
     if (!canViewParticipants) {
       setParticipants(EMPTY_PARTICIPANTS);
@@ -482,7 +491,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
 
   const currentPeople = participants.currentPeople || post?.currentPeople || 0;
   const maxPeople = participants.maxPeople || post?.maxPeople || 0;
-  const isAuthor = Boolean(post && user?.id === post.memberId);
+  const isAuthor = isMyMatePost(post, user?.id);
   const canViewParticipants = isAuthor;
   const isAlreadyParticipant = Boolean(
     user?.id && participants.items.some((participant) => participant.memberId === user.id),
@@ -493,6 +502,11 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     post.status === "MATCHED" ||
     post.status === "DELETED" ||
     currentPeople >= maxPeople;
+  const canClosePost = Boolean(
+    post &&
+    isAuthor &&
+    (post.status === "RECRUITING" || post.status === "CLOSING_SOON"),
+  );
   const remaining = Math.max(maxPeople - currentPeople, 0);
   const progress = maxPeople > 0 ? Math.min(100, Math.round((currentPeople / maxPeople) * 100)) : 0;
 
@@ -534,8 +548,6 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
 
   const handleDelete = async () => {
     if (!post || !isAuthor) return;
-    const confirmed = window.confirm("이 메이트 모집 글을 삭제할까요?");
-    if (!confirmed) return;
 
     setIsDeleting(true);
     setActionError("");
@@ -547,6 +559,23 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
       setActionError(getApiErrorMessage(error, "모집 글 삭제에 실패했습니다."));
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleClose = async () => {
+    if (!post || !canClosePost) return;
+
+    setIsClosing(true);
+    setActionError("");
+
+    try {
+      await closeMatePost(post.id);
+      await Promise.allSettled([loadPost(), loadParticipants()]);
+      setConfirmAction(null);
+    } catch (error) {
+      setActionError(getApiErrorMessage(error, "모집 마감에 실패했습니다."));
+    } finally {
+      setIsClosing(false);
     }
   };
 
@@ -807,6 +836,16 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
               </Link>
               {isAuthor ? (
                 <>
+                  {canClosePost && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmAction("close")}
+                      disabled={isClosing}
+                      className="rounded-lg border border-[#f39c12]/45 px-6 py-2.5 text-sm font-black text-[#f0b35f] transition-colors hover:bg-[#f39c12]/10 disabled:cursor-not-allowed disabled:opacity-45"
+                    >
+                      {isClosing ? "마감 중..." : "마감하기"}
+                    </button>
+                  )}
                   <Link
                     href={`/mate/write?editId=${post.id}`}
                     className="rounded-lg bg-[#e63946] px-6 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#c1121f]"
@@ -815,7 +854,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                   </Link>
                   <button
                     type="button"
-                    onClick={handleDelete}
+                    onClick={() => setConfirmAction("delete")}
                     disabled={isDeleting}
                     className="rounded-lg border border-[#cc2222]/60 px-6 py-2.5 text-sm font-black text-[#ef5353] transition-colors hover:bg-[#cc2222]/10 disabled:opacity-45"
                   >
@@ -848,6 +887,32 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={confirmAction === "close"}
+        title="정말 마감하시겠어요?"
+        description="메이트 모집을 마감하면 신규 참여만 제한되고, 현재 참여자는 유지됩니다."
+        cancelText="취소"
+        confirmText="마감하기"
+        onCancel={() => {
+          if (!isClosing) setConfirmAction(null);
+        }}
+        onConfirm={handleClose}
+        isLoading={isClosing}
+      />
+      <ConfirmModal
+        open={confirmAction === "delete"}
+        title="모집 글을 삭제할까요?"
+        description="삭제한 메이트 모집글은 다시 복구할 수 없습니다."
+        cancelText="취소"
+        confirmText="삭제하기"
+        onCancel={() => {
+          if (!isDeleting) setConfirmAction(null);
+        }}
+        onConfirm={handleDelete}
+        isLoading={isDeleting}
+        variant="danger"
+      />
 
       {isThemeModalOpen && (
         <ThemePreviewModal

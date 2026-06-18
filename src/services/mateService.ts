@@ -277,6 +277,10 @@ export const deleteMatePost = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/api/mate-posts/${id}`);
 };
 
+export const closeMatePost = async (id: number): Promise<void> => {
+  await axiosInstance.patch(`/api/mate-posts/${id}/close`);
+};
+
 export const joinMatePost = async (postId: number): Promise<void> => {
   await axiosInstance.post(`/api/mate-posts/${postId}/join`);
 };
