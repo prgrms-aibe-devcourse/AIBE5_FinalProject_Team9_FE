@@ -4,6 +4,8 @@ import { MatePost, MatePostStatus } from "@/types/mate";
 
 interface MateSectionProps {
   posts: MatePost[];
+  isLoading?: boolean;
+  errorMessage?: string;
 }
 
 const levelLabel: Record<string, string> = {
@@ -41,7 +43,13 @@ const mateImages = [
   "/images/horror/theme-pumpkin.png",
 ];
 
-export default function MateSection({ posts }: MateSectionProps) {
+export default function MateSection({
+  posts,
+  isLoading = false,
+  errorMessage = "",
+}: MateSectionProps) {
+  const visiblePosts = posts.slice(0, 3);
+
   return (
     <div>
       <div className="mb-12 flex items-end justify-between gap-6">
@@ -62,13 +70,38 @@ export default function MateSection({ posts }: MateSectionProps) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {posts.slice(0, 3).map((post, index) => {
+      {isLoading ? (
+        <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div
+              key={index}
+              className="min-h-[470px] overflow-hidden rounded-[14px] border border-white/[0.08] bg-[#1b1b1b] shadow-[0_14px_34px_rgba(0,0,0,0.18)]"
+            >
+              <div className="h-[210px] bg-white/[0.04] lg:h-[230px]" />
+              <div className="p-6">
+                <div className="h-8 w-2/3 rounded bg-white/[0.05]" />
+                <div className="mt-5 h-6 w-full rounded bg-white/[0.04]" />
+                <div className="mt-5 h-5 w-3/4 rounded bg-white/[0.04]" />
+              </div>
+              <div className="border-t border-white/[0.08] px-6 py-5">
+                <div className="h-12 rounded bg-white/[0.04]" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : errorMessage ? (
+        <SectionStatusMessage tone="error">{errorMessage}</SectionStatusMessage>
+      ) : visiblePosts.length === 0 ? (
+        <SectionStatusMessage>현재 모집 중인 메이트 글이 없습니다.</SectionStatusMessage>
+      ) : (
+        <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {visiblePosts.map((post, index) => {
           const progress = Math.min(
             100,
             (post.currentPeople / Math.max(post.maxPeople, 1)) * 100,
           );
           const place = [post.storeName, post.branchName, post.region].filter(Boolean).join(" · ");
+          const cardImage = post.imageUrl || mateImages[index % mateImages.length];
 
           return (
             <Link
@@ -80,17 +113,17 @@ export default function MateSection({ posts }: MateSectionProps) {
                 <div
                   className="absolute inset-0 bg-cover bg-center brightness-[0.68] contrast-115 saturate-[0.68] transition duration-700 group-hover:scale-105 group-hover:brightness-[0.84] group-hover:saturate-80"
                   style={{
-                    backgroundImage: `url('${mateImages[index % mateImages.length]}')`,
+                    backgroundImage: `url('${cardImage}')`,
                   }}
                 />
                 <div className="absolute inset-x-0 bottom-[-1px] top-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.26)_0%,rgba(0,0,0,0.06)_42%,rgba(27,27,27,0.96)_100%)] opacity-100 transition-opacity duration-700 group-hover:opacity-[0.78]" />
 
                 <div className="absolute left-5 top-5 flex gap-2">
                   <span className="rounded-[5px] border border-[#cc2222]/45 bg-[#cc2222]/85 px-3 py-1.5 text-[11px] font-black text-white">
-                    {statusLabel[post.status]}
+                    {statusLabel[post.status] ?? post.status}
                   </span>
                   <span className="rounded-[5px] border border-white/25 bg-black/50 px-3 py-1.5 text-[11px] font-bold text-[#d2d2d2]">
-                    {levelLabel[post.experienceLevel]}
+                    {levelLabel[post.experienceLevel] ?? "무관"}
                   </span>
                 </div>
               </div>
@@ -149,8 +182,30 @@ export default function MateSection({ posts }: MateSectionProps) {
               </div>
             </Link>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionStatusMessage({
+  children,
+  tone = "default",
+}: {
+  children: string;
+  tone?: "default" | "error";
+}) {
+  return (
+    <div
+      className={[
+        "rounded-[14px] border bg-[#1b1b1b] p-8 text-center text-sm font-bold",
+        tone === "error"
+          ? "border-[#cc2222]/35 text-[#ef5353]"
+          : "border-white/[0.08] text-[#888]",
+      ].join(" ")}
+    >
+      {children}
     </div>
   );
 }

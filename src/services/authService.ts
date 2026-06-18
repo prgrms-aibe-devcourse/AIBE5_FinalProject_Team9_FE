@@ -123,6 +123,22 @@ export const signupUser = async (
   return data;
 };
 
+export const checkEmailDuplicate = async (email: string): Promise<string> => {
+  const { data } = await axiosInstance.get<ApiResponse<null>>('/api/auth/check-email', {
+    params: { email },
+  });
+
+  return data.message || '사용 가능한 이메일입니다.';
+};
+
+export const checkNicknameDuplicate = async (nickname: string): Promise<string> => {
+  const { data } = await axiosInstance.get<ApiResponse<null>>('/api/auth/check-nickname', {
+    params: { nickname },
+  });
+
+  return data.message || '사용 가능한 닉네임입니다.';
+};
+
 export const logoutUser = async (): Promise<void> => {
   await axiosInstance.post('/api/auth/logout', {
     refreshToken: getRefreshToken(),

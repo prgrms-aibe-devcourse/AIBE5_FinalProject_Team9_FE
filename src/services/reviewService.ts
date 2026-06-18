@@ -1,5 +1,6 @@
 import axiosInstance from '@/lib/axios';
 import { repairMojibake } from '@/lib/text';
+import { AxiosError } from 'axios';
 import type {
   Review,
   ReviewCreateRequest,
@@ -9,6 +10,11 @@ import type {
 
 type ApiResponse<T> = T | { data?: T };
 type ApiListResponse<T> = T[] | { data?: T[] };
+
+export interface ReviewReportRequest {
+  reason: string;
+  detail?: string;
+}
 
 interface ReviewApiResponse {
   id?: number;
@@ -188,4 +194,25 @@ export const updateReview = async (
 
 export const deleteReview = async (reviewId: number): Promise<void> => {
   await axiosInstance.delete(`/api/reviews/${reviewId}`);
+};
+
+export const reportReview = async (
+  reviewId: number,
+  payload: ReviewReportRequest,
+): Promise<void> => {
+  await axiosInstance.post(`/api/reviews/${reviewId}/reports`, payload);
+};
+
+export const getReviewReportErrorMessage = (error: unknown) => {
+  const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+  const status = axiosError.response?.status;
+  const serverMessage = repairMojibake(
+    axiosError.response?.data?.message ?? axiosError.response?.data?.error,
+  );
+
+  if (serverMessage) return serverMessage;
+  if (status === 401 || status === 403) return '로그인이 필요한 기능입니다.';
+  if (status === 409) return '이미 신고한 후기입니다.';
+  if (status && status >= 500) return '신고 처리 중 서버 오류가 발생했습니다.';
+  return '신고를 접수하지 못했습니다. 잠시 후 다시 시도해주세요.';
 };

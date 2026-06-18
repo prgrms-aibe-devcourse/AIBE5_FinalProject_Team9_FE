@@ -88,6 +88,12 @@ export default function ThemeCard({
   actionLabel = "예약하기",
   onAction,
 }: ThemeCardProps) {
+  const playerLabel =
+    theme.minPlayers && theme.maxPlayers
+      ? `${theme.minPlayers}~${theme.maxPlayers}인`
+      : "인원 정보 없음";
+  const durationLabel = theme.duration ? `${theme.duration}분` : "시간 정보 없음";
+  const locationLabel = theme.locationName || theme.branchName || theme.storeName || "위치 정보 없음";
   const actionClassName =
     "mt-6 block h-12 w-full rounded-[8px] border border-[#e23b3b]/75 bg-transparent text-center text-[15px] font-black leading-[48px] text-[#e23b3b] transition-all duration-300 hover:bg-[#e23b3b]/10 hover:text-white hover:shadow-[0_0_18px_rgba(204,34,34,0.18)]";
 
@@ -127,7 +133,7 @@ export default function ThemeCard({
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-[#777]">
             <RatingStars value={theme.rating} showValue reviewCount={theme.reviewCount} size="xs" />
-            <span className="text-[#777]">📍 {theme.locationName}</span>
+            <span className="text-[#777]">📍 {locationLabel}</span>
           </div>
 
           <div
@@ -136,7 +142,7 @@ export default function ThemeCard({
               showPrice ? "flex flex-wrap items-center justify-between" : "",
             ].join(" ")}
           >
-            {theme.minPlayers}~{theme.maxPlayers}인 · {theme.duration}분
+            {playerLabel} · {durationLabel}
             {showPrice && (
               <span className="font-black text-[#d8d8d8]">
                 {theme.price.toLocaleString()}원

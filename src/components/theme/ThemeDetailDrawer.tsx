@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import RatingStars from "@/components/common/RatingStars";
+import ReviewReportModal from "@/components/review/ReviewReportModal";
 import {
   getThemeBranchInfo,
   getThemeById,
@@ -275,6 +276,9 @@ export default function ThemeDetailDrawer({
   const [reviewsError, setReviewsError] = useState("");
   const [branchError, setBranchError] = useState("");
   const [slotsError, setSlotsError] = useState("");
+  const [reportTargetReviewId, setReportTargetReviewId] = useState<number | null>(null);
+  const [reportedReviewIds, setReportedReviewIds] = useState<Set<number>>(() => new Set());
+  const [reviewReportMessage, setReviewReportMessage] = useState("");
   const { setTheme, setLocation, setDateTime, setHeadcount } = useReservationStore();
   const displayTheme = detailTheme ?? theme;
   const displayThemeId = displayTheme.id || theme.id;
@@ -330,6 +334,9 @@ export default function ThemeDetailDrawer({
     setReviewsError("");
     setBranchError("");
     setSlotsError("");
+    setReportTargetReviewId(null);
+    setReportedReviewIds(new Set());
+    setReviewReportMessage("");
     setIsDetailLoading(true);
     setIsReviewsLoading(true);
     setIsBranchLoading(true);
@@ -432,6 +439,15 @@ export default function ThemeDetailDrawer({
     setLocation(displayRegion ?? "", displayBranchName ?? "");
     setDateTime(selectedDate, selectedTime);
     setHeadcount(displayTheme.minPlayers || 1, 0);
+  };
+
+  const handleReviewReportSuccess = (reviewId: number) => {
+    setReportedReviewIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      nextIds.add(reviewId);
+      return nextIds;
+    });
+    setReviewReportMessage("신고가 접수되었습니다.");
   };
 
   return (
@@ -626,63 +642,79 @@ export default function ThemeDetailDrawer({
                   />
                 )}
 
-                {!isReviewsLoading && !reviewsError && reviews.map((review) => (
-                  <article
-                    key={review.id}
-                    className="rounded-[16px] border border-white/[0.08] bg-[#171717] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.18)] sm:px-4 sm:py-[17px]"
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-4">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[linear-gradient(135deg,#252525,#111)] text-sm font-black text-[#d8d8d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                          {getReviewerInitial(review.nickname)}
+                {reviewReportMessage && (
+                  <p className="rounded-[12px] border border-[#2f8f5b]/30 bg-[#10331f]/35 px-4 py-3 text-sm font-bold text-[#48d08a]">
+                    {reviewReportMessage}
+                  </p>
+                )}
+
+                {!isReviewsLoading && !reviewsError && reviews.map((review) => {
+                  const canReport = Boolean(review.id) && !reportedReviewIds.has(review.id);
+
+                  return (
+                    <article
+                      key={review.id}
+                      className="rounded-[16px] border border-white/[0.08] bg-[#171717] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.18)] sm:px-4 sm:py-[17px]"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[linear-gradient(135deg,#252525,#111)] text-sm font-black text-[#d8d8d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                            {getReviewerInitial(review.nickname)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-black text-[#f4f4f4]">
+                              {review.nickname}
+                            </p>
+                            <p className="mt-0.5 text-xs font-bold text-[#777]">
+                              {formatReviewDate(review.createdAt)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-base font-black text-[#f4f4f4]">
-                            {review.nickname}
-                          </p>
-                          <p className="mt-0.5 text-xs font-bold text-[#777]">
-                            {formatReviewDate(review.createdAt)}
-                          </p>
+                        <span className="mr-1 shrink-0 rounded-full border border-[#e8c766]/25 bg-[#e8c766]/10 px-3 py-1">
+                          <RatingStars value={review.rating} showValue size="xs" />
+                        </span>
+                      </div>
+
+                      <p className="text-sm leading-6 text-[#b8b8b8]">{review.content}</p>
+
+                      <div className="mt-3.5 flex flex-wrap gap-2">
+                        <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.045] bg-[#101010]/52 px-3 py-2">
+                          <span className="shrink-0 text-xs font-black text-[#888]">공포도</span>
+                          <DrawerRatingIcons level={review.horrorRating} type="horror" />
+                        </div>
+                        <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.045] bg-[#101010]/52 px-3 py-2">
+                          <span className="shrink-0 text-xs font-black text-[#888]">난이도</span>
+                          <DrawerRatingIcons level={review.difficultyRating} type="difficulty" />
                         </div>
                       </div>
-                      <span className="mr-1 shrink-0 rounded-full border border-[#e8c766]/25 bg-[#e8c766]/10 px-3 py-1">
-                        <RatingStars value={review.rating} showValue size="xs" />
-                      </span>
-                    </div>
 
-                    <p className="text-sm leading-6 text-[#b8b8b8]">{review.content}</p>
-
-                    <div className="mt-3.5 flex flex-wrap gap-2">
-                      <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.045] bg-[#101010]/52 px-3 py-2">
-                        <span className="shrink-0 text-xs font-black text-[#888]">공포도</span>
-                        <DrawerRatingIcons level={review.horrorRating} type="horror" />
+                      <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/[0.04] pt-3">
+                        <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
+                          {review.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-xs font-bold text-[#8a8a8a]"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!canReport}
+                          onClick={() => {
+                            if (!canReport) return;
+                            setReviewReportMessage("");
+                            setReportTargetReviewId(review.id);
+                          }}
+                          className="mr-1 shrink-0 text-xs font-bold text-[#5f5f5f] transition-colors hover:text-[#aaa] disabled:cursor-not-allowed disabled:text-[#3f3f3f]"
+                        >
+                          {reportedReviewIds.has(review.id) ? "신고 완료" : "신고"}
+                        </button>
                       </div>
-                      <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.045] bg-[#101010]/52 px-3 py-2">
-                        <span className="shrink-0 text-xs font-black text-[#888]">난이도</span>
-                        <DrawerRatingIcons level={review.difficultyRating} type="difficulty" />
-                      </div>
-                    </div>
-
-                    <div className="mt-3.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-white/[0.04] pt-3">
-                      <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
-                        {review.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-xs font-bold text-[#8a8a8a]"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        className="mr-1 shrink-0 text-xs font-bold text-[#5f5f5f] transition-colors hover:text-[#aaa]"
-                      >
-                        신고
-                      </button>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
 
@@ -929,6 +961,13 @@ export default function ThemeDetailDrawer({
           </div>
         </div>
       </aside>
+
+      <ReviewReportModal
+        open={reportTargetReviewId !== null}
+        reviewId={reportTargetReviewId}
+        onClose={() => setReportTargetReviewId(null)}
+        onSuccess={handleReviewReportSuccess}
+      />
     </div>
   );
 }
