@@ -8,6 +8,7 @@ import {
   updateTheme,
 } from '@/services/themeService';
 import { OwnerTheme, OwnerThemeRequest } from '@/types/theme';
+import imageCompression from 'browser-image-compression';
 
 type FormState = {
   title: string;
@@ -164,8 +165,16 @@ export default function OwnerThemesPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const setThumbnail = (event: ChangeEvent<HTMLInputElement>) => {
-    setForm((prev) => ({ ...prev, thumbnail: event.target.files?.[0] ?? null }));
+  const setThumbnail =async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const compressed = await imageCompression(file, {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1280,
+      });
+
+      setForm((prev) => ({ ...prev, thumbnail: event.target.files?.[0] ?? null }));
   };
 
   const isValid =

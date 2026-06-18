@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types/user';
 import { removeToken, setAuthTokens } from '@/lib/token';
+import { logoutUser } from '@/services/authService';
 
 interface AuthState {
   user: User | null;
