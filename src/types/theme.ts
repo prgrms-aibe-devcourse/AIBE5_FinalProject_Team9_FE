@@ -15,6 +15,7 @@ export interface Theme {
   clearRate?: number;
   locationId?: number;
   locationName?: string;
+  storeName?: string;
   branchName?: string;
   isBest?: boolean;
   isNew?: boolean;

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import RatingStars from "@/components/common/RatingStars";
 import { Theme } from "@/types/theme";
 
 const THEME_PLACEHOLDER_IMAGE = "/images/theme-placeholder.png";
@@ -10,6 +11,7 @@ interface ThemeCardProps {
   theme: Theme;
   showRank?: boolean;
   showPrice?: boolean;
+  actionLabel?: string;
   onAction?: (theme: Theme) => void;
 }
 
@@ -83,6 +85,7 @@ export default function ThemeCard({
   theme,
   showRank = true,
   showPrice = false,
+  actionLabel = "예약하기",
   onAction,
 }: ThemeCardProps) {
   const actionClassName =
@@ -123,10 +126,7 @@ export default function ThemeCard({
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-[#777]">
-            <span className="text-[15px] font-black text-[#e8c766]">
-              ★ {theme.rating.toFixed(1)}
-            </span>
-            <span className="text-[#6f6f6f]">리뷰 {theme.reviewCount}</span>
+            <RatingStars value={theme.rating} showValue reviewCount={theme.reviewCount} size="xs" />
             <span className="text-[#777]">📍 {theme.locationName}</span>
           </div>
 
@@ -154,7 +154,7 @@ export default function ThemeCard({
           }}
           className={actionClassName}
         >
-          예약하기
+          {actionLabel}
         </Link>
       </div>
     </article>

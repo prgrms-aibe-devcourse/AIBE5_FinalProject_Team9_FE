@@ -10,9 +10,12 @@ import { Theme } from "@/types/theme";
 const LOCATIONS = ["강남", "홍대", "건대", "신촌"];
 const PER_PAGE = 12;
 const SORT_OPTIONS = [
+  { value: "default", label: "기본순" },
   { value: "popular", label: "인기순" },
   { value: "latest", label: "최신순" },
 ] as const;
+type SortOption = (typeof SORT_OPTIONS)[number]["value"];
+type DrawerInitialTab = "info" | "reservation";
 
 function FilterSkullIcon({ className }: { className?: string }) {
   return (
@@ -112,9 +115,10 @@ export default function ThemesPage() {
   const [horrorLevel, setHorrorLevel] = useState(0);
   const [minPlayers, setMinPlayers] = useState(0);
   const [minRating, setMinRating] = useState(0);
-  const [sort, setSort] = useState<"popular" | "latest">("popular");
+  const [sort, setSort] = useState<SortOption>("default");
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [selectedThemeId, setSelectedThemeId] = useState<number | null>(null);
+  const [drawerInitialTab, setDrawerInitialTab] = useState<DrawerInitialTab>("info");
   const [page, setPage] = useState(1);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
   const availableLocations = useMemo(() => {
@@ -181,7 +185,8 @@ export default function ThemesPage() {
       list = list.filter((t) => t.horrorLevel === horrorLevel);
     if (minPlayers > 0) list = list.filter((t) => t.maxPlayers >= minPlayers);
     if (minRating > 0) list = list.filter((t) => (t.rating ?? 0) >= minRating);
-    if (sort === "popular")
+    if (sort === "default") list.sort((a, b) => a.id - b.id);
+    else if (sort === "popular")
       list.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
     else list.sort((a, b) => b.id - a.id);
     return list;
@@ -222,12 +227,13 @@ export default function ThemesPage() {
     setHorrorLevel(0);
     setMinPlayers(0);
     setMinRating(0);
-    setSort("popular");
+    setSort("default");
     setIsSortOpen(false);
     setPage(1);
   };
 
   const openThemeDrawer = (theme: Theme) => {
+    setDrawerInitialTab("info");
     setSelectedThemeId(theme.id);
   };
 
@@ -255,7 +261,10 @@ export default function ThemesPage() {
 
   useEffect(() => {
     const syncThemeFromUrl = () => {
-      const themeId = Number(new URLSearchParams(window.location.search).get("themeId"));
+      const params = new URLSearchParams(window.location.search);
+      const themeId = Number(params.get("themeId"));
+      const tab = params.get("tab") === "reservation" ? "reservation" : "info";
+      setDrawerInitialTab(tab);
       setSelectedThemeId(Number.isFinite(themeId) && themeId > 0 ? themeId : null);
     };
 
@@ -523,22 +532,22 @@ export default function ThemesPage() {
                 </span>
                 개의 테마
               </span>
-              <div className="flex gap-1.5">
-                {(["popular", "latest"] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setFilter(setSort, s)}
-                    className={[
-                      "rounded-full border px-3 py-1.5 text-xs font-black transition-all",
-                      sort === s
-                        ? "border-[#cc2222]/70 bg-[#cc2222]/12 text-[#ef5353]"
-                        : "border-white/[0.1] text-[#888] hover:border-white/20 hover:text-[#d8d8d8]",
-                    ].join(" ")}
-                  >
-                    {s === "popular" ? "인기순" : "최신순"}
-                  </button>
-                ))}
-              </div>
+	              <div className="flex gap-1.5">
+	                {SORT_OPTIONS.map((option) => (
+	                  <button
+	                    key={option.value}
+	                    onClick={() => setFilter(setSort, option.value)}
+	                    className={[
+	                      "rounded-full border px-3 py-1.5 text-xs font-black transition-all",
+	                      sort === option.value
+	                        ? "border-[#cc2222]/70 bg-[#cc2222]/12 text-[#ef5353]"
+	                        : "border-white/[0.1] text-[#888] hover:border-white/20 hover:text-[#d8d8d8]",
+	                    ].join(" ")}
+	                  >
+	                    {option.label}
+	                  </button>
+	                ))}
+	              </div>
             </div>
 
             {/* Grid */}
@@ -570,10 +579,11 @@ export default function ThemesPage() {
                   <ThemeCard
                     key={theme.id}
                     theme={theme}
-                    showRank={false}
-                    showPrice
-                    onAction={openThemeDrawer}
-                  />
+	                    showRank={false}
+	                    showPrice
+	                    actionLabel="상세보기"
+	                    onAction={openThemeDrawer}
+	                  />
                 ))}
               </div>
             ) : (
@@ -620,7 +630,11 @@ export default function ThemesPage() {
         </div>
       </div>
       {selectedTheme && (
-        <ThemeDetailDrawer theme={selectedTheme} onClose={closeThemeDrawer} />
+        <ThemeDetailDrawer
+          theme={selectedTheme}
+          initialTab={drawerInitialTab}
+          onClose={closeThemeDrawer}
+        />
       )}
     </div>
   );

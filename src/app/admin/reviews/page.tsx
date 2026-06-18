@@ -1,27 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
 import { getAdminReviewReports, approveReviewReport, rejectReviewReport } from '@/services/adminService';
 import { AdminReviewReportItem } from '@/types/admin';
 import { useAdminStore } from '@/stores/adminStore';
 import { formatDate } from '@/lib/formatDate';
+import { useState, useMemo, useEffect } from 'react';
+import RatingStars from '@/components/common/RatingStars';
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
     REQUESTED_ADMIN_REVIEW: { label: '대기', cls: 'bg-[#f39c12]/15 text-[#f39c12]' },
     ADMIN_APPROVED: { label: '승인', cls: 'bg-[#2ecc71]/15 text-[#2ecc71]' },
     ADMIN_REJECTED: { label: '반려', cls: 'bg-[#e63946]/15 text-[#e63946]' },
 };
-
-
-function StarRow({ value }: { value: number }) {
-    return (
-        <span className="flex gap-px">
-      {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className={['text-sm', i < value ? 'text-[#f39c12]' : 'text-[#333]'].join(' ')}>★</span>
-      ))}
-    </span>
-    );
-}
 
 const formatReportNo = (createdAt: string, index: number) => {
     const date = new Date(createdAt);
@@ -41,6 +31,8 @@ export default function AdminReviewsPage() {
     const [viewTarget, setViewTarget] = useState<AdminReviewReportItem | null>(null);
     const [adminReason, setAdminReason] = useState('');
     const { setPendingCount } = useAdminStore();
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     const pending = reports.filter(r => r.status === 'REQUESTED_ADMIN_REVIEW').length;
     const approved = reports.filter(r => r.status === 'ADMIN_APPROVED').length;
@@ -60,14 +52,17 @@ export default function AdminReviewsPage() {
         if (statusFilter === '승인' && r.status !== 'ADMIN_APPROVED') return false;
         if (statusFilter === '반려' && r.status !== 'ADMIN_REJECTED') return false;
         if (search && !r.reporterNickname.includes(search) && !r.reviewContent.includes(search)) return false;
+        if (dateFrom && r.createdAt.slice(0, 10) < dateFrom) return false;
+        if (dateTo && r.createdAt.slice(0, 10) > dateTo) return false;
         return true;
-    }), [reports, statusFilter, search]);
+    }), [reports, statusFilter, search, dateFrom, dateTo]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / 8));
     const paged = filtered.slice((page - 1) * 8, page * 8);
 
     const handleSearch = () => { setSearch(searchInput); setPage(1); };
-    const handleReset = () => { setStatusFilter('전체'); setSearch(''); setSearchInput(''); setPage(1); };
+    const handleReset = () => { setStatusFilter('전체'); setSearch(''); setSearchInput(''); setPage(1); setDateFrom('');
+        setDateTo('');};
 
     const handleApprove = async () => {
         if (!viewTarget || !adminReason.trim()) return;
@@ -153,6 +148,13 @@ export default function AdminReviewsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                     </div>
+                    <div className="flex items-center gap-1">
+                        <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+                               className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#ffffff40] [color-scheme:dark]" />
+                        <span className="text-[#aaa] text-xs">~</span>
+                        <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
+                               className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#ffffff40] [color-scheme:dark]" />
+                    </div>
                     <input value={searchInput} onChange={e => setSearchInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()}
                            placeholder="닉네임 또는 내용을 검색해주세요"
                            className="flex-1 min-w-44 bg-[#111] border border-[#2a2a2a] text-xs text-[#f5f5f5] placeholder-[#444] rounded px-3 py-2 focus:outline-none focus:border-[#ffffff40]" />
@@ -160,10 +162,16 @@ export default function AdminReviewsPage() {
                     <button onClick={handleSearch} className="text-xs bg-[#e63946] hover:bg-[#c1121f] text-white px-4 py-2 rounded transition-colors font-medium">검색</button>
                 </div>
 
-                {/* Table meta */}
-                <div className="px-5 py-3 border-b border-[#1f1f1f] flex items-center justify-between">
-                    <span className="text-xs text-[#888]">전체 <span className="text-[#f5f5f5] font-bold">{filtered.length}건</span></span>
-                </div>
+        {/* Table meta */}
+        <div className="px-5 py-3 border-b border-[#1f1f1f] flex items-center justify-between">
+          <span className="text-xs text-[#888]">전체 <span className="text-[#f5f5f5] font-bold">{filtered.length}건</span></span>
+          <button className="flex items-center gap-1.5 text-xs text-[#555] hover:text-[#888] transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            엑셀 다운로드
+          </button>
+        </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full">
@@ -184,7 +192,7 @@ export default function AdminReviewsPage() {
                                     <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{formatReportNo(r.createdAt, index)}</td>
                                     <td className="px-4 py-3 text-xs font-bold text-[#f5f5f5] whitespace-nowrap">{r.themeTitle}</td>
                                     <td className="px-4 py-3 text-xs text-[#ccc]">{r.reporterNickname}</td>
-                                    <td className="px-4 py-3"><StarRow value={r.rating} /></td>
+                                    <td className="px-4 py-3"><RatingStars value={r.rating} /></td>
                                     <td className="px-4 py-3 max-w-xs">
                                         <p className="truncate text-xs text-[#888]">{r.reviewContent}</p>
                                     </td>
@@ -257,7 +265,7 @@ export default function AdminReviewsPage() {
                                     </div>
                                 ))}
                                 <span className="text-gray-500">평점</span>
-                                <span><StarRow value={viewTarget.rating} /></span>
+                                <span><RatingStars value={viewTarget.rating} /></span>
                                 <span className="text-gray-500 pt-1">후기 내용</span>
                                 <p className="text-gray-700 leading-relaxed">{viewTarget.reviewContent}</p>
                             </div>

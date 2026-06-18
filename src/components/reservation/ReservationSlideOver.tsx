@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import ImageWithFallback from '@/components/common/ImageWithFallback';
-import ReservationCalendar from '@/components/reservation/ReservationCalendar';
-import { useReservationStore } from '@/stores/reservationStore';
-import Link from 'next/link';
+import ImageWithFallback from "@/components/common/ImageWithFallback";
+import ReservationCalendar from "@/components/reservation/ReservationCalendar";
+import { useReservationStore } from "@/stores/reservationStore";
+import Link from "next/link";
 
 interface ReservationTheme {
   id: number;
@@ -27,7 +27,7 @@ interface ReservationSlideOverProps {
   onClose: () => void;
 }
 
-const THEME_PLACEHOLDER_IMAGE = '/images/theme-placeholder.png';
+const THEME_PLACEHOLDER_IMAGE = "/images/theme-placeholder.png";
 
 export default function ReservationSlideOver({
   theme,
@@ -38,7 +38,8 @@ export default function ReservationSlideOver({
   onSelectTime,
   onClose,
 }: ReservationSlideOverProps) {
-  const { setTheme, setLocation, setDateTime, setHeadcount } = useReservationStore();
+  const { setTheme, setLocation, setDateTime, setHeadcount } =
+    useReservationStore();
   const minPlayers = Math.max(1, theme.minPlayers || 1);
   const maxPlayers = Math.max(minPlayers, theme.maxPlayers || minPlayers);
   const selectedHeadcount = minPlayers;
@@ -49,7 +50,7 @@ export default function ReservationSlideOver({
     if (!canReserve) return;
 
     setTheme(theme.id, theme.title, theme.imageUrl);
-    setLocation(theme.locationName ?? '', theme.branchName ?? '');
+    setLocation(theme.locationName ?? "", theme.branchName ?? "");
     setDateTime(selectedDate, selectedTime);
     setHeadcount(selectedHeadcount, 0);
   };
@@ -70,7 +71,7 @@ export default function ReservationSlideOver({
           <header className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
             <div>
               <p className="text-[10px] font-black tracking-[0.26em] text-[#cc2222]">
-                {'// RESERVATION'}
+                {"// RESERVATION"}
               </p>
               <h2 className="mt-1 text-lg font-black text-white">예약하기</h2>
             </div>
@@ -99,9 +100,12 @@ export default function ReservationSlideOver({
               </div>
               <div className="p-4">
                 <p className="text-xs font-bold text-[#888]">
-                  {theme.locationName} {theme.branchName ? `· ${theme.branchName}` : ''}
+                  {theme.locationName}{" "}
+                  {theme.branchName ? `· ${theme.branchName}` : ""}
                 </p>
-                <h3 className="mt-1 text-xl font-black text-white">{theme.title}</h3>
+                <h3 className="mt-1 text-xl font-black text-white">
+                  {theme.title}
+                </h3>
                 <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-[#aaa]">
                   <span className="rounded border border-white/[0.08] bg-black/20 px-2 py-1">
                     {theme.duration}분
@@ -120,7 +124,10 @@ export default function ReservationSlideOver({
               <h3 className="mb-3 text-[11px] font-black uppercase tracking-[0.18em] text-[#9a9a9a]">
                 예약 날짜
               </h3>
-              <ReservationCalendar selectedDate={selectedDate} onSelect={onSelectDate} />
+              <ReservationCalendar
+                selectedDate={selectedDate}
+                onSelect={onSelectDate}
+              />
             </section>
 
             <section className="mb-5">
@@ -138,13 +145,13 @@ export default function ReservationSlideOver({
                       disabled={slot.soldOut}
                       onClick={() => onSelectTime(slot.time)}
                       className={[
-                        'h-11 rounded-[10px] border text-sm font-black transition-all',
+                        "h-11 rounded-[10px] border text-sm font-black transition-all",
                         slot.soldOut
-                          ? 'cursor-not-allowed border-white/[0.05] text-[#444] line-through'
+                          ? "cursor-not-allowed border-white/[0.05] text-[#444] line-through"
                           : isSelected
-                            ? 'border-[#cc2222] bg-[#cc2222] text-white shadow-[0_0_18px_rgba(204,34,34,0.2)]'
-                            : 'border-white/[0.1] bg-[#171717] text-[#d8d8d8] hover:border-[#cc2222]/65',
-                      ].join(' ')}
+                            ? "border-[#cc2222] bg-[#cc2222] text-white shadow-[0_0_18px_rgba(204,34,34,0.2)]"
+                            : "border-white/[0.1] bg-[#171717] text-[#d8d8d8] hover:border-[#cc2222]/65",
+                      ].join(" ")}
                     >
                       {slot.time}
                     </button>
@@ -158,10 +165,20 @@ export default function ReservationSlideOver({
                 예약 요약
               </h3>
               <div className="space-y-2 text-sm">
-                <SummaryRow label="날짜" value={selectedDate || '날짜를 선택해주세요'} />
-                <SummaryRow label="시간" value={selectedTime || '시간을 선택해주세요'} />
+                <SummaryRow
+                  label="날짜"
+                  value={selectedDate || "날짜를 선택해주세요"}
+                />
+                <SummaryRow
+                  label="시간"
+                  value={selectedTime || "시간을 선택해주세요"}
+                />
                 <SummaryRow label="인원" value={`${selectedHeadcount}명`} />
-                <SummaryRow label="예상 금액" value={`${totalPrice.toLocaleString()}원`} highlight />
+                <SummaryRow
+                  label="예상 금액"
+                  value={`${totalPrice.toLocaleString()}원`}
+                  highlight
+                />
               </div>
             </section>
           </div>
@@ -176,7 +193,7 @@ export default function ReservationSlideOver({
             </button>
             {canReserve ? (
               <Link
-                href={`/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}`}
+                href={`/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${theme.id}&tab=reservation`)}`}
                 onClick={handleReserve}
                 className="h-12 flex-[1.7] rounded-[10px] bg-[#cc2222] text-center text-sm font-black leading-[48px] text-white transition-all hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]"
               >
@@ -210,7 +227,11 @@ function SummaryRow({
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-[#777]">{label}</span>
-      <span className={highlight ? 'font-black text-[#ef5353]' : 'font-bold text-[#f5f5f5]'}>
+      <span
+        className={
+          highlight ? "font-black text-[#ef5353]" : "font-bold text-[#f5f5f5]"
+        }
+      >
         {value}
       </span>
     </div>

@@ -17,8 +17,8 @@ export interface Review {
   updatedAt?: string;
 }
 
-export interface CreateReviewRequest {
-  themeId: number;
+export interface ReviewFormValues {
+  themeId?: number;
   reservationId: number;
   rating: number;
   difficulty: number;
@@ -26,16 +26,25 @@ export interface CreateReviewRequest {
   content: string;
   tags: string[];
   hasSpoiler: boolean;
-  imageUrls?: string[];
 }
 
-export interface UpdateReviewRequest {
-  rating?: number;
-  difficulty?: number;
-  horrorLevel?: number;
-  content?: string;
-  tags?: string[];
-  hasSpoiler?: boolean;
+export interface ReviewCreateRequest {
+  reservationId: number;
+  rating: number;
+  horrorRating: number;
+  difficultyRating: number;
+  tags?: string;
+  content: string;
+  spoiler: boolean;
+}
+
+export interface ReviewUpdateRequest {
+  rating: number;
+  horrorRating: number;
+  difficultyRating: number;
+  tags?: string;
+  content: string;
+  spoiler: boolean;
 }
 
 export interface ReviewFilter {

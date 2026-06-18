@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/common/Button';
+import ConfirmModal from '@/components/common/ConfirmModal';
 import { getAuthErrorMessage, signupUser } from '@/services/authService';
 
 export default function SignupForm() {
@@ -16,6 +17,7 @@ export default function SignupForm() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signupComplete, setSignupComplete] = useState(false);
 
   const set = (key: string, value: string | boolean) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -68,8 +70,7 @@ export default function SignupForm() {
         termsAgreed: form.agreeTerms,
         marketingAgreed: form.agreeMarketing,
       }, tab === 'owner' ? 'manager' : 'member');
-      alert('회원가입이 완료되었습니다. 로그인해주세요.');
-      router.push('/login');
+      setSignupComplete(true);
     } catch (signupError) {
       setError(
         getAuthErrorMessage(signupError, '회원가입에 실패했습니다.')
@@ -222,6 +223,16 @@ export default function SignupForm() {
           <Link href="/login" className="text-[#e63946] hover:underline">로그인</Link>
         </p>
       </form>
+      <ConfirmModal
+        open={signupComplete}
+        title="회원가입이 완료되었습니다"
+        description="로그인 후 GrimGate의 예약과 메이트 기능을 이용할 수 있습니다."
+        confirmText="로그인하러 가기"
+        cancelText="닫기"
+        onCancel={() => router.push('/login')}
+        onConfirm={() => router.push('/login')}
+        showCancel={false}
+      />
     </div>
   );
 }

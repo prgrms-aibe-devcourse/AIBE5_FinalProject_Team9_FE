@@ -1,17 +1,9 @@
-import { Review } from '@/types/review';
+import RatingStars from "@/components/common/RatingStars";
+import { Review } from "@/types/review";
 
 interface ReviewCardProps {
   review: Review;
   onReport?: (id: number) => void;
-}
-
-function StarScore({ value }: { value: number }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 text-sm font-black text-[#f2c15f]">
-      <span>★</span>
-      <span>{value.toFixed(1)}</span>
-    </span>
-  );
 }
 
 function RatingGlyphs({
@@ -20,17 +12,17 @@ function RatingGlyphs({
   max = 5,
 }: {
   level: number;
-  type: 'horror' | 'difficulty';
+  type: "horror" | "difficulty";
   max?: number;
 }) {
-  const icon = type === 'horror' ? '💀' : '🔒';
+  const icon = type === "horror" ? "💀" : "🔒";
 
   return (
     <span className="inline-flex items-center gap-0.5 leading-none">
       {Array.from({ length: max }).map((_, index) => (
         <span
           key={index}
-          className={index < level ? 'opacity-100' : 'grayscale opacity-30'}
+          className={index < level ? "opacity-100" : "grayscale opacity-30"}
         >
           {icon}
         </span>
@@ -67,25 +59,23 @@ export default function ReviewCard({ review, onReport }: ReviewCardProps) {
           </div>
         </div>
 
-        <StarScore value={review.rating} />
+        <RatingStars value={review.rating} showValue size="xs" className="shrink-0" />
       </div>
 
       <div className="mt-4">
         <div className="inline-flex max-w-full flex-wrap items-center justify-start gap-x-8 gap-y-2 rounded-[12px] border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs">
-        <div className="inline-flex flex-none items-center gap-2">
-          <span className="font-black text-[#b8b8b8]">공포도</span>
-          <RatingGlyphs level={review.horrorLevel} type="horror" />
-        </div>
-        <div className="inline-flex flex-none items-center gap-2">
-          <span className="font-black text-[#b8b8b8]">난이도</span>
-          <RatingGlyphs level={review.difficulty} type="difficulty" />
-        </div>
+          <div className="inline-flex flex-none items-center gap-2">
+            <span className="font-black text-[#b8b8b8]">공포도</span>
+            <RatingGlyphs level={review.horrorLevel} type="horror" />
+          </div>
+          <div className="inline-flex flex-none items-center gap-2">
+            <span className="font-black text-[#b8b8b8]">난이도</span>
+            <RatingGlyphs level={review.difficulty} type="difficulty" />
+          </div>
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-7 text-[#d4d4d4]">
-        {review.content}
-      </p>
+      <p className="mt-4 text-sm leading-7 text-[#d4d4d4]">{review.content}</p>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
         {review.tags.length > 0 ? (

@@ -8,16 +8,7 @@ import { getOwnerReviewReports } from '@/services/ownerService';
 import { getOwnerReservations, getOwnerReservationStats } from '@/services/ownerService';
 import { OwnerReservation, OwnerReservationStats  } from '@/types/reservation';
 import { getOwnerThemes } from '@/services/themeService';
-
-function StarDisplay({ value }: { value: number }) {
-  return (
-    <span className="flex gap-px">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className={['text-sm', i < value ? 'text-[#f39c12]' : 'text-[#333]'].join(' ')}>★</span>
-      ))}
-    </span>
-  );
-}
+import RatingStars from '@/components/common/RatingStars';
 
 export default function OwnerDashboardPage() {
   const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
@@ -169,7 +160,7 @@ export default function OwnerDashboardPage() {
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-[#f5f5f5]">{r.reviewContent}</span>
-                    <StarDisplay value={r.rating} />
+                    <RatingStars value={r.rating} />
                     {r.spoiler && (
                       <span className="text-[10px] bg-[#f39c12]/20 text-[#f39c12] border border-[#f39c12]/40 px-1.5 py-0.5 rounded font-medium">스포일러</span>
                     )}
