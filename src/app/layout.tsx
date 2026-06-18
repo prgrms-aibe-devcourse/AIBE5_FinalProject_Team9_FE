@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Header from '@/components/common/Header';
-import Footer from '@/components/common/Footer';
+import ConditionalLayout from '@/components/common/ConditionalLayout';
 
 export const metadata: Metadata = {
   title: 'GrimGate - 공포 방탈출 예약 플랫폼',
@@ -12,9 +11,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        <ConditionalLayout>{children}</ConditionalLayout>
+
       </body>
     </html>
   );

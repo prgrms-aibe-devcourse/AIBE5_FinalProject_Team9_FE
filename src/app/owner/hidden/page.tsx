@@ -128,18 +128,6 @@ export default function OwnerHiddenPage() {
                           onClick={() => setDetailTarget(r)}
                           className="text-[11px] border border-[#2a2a2a] text-[#888] hover:border-[#444] hover:text-[#f5f5f5] px-2 py-1 rounded transition-colors"
                         >상세</button>
-                        {r.status === 'PENDING' && (
-                          <>
-                            <button
-                              onClick={() => approve(r.id)}
-                              className="text-[11px] bg-[#2ecc71]/15 text-[#2ecc71] hover:bg-[#2ecc71]/25 px-2 py-1 rounded transition-colors font-medium"
-                            >승인</button>
-                            <button
-                              onClick={() => reject(r.id)}
-                              className="text-[11px] bg-[#e63946]/15 text-[#e63946] hover:bg-[#e63946]/25 px-2 py-1 rounded transition-colors font-medium"
-                            >반려</button>
-                          </>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -200,14 +188,11 @@ export default function OwnerHiddenPage() {
               <button onClick={() => setDetailTarget(null)} className="flex-1 text-xs border border-[#2a2a2a] text-[#888] hover:border-[#444] py-2.5 rounded-lg transition-colors">닫기</button>
               {detailTarget.status === 'PENDING' && (
                 <>
-                  <button
-                    onClick={() => { reject(detailTarget.id); setDetailTarget(null); }}
-                    className="flex-1 text-xs bg-[#e63946]/15 text-[#e63946] hover:bg-[#e63946]/25 font-bold py-2.5 rounded-lg transition-colors"
-                  >반려</button>
+
                   <button
                     onClick={() => { approve(detailTarget.id); setDetailTarget(null); }}
                     className="flex-1 text-xs bg-[#2ecc71] hover:bg-[#27ae60] text-[#0d0d0d] font-bold py-2.5 rounded-lg transition-colors"
-                  >승인 (후기 숨김)</button>
+                  >숨김 요청</button>
                 </>
               )}
             </div>

@@ -1,19 +1,19 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/stores/authStore';
 
 const PAGE_TITLES: Record<string, string> = {
   '/owner/dashboard': '대시보드',
   '/owner/reservations': '예약 관리',
   '/owner/themes': '테마 관리',
-  '/owner/reviews': '후기 관리',
-  '/owner/comments': '댓글 관리',
   '/owner/hidden': '숨김 요청',
   '/owner/settings': '설정',
 };
 
 export default function OwnerTopBar() {
   const pathname = usePathname();
+  const { user } = useAuthStore();
   const title =
     Object.entries(PAGE_TITLES).find(
       ([key]) => pathname === key || pathname.startsWith(key + '/')
@@ -32,10 +32,9 @@ export default function OwnerTopBar() {
         </button>
         {/* User */}
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-[#e63946] flex items-center justify-center text-white text-xs font-black shrink-0">김</div>
+          <div className="w-7 h-7 rounded-full bg-[#e63946] flex items-center justify-center text-white text-xs font-black shrink-0">{user?.nickname?.[0] ?? '?'}</div>
           <div className="text-xs leading-tight">
-            <span className="text-[#555]">총 관리자 </span>
-            <span className="text-[#f5f5f5] font-medium">김공포</span>
+            <span className="text-[#f5f5f5] font-medium">{user?.nickname ?? ''}</span>
           </div>
         </div>
       </div>

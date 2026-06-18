@@ -1,3 +1,0 @@
-module.exports=[25341,a=>{"use strict";a.s(["formatRelativeTime",()=>b,"getDDay",()=>c]);let b=a=>{let b=new Date,c=new Date(a),d=Math.floor((b.getTime()-c.getTime())/1e3);return d<60?"방금 전":d<3600?`${Math.floor(d/60)}분 전`:d<86400?`${Math.floor(d/3600)}시간 전`:d<2592e3?`${Math.floor(d/86400)}일 전`:new Date(a).toLocaleDateString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit"})},c=a=>{let b=new Date;b.setHours(0,0,0,0);let c=new Date(a);return c.setHours(0,0,0,0),Math.floor((c.getTime()-b.getTime())/864e5)}}];
-
-//# sourceMappingURL=src_lib_formatDate_ts_c2fb8621._.js.map

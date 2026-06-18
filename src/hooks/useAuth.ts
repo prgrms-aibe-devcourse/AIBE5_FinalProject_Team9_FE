@@ -45,7 +45,13 @@ export const useAuth = () => {
       currentUser = initialUser;
     }
 
-    router.push('/');
+      if (currentUser.role === 'OWNER') {
+          router.push('/owner/dashboard');
+      } else if (currentUser.role === 'ADMIN') {
+          router.push('/admin/reviews');
+      } else {
+          router.push('/');
+      }
 
     return currentUser;
   };

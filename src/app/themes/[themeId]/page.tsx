@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import RatingStars from '@/components/common/RatingStars';
 import ReservationCalendar from '@/components/reservation/ReservationCalendar';
 import ReservationSlideOver from '@/components/reservation/ReservationSlideOver';
 import ReviewCard from '@/components/card/ReviewCard';
@@ -461,7 +462,7 @@ export default function ThemeDetailPage({ params }: { params: Promise<{ themeId:
               👥 {theme.minPlayers}~{theme.maxPlayers}명
             </span>
             <span className="text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-0.5 text-[#888]">
-              ★ {theme.rating.toFixed(1)}
+              <RatingStars value={theme.rating} showValue size="xs" />
             </span>
           </div>
           <p className="text-sm text-[#888]">{theme.description}</p>
@@ -470,13 +471,13 @@ export default function ThemeDetailPage({ params }: { params: Promise<{ themeId:
         {/* Stats Bar */}
         <div className="grid grid-cols-4 border-y border-[#2a2a2a] mt-3">
           {[
-            { value: `★ ${theme.rating.toFixed(1)}`, label: '평점', color: 'text-[#f5f5f5]' },
+            { value: <RatingStars value={theme.rating} showValue size="xs" valueClassName="text-sm text-[#f5f5f5]" />, label: '평점', color: 'text-[#f5f5f5]' },
             { value: String(theme.reviewCount), label: '리뷰', color: 'text-[#e63946]' },
             { value: `${theme.duration}분`, label: '소요', color: 'text-[#2ecc71]' },
             { value: `${theme.minPlayers}~${theme.maxPlayers}명`, label: '인원', color: 'text-blue-400' },
           ].map(stat => (
             <div key={stat.label} className="py-3 text-center border-r border-[#2a2a2a] last:border-r-0">
-              <div className={`text-sm font-bold ${stat.color}`}>{stat.value}</div>
+              <div className={`flex min-h-5 items-center justify-center text-sm font-bold ${stat.color}`}>{stat.value}</div>
               <div className="text-xs text-[#888] mt-0.5">{stat.label}</div>
             </div>
           ))}
