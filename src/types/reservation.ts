@@ -38,3 +38,23 @@ export interface ReservationFilter {
   page?: number;
   size?: number;
 }
+
+export interface OwnerReservation {
+    reservationId: number;
+    reservationDate: string;
+    reservationTime: string;
+    themeTitle: string;
+    nickname: string;
+    phone: string;
+    peopleCount: number;
+    status: 'PENDING_PAYMENT' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+    escapeResult: string;
+}
+
+export interface OwnerReservationStats {
+    total_count: number;
+    today_count: number;
+    completed_count: number;
+    confirmed_count: number;
+    cancelled_count: number;
+}

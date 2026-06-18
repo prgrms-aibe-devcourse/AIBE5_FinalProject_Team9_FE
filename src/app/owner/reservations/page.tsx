@@ -1,51 +1,21 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { OwnerReservation, OwnerReservationStats } from '@/types/reservation';
+import { getOwnerReservations, getOwnerReservationStats } from '@/services/ownerService';
+import { getOwnerThemes } from '@/services/themeService';
 
-type ResultType = 'clear' | 'fail' | 'noshow' | null;
-type StatusType = 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'PENDING';
+const STATUS_OPTS = ['상태 전체', '대기', '확정', '완료', '취소'];
+const STATUS_CODES: Record<string, string> = {
+    '전체': '',
+    '대기': 'PENDING_PAYMENT',
+    '확정': 'CONFIRMED',
+    '완료': 'COMPLETED',
+    '취소': 'CANCELLED'
+};
 
-interface Reservation {
-  id: number;
-  no: string;
-  theme: string;
-  user: string;
-  phone: string;
-  date: string;
-  dateDisplay: string;
-  time: string;
-  party: number;
-  amount: number;
-  status: StatusType;
-  result: ResultType;
-  clearTime: string | null;
-}
-
-const MOCK_RESERVATIONS: Reservation[] = [
-  { id: 1, no: '#R240520-001', theme: '새벽의 저택', user: '김민수', phone: '010-1234-5678', date: '2024-05-20', dateDisplay: '2024.05.20 (월)', time: '14:00', party: 4, amount: 100000, status: 'COMPLETED', result: 'clear', clearTime: '47:32' },
-  { id: 2, no: '#R240520-002', theme: '망자의 서재', user: '이서연', phone: '010-2345-6789', date: '2024-05-20', dateDisplay: '2024.05.20 (월)', time: '16:30', party: 5, amount: 125000, status: 'COMPLETED', result: 'fail', clearTime: null },
-  { id: 3, no: '#R240520-003', theme: '감금된 연구소', user: '박지훈', phone: '010-3456-7890', date: '2024-05-20', dateDisplay: '2024.05.20 (월)', time: '19:00', party: 3, amount: 75000, status: 'CONFIRMED', result: null, clearTime: null },
-  { id: 4, no: '#R240521-004', theme: '새벽의 저택', user: '최유나', phone: '010-4567-8901', date: '2024-05-21', dateDisplay: '2024.05.21 (화)', time: '11:00', party: 6, amount: 150000, status: 'COMPLETED', result: 'clear', clearTime: '47:32' },
-  { id: 5, no: '#R240521-005', theme: '망자의 서재', user: '정현우', phone: '010-5678-9012', date: '2024-05-21', dateDisplay: '2024.05.21 (화)', time: '14:30', party: 4, amount: 100000, status: 'CANCELLED', result: null, clearTime: null },
-  { id: 6, no: '#R240521-006', theme: '감금된 연구소', user: '한지민', phone: '010-6789-0123', date: '2024-05-21', dateDisplay: '2024.05.21 (화)', time: '17:00', party: 2, amount: 50000, status: 'COMPLETED', result: 'noshow', clearTime: null },
-  { id: 7, no: '#R240521-007', theme: '새벽의 저택', user: '오세훈', phone: '010-7890-1234', date: '2024-05-21', dateDisplay: '2024.05.21 (화)', time: '20:00', party: 5, amount: 125000, status: 'CONFIRMED', result: null, clearTime: null },
-  { id: 8, no: '#R240522-008', theme: '망자의 서재', user: '임수빈', phone: '010-8901-2345', date: '2024-05-22', dateDisplay: '2024.05.22 (수)', time: '12:00', party: 3, amount: 75000, status: 'COMPLETED', result: 'clear', clearTime: '47:32' },
-  { id: 9, no: '#R240522-009', theme: '피의 연회', user: '강현우', phone: '010-9012-3456', date: '2024-05-22', dateDisplay: '2024.05.22 (수)', time: '15:00', party: 4, amount: 100000, status: 'COMPLETED', result: 'clear', clearTime: '52:18' },
-  { id: 10, no: '#R240522-010', theme: '감금된 연구소', user: '윤지민', phone: '010-0123-4567', date: '2024-05-22', dateDisplay: '2024.05.22 (수)', time: '18:30', party: 2, amount: 50000, status: 'CANCELLED', result: null, clearTime: null },
-  { id: 11, no: '#R240523-011', theme: '새벽의 저택', user: '장서준', phone: '010-1234-5671', date: '2024-05-23', dateDisplay: '2024.05.23 (목)', time: '13:00', party: 5, amount: 125000, status: 'COMPLETED', result: 'fail', clearTime: null },
-  { id: 12, no: '#R240523-012', theme: '피의 연회', user: '배민지', phone: '010-2345-6782', date: '2024-05-23', dateDisplay: '2024.05.23 (목)', time: '16:00', party: 3, amount: 75000, status: 'CONFIRMED', result: null, clearTime: null },
-  { id: 13, no: '#R240524-013', theme: '망자의 서재', user: '신원호', phone: '010-3456-7893', date: '2024-05-24', dateDisplay: '2024.05.24 (금)', time: '11:30', party: 4, amount: 100000, status: 'COMPLETED', result: 'clear', clearTime: '39:55' },
-  { id: 14, no: '#R240524-014', theme: '새벽의 저택', user: '류하은', phone: '010-4567-8904', date: '2024-05-24', dateDisplay: '2024.05.24 (금)', time: '14:00', party: 6, amount: 150000, status: 'COMPLETED', result: 'clear', clearTime: '44:10' },
-  { id: 15, no: '#R240524-015', theme: '감금된 연구소', user: '고세진', phone: '010-5678-9015', date: '2024-05-24', dateDisplay: '2024.05.24 (금)', time: '17:30', party: 3, amount: 75000, status: 'PENDING', result: null, clearTime: null },
-  { id: 16, no: '#R240525-016', theme: '피의 연회', user: '조민아', phone: '010-6789-0126', date: '2024-05-25', dateDisplay: '2024.05.25 (토)', time: '20:00', party: 5, amount: 125000, status: 'CONFIRMED', result: null, clearTime: null },
-];
-
-const THEMES_OPTS = ['전체', '새벽의 저택', '피의 연회', '망자의 서재', '감금된 연구소'];
-const STATUS_OPTS = ['전체', '대기', '확정', '완료', '취소'];
-const STATUS_CODES: Record<string, StatusType | ''> = { '전체': '', '대기': 'PENDING', '확정': 'CONFIRMED', '완료': 'COMPLETED', '취소': 'CANCELLED' };
-
-const STATUS_MAP: Record<StatusType, { label: string; cls: string }> = {
-  PENDING:   { label: '대기',  cls: 'bg-[#888]/15 text-[#888]' },
+const STATUS_MAP: Record <string,{ label: string; cls: string }> = {
+  PENDING_PAYMENT:   { label: '대기',  cls: 'bg-[#888]/15 text-[#888]' },
   CONFIRMED: { label: '확정',  cls: 'bg-[#f39c12]/15 text-[#f39c12]' },
   COMPLETED: { label: '완료',  cls: 'bg-[#2ecc71]/15 text-[#2ecc71]' },
   CANCELLED: { label: '취소',  cls: 'bg-[#e63946]/15 text-[#e63946]' },
@@ -53,6 +23,8 @@ const STATUS_MAP: Record<StatusType, { label: string; cls: string }> = {
 
 const PAGE_SIZE = 8;
 const TAB_OPTIONS = ['전체', '완료', '확정', '취소'] as const;
+const formatReservationNo = (id: number, date: string) =>
+    `RE${date.replace(/-/g, '').slice(2)}-${String(id).padStart(3, '0')}`;
 
 export default function OwnerReservationsPage() {
   const [themeFilter, setThemeFilter] = useState('전체');
@@ -62,44 +34,67 @@ export default function OwnerReservationsPage() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<typeof TAB_OPTIONS[number]>('전체');
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(1)
+    const [themeOpts, setThemeOpts] = useState<string[]>(['테마 전체']);
 
-  const filtered = useMemo(() => {
-    return MOCK_RESERVATIONS.filter(r => {
-      if (themeFilter !== '전체' && r.theme !== themeFilter) return false;
-      const code = STATUS_CODES[statusFilter];
-      if (code && r.status !== code) return false;
-      if (dateFrom && r.date < dateFrom) return false;
-      if (dateTo && r.date > dateTo) return false;
-      if (search && !r.user.includes(search) && !r.no.includes(search) && !r.theme.includes(search)) return false;
-      // Tab filter
-      if (activeTab === '완료' && r.status !== 'COMPLETED') return false;
-      if (activeTab === '확정' && r.status !== 'CONFIRMED') return false;
-      if (activeTab === '취소' && r.status !== 'CANCELLED') return false;
-      return true;
-    });
-  }, [themeFilter, statusFilter, dateFrom, dateTo, search, activeTab]);
+    const [reservations, setReservations] = useState<OwnerReservation[]>([]);
+    const [statsData, setStatsData] = useState<OwnerReservationStats | null>(null);
+    const [totalElements, setTotalElements] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
 
-  const tabCounts = useMemo(() => ({
-    전체: MOCK_RESERVATIONS.length,
-    완료: MOCK_RESERVATIONS.filter(r => r.status === 'COMPLETED').length,
-    확정: MOCK_RESERVATIONS.filter(r => r.status === 'CONFIRMED').length,
-    취소: MOCK_RESERVATIONS.filter(r => r.status === 'CANCELLED').length,
-  }), []);
+    useEffect(() => {
+        const fetchData = async () => {
+            const [resData, stats] = await Promise.all([
+                getOwnerReservations({ page: page - 1, size: PAGE_SIZE }),
+                getOwnerReservationStats(),
+            ]);
+            setReservations(resData.content);
+            setTotalElements(resData.totalElements);
+            setTotalPages(resData.totalPages);
+            setStatsData(stats);
+        };
+        fetchData();
+    }, [page]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    useEffect(() => {
+        getOwnerThemes().then(themes => {
+            setThemeOpts(['테마 전체', ...themes.map(t => t.title)]);
+        });
+    }, []);
+
+    const filtered = useMemo(() => {
+        return reservations.filter(r => {
+            if (themeFilter !== '전체' && r.themeTitle !== themeFilter) return false;
+            if (statusFilter !== '전체' && r.status !== STATUS_CODES[statusFilter]) return false;
+            if (dateFrom && r.reservationDate < dateFrom) return false;
+            if (dateTo && r.reservationDate > dateTo) return false;
+            if (search && !r.nickname.includes(search) && !r.themeTitle.includes(search)) return false;
+            if (activeTab === '완료' && r.status !== 'COMPLETED') return false;
+            if (activeTab === '확정' && r.status !== 'CONFIRMED') return false;
+            if (activeTab === '취소' && r.status !== 'CANCELLED') return false;
+            return true;
+        });
+    }, [reservations, themeFilter, statusFilter, dateFrom, dateTo, search, activeTab]);
+
+    const tabCounts = useMemo(() => ({
+        전체: reservations.length,
+        완료: reservations.filter(r => r.status === 'COMPLETED').length,
+        확정: reservations.filter(r => r.status === 'CONFIRMED').length,
+        취소: reservations.filter(r => r.status === 'CANCELLED').length,
+    }), [reservations]);
+
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSearch = () => { setSearch(searchInput); setPage(1); };
   const handleReset = () => { setThemeFilter('전체'); setStatusFilter('전체'); setDateFrom(''); setDateTo(''); setSearch(''); setSearchInput(''); setActiveTab('전체'); setPage(1); };
 
-  const stats = useMemo(() => ({
-    total: MOCK_RESERVATIONS.length,
-    today: MOCK_RESERVATIONS.filter(r => r.date === '2024-05-20').length,
-    completed: MOCK_RESERVATIONS.filter(r => r.status === 'COMPLETED').length,
-    confirmed: MOCK_RESERVATIONS.filter(r => r.status === 'CONFIRMED').length,
-    cancelled: MOCK_RESERVATIONS.filter(r => r.status === 'CANCELLED').length,
-  }), []);
+  const stats = {
+      total: statsData?.total_count ?? 0,
+      today: statsData?.today_count ?? 0,
+      completed: statsData?.completed_count ?? 0,
+      confirmed: statsData?.confirmed_count ?? 0,
+      cancelled: statsData?.cancelled_count ?? 0,
+  };
 
   return (
     <div className="p-6 space-y-5">
@@ -135,22 +130,32 @@ export default function OwnerReservationsPage() {
         <div className="px-5 py-4 border-b border-[#1f1f1f] flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1">
             <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-              className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#e63946]" />
-            <span className="text-[#555] text-xs">~</span>
+              className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#ffffff40] [color-scheme:dark]" />
+            <span className="text-[#aaa] text-xs">~</span>
             <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }}
-              className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#e63946]" />
+              className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#ffffff40] [color-scheme:dark]" />
           </div>
-          <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-            className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#e63946]">
-            {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
-          </select>
-          <select value={themeFilter} onChange={e => { setThemeFilter(e.target.value); setPage(1); }}
-            className="bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 py-2 focus:outline-none focus:border-[#e63946]">
-            {THEMES_OPTS.map(t => <option key={t}>{t}</option>)}
-          </select>
+            <div className="relative">
+                <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                        className="appearance-none bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 pr-8 py-2 focus:outline-none focus:border-[#ffffff40] cursor-pointer">
+                    {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
+                </select>
+                <svg className="w-3 h-3 text-[#666] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+            <div className="relative">
+                <select value={themeFilter} onChange={e => { setThemeFilter(e.target.value); setPage(1); }}
+                        className="appearance-none bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 pr-8 py-2 focus:outline-none focus:border-[#ffffff40] cursor-pointer">
+                    {themeOpts.map(t => <option key={t}>{t}</option>)}
+                </select>
+                <svg className="w-3 h-3 text-[#666] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
           <input value={searchInput} onChange={e => setSearchInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()}
             placeholder="닉네임 또는 내용을 검색해주세요"
-            className="flex-1 min-w-44 bg-[#111] border border-[#2a2a2a] text-xs text-[#f5f5f5] placeholder-[#444] rounded px-3 py-2 focus:outline-none focus:border-[#e63946]" />
+            className="flex-1 min-w-44 bg-[#111] border border-[#2a2a2a] text-xs text-[#f5f5f5] placeholder-[#444] rounded px-3 py-2 focus:outline-none focus:border-[#ffffff40]" />
           <button onClick={handleReset} className="text-xs text-[#666] hover:text-[#f5f5f5] border border-[#2a2a2a] hover:border-[#444] px-3 py-2 rounded transition-colors">초기화</button>
           <button onClick={handleSearch} className="text-xs bg-[#e63946] hover:bg-[#c1121f] text-white px-4 py-2 rounded transition-colors font-medium">검색</button>
         </div>
@@ -196,28 +201,29 @@ export default function OwnerReservationsPage() {
               ) : paged.map(r => {
                 const st = STATUS_MAP[r.status];
                 return (
-                  <tr key={r.id} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
-                    <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{r.no}</td>
-                    <td className="px-4 py-3 text-xs text-[#ccc] whitespace-nowrap">{r.dateDisplay}</td>
-                    <td className="px-4 py-3 text-xs text-[#888]">{r.time}</td>
-                    <td className="px-4 py-3 text-xs font-bold text-[#f5f5f5] whitespace-nowrap">{r.theme}</td>
-                    <td className="px-4 py-3 text-xs text-[#ccc]">{r.user}</td>
+                  <tr key={r.reservationId} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
+                    <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{formatReservationNo(r.reservationId, r.reservationDate)}</td>
+                    <td className="px-4 py-3 text-xs text-[#ccc] whitespace-nowrap">{r.reservationDate}</td>
+                    <td className="px-4 py-3 text-xs text-[#888]">{r.reservationTime}</td>
+                    <td className="px-4 py-3 text-xs font-bold text-[#f5f5f5] whitespace-nowrap">{r.themeTitle}</td>
+                    <td className="px-4 py-3 text-xs text-[#ccc]">{r.nickname}</td>
                     <td className="px-4 py-3 text-xs text-[#666] font-mono whitespace-nowrap">{r.phone}</td>
-                    <td className="px-4 py-3 text-xs text-[#888]">{r.party}명</td>
+                    <td className="px-4 py-3 text-xs text-[#888]">{r.peopleCount}명</td>
                     <td className="px-4 py-3">
                       <span className={['text-[11px] px-2 py-0.5 rounded font-medium whitespace-nowrap', st.cls].join(' ')}>{st.label}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs">
-                      {r.result === 'clear' && (
-                        <span className="flex items-center gap-1 text-[#e63946] whitespace-nowrap font-medium">
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6h-5.6z" /></svg>
-                          클리어 타임 {r.clearTime}
-                        </span>
-                      )}
-                      {r.result === 'fail' && <span className="text-[#e63946] font-medium">실패</span>}
-                      {r.result === 'noshow' && <span className="text-[#f39c12] font-medium">노쇼</span>}
-                      {!r.result && <span className="text-[#444]">—</span>}
-                    </td>
+                      <td className="px-4 py-3 text-xs">
+                          {r.escapeResult === '결과 미입력' || !r.escapeResult ? (
+                              <span className="text-[#444]">—</span>
+                          ) : r.escapeResult.startsWith('성공') ? (
+                              <span className="flex items-center gap-1 text-[#e63946] whitespace-nowrap font-medium">
+      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6h-5.6z" /></svg>
+      클리어 타임 {r.escapeResult.replace('성공 (', '').replace(')', '')}
+    </span>
+                          ) : (
+                              <span className="text-[#e63946] font-medium">{r.escapeResult}</span>
+                          )}
+                      </td>
                   </tr>
                 );
               })}
@@ -226,13 +232,11 @@ export default function OwnerReservationsPage() {
         </div>
 
         {/* Pagination */}
-        <div className="px-5 py-3 border-t border-[#1f1f1f] flex items-center justify-between flex-wrap gap-2">
-          <span className="text-xs text-[#555]">
-            {filtered.length}건 중 {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} 표시
-          </span>
+        <div className="px-5 py-3 border-t border-[#1f1f1f] flex items-center justify-center flex-wrap gap-2">
+
           <div className="flex gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              className="text-xs px-2.5 py-1.5 rounded border border-[#2a2a2a] text-[#666] hover:border-[#444] disabled:opacity-30 transition-colors">‹</button>
+              className="text-xs px-2.5 py-1.5 rounded border border-[#555] text-[#ddd] hover:border-[#444] disabled:opacity-30 transition-colors">‹</button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(n => (
               <button key={n} onClick={() => setPage(n)}
                 className={['text-xs px-2.5 py-1.5 rounded border transition-colors', n === page ? 'bg-[#e63946] border-[#e63946] text-white font-bold' : 'border-[#2a2a2a] text-[#666] hover:border-[#444]'].join(' ')}>{n}</button>
@@ -243,7 +247,7 @@ export default function OwnerReservationsPage() {
                 className={['text-xs px-2.5 py-1.5 rounded border transition-colors', totalPages === page ? 'bg-[#e63946] border-[#e63946] text-white font-bold' : 'border-[#2a2a2a] text-[#666] hover:border-[#444]'].join(' ')}>{totalPages}</button>
             )}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="text-xs px-2.5 py-1.5 rounded border border-[#2a2a2a] text-[#666] hover:border-[#444] disabled:opacity-30 transition-colors">›</button>
+              className="text-xs px-2.5 py-1.5 rounded border border-[#555] text-[#ddd] hover:border-[#444] disabled:opacity-30 transition-colors">›</button>
           </div>
         </div>
       </div>

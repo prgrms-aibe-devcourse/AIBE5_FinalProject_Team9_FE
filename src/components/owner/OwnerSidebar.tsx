@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { useOwnerStore } from '@/stores/ownerStore';
 
 const NAV_ITEMS = [
   { href: '/owner/dashboard', label: '대시보드', icon: (
@@ -24,13 +25,14 @@ const NAV_ITEMS = [
     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
     </svg>
-  ), badge: 3 },
+  ), badge: 0 },
 ];
 
 export default function OwnerSidebar() {
   const pathname = usePathname();
   const { logout } = useAuthStore();
-
+    const router = useRouter();
+    const { pendingCount } = useOwnerStore();
   const isActive = (href: string) =>
     pathname === href || (href !== '/owner' && pathname.startsWith(href + '/'));
 
@@ -64,12 +66,12 @@ export default function OwnerSidebar() {
                 <span className={active ? 'text-[#e63946]' : 'text-[#555]'}>{item.icon}</span>
                 <span className="font-medium truncate">{item.label}</span>
               </div>
-              {item.badge > 0 && (
+              {(item.href === '/owner/hidden' ? pendingCount : item.badge) > 0 &&(
                 <span className={[
                   'text-[10px] rounded-full min-w-4.5 h-4.5 flex items-center justify-center font-black px-1 shrink-0',
                   active ? 'bg-[#e63946] text-white' : 'bg-[#2a2a2a] text-[#e63946]',
                 ].join(' ')}>
-                  {item.badge}
+                  {item.href === '/owner/hidden' ? pendingCount : item.badge}
                 </span>
               )}
             </Link>
@@ -93,7 +95,7 @@ export default function OwnerSidebar() {
           <span className="font-medium">설정</span>
         </Link>
         <button
-          onClick={logout}
+          onClick={async () => { await logout(); router.push('/login'); }}
           className="w-full flex items-center gap-2.5 px-2 py-2 rounded text-xs text-[#666] hover:text-[#f5f5f5] hover:bg-[#161616] transition-colors"
         >
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

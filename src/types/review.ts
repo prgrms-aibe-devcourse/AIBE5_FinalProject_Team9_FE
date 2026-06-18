@@ -54,4 +54,8 @@ export interface ReviewReportItem {
     detail: string;
     status: string;
     createdAt: string;
+    rating: number;    // 추가
+    spoiler: boolean;
+    themeTitle: string;
+    ownerReason?: string;
 }

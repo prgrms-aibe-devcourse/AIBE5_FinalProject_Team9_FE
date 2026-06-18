@@ -1,3 +1,13 @@
 {
-  "/owner/dashboard/page": "app/owner/dashboard/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/admin/comments/page": "app/admin/comments/page.js",
+  "/admin/reviews/page": "app/admin/reviews/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/login/page": "app/login/page.js",
+  "/owner/dashboard/page": "app/owner/dashboard/page.js",
+  "/owner/hidden/page": "app/owner/hidden/page.js",
+  "/owner/reservations/page": "app/owner/reservations/page.js",
+  "/owner/settings/page": "app/owner/settings/page.js",
+  "/owner/themes/page": "app/owner/themes/page.js",
+  "/page": "app/page.js"
 }

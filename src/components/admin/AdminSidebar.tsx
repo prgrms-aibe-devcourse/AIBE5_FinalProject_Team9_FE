@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { useAdminStore } from '@/stores/adminStore';
 
 const NAV_ITEMS = [
 
@@ -10,21 +11,23 @@ const NAV_ITEMS = [
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
-        ), badge: 14 },
+        ) },
     { href: '/admin/comments', label: '댓글 관리', icon: (
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
             </svg>
-        ), badge: 0 },
+        )},
 
 ];
 
 export default function OwnerSidebar() {
     const pathname = usePathname();
     const { logout } = useAuthStore();
+    const { pendingCount } = useAdminStore();
+    const router = useRouter();
 
     const isActive = (href: string) =>
-        pathname === href || (href !== '/owner' && pathname.startsWith(href + '/'));
+        pathname === href || (href !== '/admin' && pathname.startsWith(href + '/'));
 
     return (
         <aside className="w-40 shrink-0 bg-[#0c0c0c] border-r border-[#1a1a1a] flex flex-col min-h-screen sticky top-0 left-0 z-20">
@@ -56,13 +59,13 @@ export default function OwnerSidebar() {
                                 <span className={active ? 'text-[#e63946]' : 'text-[#555]'}>{item.icon}</span>
                                 <span className="font-medium truncate">{item.label}</span>
                             </div>
-                            {item.badge > 0 && (
+                            {item.href === '/admin/reviews' && pendingCount > 0 && (
                                 <span className={[
                                     'text-[10px] rounded-full min-w-4.5 h-4.5 flex items-center justify-center font-black px-1 shrink-0',
                                     active ? 'bg-[#e63946] text-white' : 'bg-[#2a2a2a] text-[#e63946]',
                                 ].join(' ')}>
-                  {item.badge}
-                </span>
+                                  {pendingCount}
+                              </span>
                             )}
                         </Link>
                     );
@@ -72,7 +75,7 @@ export default function OwnerSidebar() {
             {/* Bottom actions */}
             <div className="border-t border-[#1a1a1a] py-3 px-3">
                 <Link
-                    href="/owner/settings"
+                    href="/admin/settings"
                     className={[
                         'flex items-center gap-2.5 px-2 py-2 rounded text-xs transition-colors',
                         pathname === '/owner/settings' ? 'text-[#e63946]' : 'text-[#666] hover:text-[#f5f5f5] hover:bg-[#161616]',
@@ -85,7 +88,7 @@ export default function OwnerSidebar() {
                     <span className="font-medium">설정</span>
                 </Link>
                 <button
-                    onClick={logout}
+                    onClick={async () => { await logout(); router.push('/login'); }}
                     className="w-full flex items-center gap-2.5 px-2 py-2 rounded text-xs text-[#666] hover:text-[#f5f5f5] hover:bg-[#161616] transition-colors"
                 >
                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
