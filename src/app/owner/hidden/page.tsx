@@ -172,7 +172,7 @@ export default function OwnerHiddenPage() {
                 const st = STATUS_MAP[r.status];
                 return (
                   <tr key={r.reportId} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
-                    <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{formatReportNo(r.createdAt, index)}</td>
+                    <td className="px-4 py-3 text-xs text-[#888] font-mono whitespace-nowrap">{formatReportNo(r.createdAt, index)}</td>
                     <td className="px-4 py-3 text-xs font-medium text-[#f5f5f5] whitespace-nowrap">{r.themeTitle}</td>
                     <td className="px-4 py-3 text-xs text-[#ccc]">{r.reporterNickname}</td>
                     <td className="px-4 py-3 text-xs text-[#888] max-w-xs">

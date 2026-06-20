@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import {changePassword} from "@/services/authService";
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-    const { user } = useAuthStore();
     return (
         <button type="button" onClick={onToggle}
                 className={['relative w-11 h-6 rounded-full transition-colors shrink-0', on ? 'bg-[#e63946]' : 'bg-[#2a2a2a]'].join(' ')}>
@@ -16,7 +16,8 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 export default function AdminSettingsPage() {
     const { user } = useAuthStore()
     const [nickname, setNickname] = useState(user?.nickname ?? '');
-    const [storeName] = useState('홍대점');
+    const [storeName] = useState('');
+    const [email, setEmail] = useState(user?.email ?? '');
     const [currentPw, setCurrentPw] = useState('');
     const [newPw, setNewPw] = useState('');
     const [newPwConfirm, setNewPwConfirm] = useState('');
@@ -28,20 +29,31 @@ export default function AdminSettingsPage() {
     const [saved, setSaved] = useState(false);
     const [showModal, setShowModal] = useState(false);
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (newPw && newPw !== newPwConfirm) {
+            alert('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+        if (newPw) {
+            await changePassword({ currentPassword: currentPw, newPassword: newPw });
+            setCurrentPw('');
+            setNewPw('');
+            setNewPwConfirm('');
+        }
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
     };
 
     useEffect(() => {
         if (user?.nickname) setNickname(user.nickname);
+        if(user?.email) setEmail(user?.email ?? '');
     }, [user]);
 
     return (
         <div className="p-6">
             <div className="max-w-xl mx-auto">
                 <div className="mb-6">
-                    <p className="text-xs text-[#555] mb-0.5">계정 설정</p>
+                    <p className="text-xs text-[#aaa] mb-0.5">계정 설정</p>
                     <p className="text-xs text-[#444]">관리자 계정 정보와 보안 설정을 관리합니다.</p>
                 </div>
 
@@ -55,7 +67,7 @@ export default function AdminSettingsPage() {
                         <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs text-[#666] mb-1.5">닉네임</label>
-                                <input value={user?.nickname} onChange={e => setNickname(e.target.value)}
+                                <input value={nickname} onChange={e => setNickname(e.target.value)}
                                        className="w-full bg-[#111] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946] transition-colors" />
                             </div>
                             <div>
@@ -91,7 +103,7 @@ export default function AdminSettingsPage() {
                             이메일
                         </h2>
                         <p className="text-xs text-[#555] mb-1.5">현재 이메일</p>
-                        <input value="kimgongpo@gmail.com" readOnly
+                        <input value={email} readOnly
                                className="w-full bg-[#111] border border-[#1a1a1a] text-[#666] text-sm rounded-lg px-3 py-2.5 outline-none cursor-not-allowed mb-3" />
                         <div className="flex items-center justify-between bg-[#111] border border-[#2a2a2a] rounded-lg px-4 py-3">
                             <div className="flex items-center gap-2">

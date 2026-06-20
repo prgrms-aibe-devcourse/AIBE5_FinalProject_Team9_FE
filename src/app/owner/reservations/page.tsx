@@ -202,7 +202,7 @@ export default function OwnerReservationsPage() {
                 const st = STATUS_MAP[r.status];
                 return (
                   <tr key={r.reservationId} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
-                    <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{formatReservationNo(r.reservationId, r.reservationDate)}</td>
+                    <td className="px-4 py-3 text-xs text-[#888] font-mono whitespace-nowrap">{formatReservationNo(r.reservationId, r.reservationDate)}</td>
                     <td className="px-4 py-3 text-xs text-[#ccc] whitespace-nowrap">{r.reservationDate}</td>
                     <td className="px-4 py-3 text-xs text-[#888]">{r.reservationTime}</td>
                     <td className="px-4 py-3 text-xs font-bold text-[#f5f5f5] whitespace-nowrap">{r.themeTitle}</td>

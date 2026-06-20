@@ -77,6 +77,7 @@ const createPartialUserFromPayload = (payload?: AuthUserPayload): Partial<User> 
     isEmailPublic: payload.isEmailPublic ?? payload.emailVisible,
     isAgePublic: payload.isAgePublic ?? payload.ageVisible,
     isGenderPublic: payload.isGenderPublic ?? payload.genderVisible,
+    storeName: payload.storeName
   };
 };
 

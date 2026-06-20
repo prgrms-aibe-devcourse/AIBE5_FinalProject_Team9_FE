@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthStore } from '@/stores/authStore';
+import { changePassword } from '@/services/authService';
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   return (
@@ -12,8 +14,10 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 }
 
 export default function OwnerSettingsPage() {
-  const [nickname, setNickname] = useState('김공포');
-  const [storeName] = useState('홍대점');
+    const { user } = useAuthStore();
+  const [nickname, setNickname] = useState(user?.nickname ??'');
+  const [storeName, setStoreName] = useState(user?.storeName ??'');
+    const [email, setEmail] = useState(user?.email ?? '');
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [newPwConfirm, setNewPwConfirm] = useState('');
@@ -25,7 +29,23 @@ export default function OwnerSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  const handleSave = () => {
+    useEffect(() => {
+        if (user?.nickname) setNickname(user.nickname);
+        if (user?.storeName) setStoreName(user.storeName);
+        if (user?.email) setEmail(user.email);
+    }, [user]);
+
+  const handleSave = async () => {
+      if (newPw && newPw !== newPwConfirm) {
+          alert('새 비밀번호가 일치하지 않습니다.');
+          return;
+      }
+      if (newPw) {
+          await changePassword({ currentPassword: currentPw, newPassword: newPw });
+          setCurrentPw('');
+          setNewPw('');
+          setNewPwConfirm('');
+      }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -34,7 +54,7 @@ export default function OwnerSettingsPage() {
     <div className="p-6">
       <div className="max-w-xl mx-auto">
         <div className="mb-6">
-          <p className="text-xs text-[#555] mb-0.5">계정 설정</p>
+          <p className="text-xs text-[#aaa] mb-0.5">계정 설정</p>
           <p className="text-xs text-[#444]">관리자 계정 정보와 보안 설정을 관리합니다.</p>
         </div>
 
@@ -52,7 +72,7 @@ export default function OwnerSettingsPage() {
                   className="w-full bg-[#111] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946] transition-colors" />
               </div>
               <div>
-                <label className="block text-xs text-[#666] mb-1.5">지점명</label>
+                <label className="block text-xs text-[#666] mb-1.5">가게명</label>
                 <input value={storeName} readOnly
                   className="w-full bg-[#111] border border-[#1a1a1a] text-[#555] text-sm rounded-lg px-3 py-2.5 outline-none cursor-not-allowed" />
               </div>
@@ -84,7 +104,7 @@ export default function OwnerSettingsPage() {
               이메일
             </h2>
             <p className="text-xs text-[#555] mb-1.5">현재 이메일</p>
-            <input value="kimgongpo@gmail.com" readOnly
+            <input value={email} readOnly
               className="w-full bg-[#111] border border-[#1a1a1a] text-[#666] text-sm rounded-lg px-3 py-2.5 outline-none cursor-not-allowed mb-3" />
             <div className="flex items-center justify-between bg-[#111] border border-[#2a2a2a] rounded-lg px-4 py-3">
               <div className="flex items-center gap-2">

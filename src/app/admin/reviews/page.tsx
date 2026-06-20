@@ -6,6 +6,7 @@ import { useAdminStore } from '@/stores/adminStore';
 import { formatDate } from '@/lib/formatDate';
 import { useState, useMemo, useEffect } from 'react';
 import RatingStars from '@/components/common/RatingStars';
+import { useAuthStore } from '@/stores/authStore';
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
     REQUESTED_ADMIN_REVIEW: { label: '대기', cls: 'bg-[#f39c12]/15 text-[#f39c12]' },
@@ -23,6 +24,7 @@ const formatReportNo = (createdAt: string, index: number) => {
 };
 
 export default function AdminReviewsPage() {
+    const { user } = useAuthStore();
     const [reports, setReports] = useState<AdminReviewReportItem[]>([]);
     const [statusFilter, setStatusFilter] = useState('전체');
     const [searchInput, setSearchInput] = useState('');
@@ -39,6 +41,7 @@ export default function AdminReviewsPage() {
     const rejected = reports.filter(r => r.status === 'ADMIN_REJECTED').length;
 
     useEffect(() => {
+        if (!user || user.role !== 'ADMIN') return;
         const fetchData = async () => {
             const reportData = await getAdminReviewReports(0, 100);
             setReports(reportData.content);
@@ -73,7 +76,7 @@ export default function AdminReviewsPage() {
     };
 
     const handleReject = async () => {
-        if (!viewTarget || !adminReason.trim()) return;
+        if (!viewTarget) return;
         await rejectReviewReport(viewTarget.id, adminReason);
         setReports(prev => prev.map(r => r.id === viewTarget.id ? { ...r, status: 'ADMIN_REJECTED' } : r));
         setViewTarget(null);
@@ -96,7 +99,7 @@ export default function AdminReviewsPage() {
                     },
                     {
                         label: '대기 중인 후기', value: `${pending}건`, sub: '처리 대기 중',
-                        color: '#ebef78', bg: 'bg-[#FFF2D5]/15',
+                        color: '#f39c12', bg: 'bg-[#f39c12]/15',
                         icon: (
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -189,7 +192,7 @@ export default function AdminReviewsPage() {
                             const st = STATUS_MAP[r.status] ?? { label: r.status, cls: 'text-[#888]' };
                             return (
                                 <tr key={r.id} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
-                                    <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{formatReportNo(r.createdAt, index)}</td>
+                                    <td className="px-4 py-3 text-xs text-[#888] font-mono whitespace-nowrap">{formatReportNo(r.createdAt, index)}</td>
                                     <td className="px-4 py-3 text-xs font-bold text-[#f5f5f5] whitespace-nowrap">{r.themeTitle}</td>
                                     <td className="px-4 py-3 text-xs text-[#ccc]">{r.reporterNickname}</td>
                                     <td className="px-4 py-3"><RatingStars value={r.rating} /></td>
@@ -299,9 +302,9 @@ export default function AdminReviewsPage() {
                             <div className="flex gap-2">
                             {viewTarget.status === 'REQUESTED_ADMIN_REVIEW' && (
                                 <>
-                                    <button onClick={handleReject} disabled={!adminReason.trim()}
+                                    <button onClick={handleReject} disabled={false}
                                             className="text-sm border border-gray-300 text-gray-600 hover:border-gray-400 disabled:opacity-40 px-5 py-2 rounded-lg transition-colors">거절</button>
-                                    <button onClick={handleApprove} disabled={!adminReason.trim()}
+                                    <button onClick={handleApprove} disabled={false}
                                             className="text-sm bg-[#e63946] hover:bg-[#c1121f] disabled:opacity-40 text-white font-bold px-5 py-2 rounded-lg transition-colors">승인</button>
                                 </>
                             )}

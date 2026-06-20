@@ -229,8 +229,6 @@ export default function OwnerThemesPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-base font-black text-[#f5f5f5]">테마 관리</h1>
-          <p className="mt-0.5 text-xs text-[#777]">매장 테마를 등록하고 수정할 수 있습니다.</p>
         </div>
         <button
           type="button"
@@ -329,7 +327,6 @@ export default function OwnerThemesPage() {
                     <tr key={theme.id} className="border-b border-[#171717] last:border-b-0 hover:bg-[#202020]">
                       <td className="px-5 py-3.5">
                         <p className="text-xs font-bold text-[#f5f5f5]">{theme.title}</p>
-                        <p className="mt-0.5 text-xs text-[#666]">{theme.branchName}</p>
                       </td>
                       <td className="px-5 py-3.5">
                         <RatingDots value={theme.difficulty} label="난이도" />
