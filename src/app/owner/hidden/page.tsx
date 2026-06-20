@@ -257,6 +257,13 @@ export default function OwnerHiddenPage() {
               <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-4">
                 <p className="text-[10px] text-[#555] mb-2">문제 후기 내용</p>
                 <p className="text-xs text-[#888] leading-relaxed">{detailTarget.reviewContent}</p>
+                  {detailTarget.detail && (
+                      <>
+                          <div className="border-t border-[#2a2a2a] my-3" />
+                          <p className="text-[10px] text-[#555] mt-3 mb-2">신고 상세 내용</p>
+                          <p className="text-xs text-[#888] leading-relaxed">{detailTarget.detail}</p>
+                      </>
+                  )}
               </div>
             </div>
               <div className="px-6 py-4 border-t border-[#2a2a2a] space-y-3">
