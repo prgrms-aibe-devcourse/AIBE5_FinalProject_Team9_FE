@@ -11,6 +11,7 @@ export interface User {
   isAgePublic?: boolean;
   isGenderPublic?: boolean;
   createdAt?: string;
+  storeName?: string;
 }
 
 export interface LoginRequest {
@@ -54,6 +55,7 @@ export interface AuthUserPayload {
   isEmailPublic?: boolean;
   isAgePublic?: boolean;
   isGenderPublic?: boolean;
+  storeName?: string;
 }
 
 export interface AuthResponse {

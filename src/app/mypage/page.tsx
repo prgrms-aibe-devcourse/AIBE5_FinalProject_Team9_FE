@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { enrichMyPageReviewsWithThemeImages } from '@/lib/myPageReview';
 import { type ReactNode, useEffect, useState } from "react";
 import {
   getMyPageAchievements,
@@ -930,7 +931,7 @@ function ProfileSummaryCard({
     <section className="overflow-hidden rounded-2xl border border-white/[0.075] bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.05),transparent_36%),linear-gradient(112deg,rgba(23,23,23,0.96),rgba(17,17,17,0.92)_48%,rgba(20,12,12,0.94)),rgba(18,18,18,0.9)] shadow-[0_28px_95px_rgba(0,0,0,0.48),0_0_34px_rgba(204,34,34,0.035)] backdrop-blur-md">
       <div className="grid min-h-[156px] items-stretch lg:grid-cols-[350px_1fr_286px]">
         <div className="flex items-center gap-5 border-b border-white/[0.035] px-7 py-6 lg:border-b-0 lg:border-r lg:border-white/[0.035]">
-          <div className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-white/[0.1] bg-[#1b1b1b] shadow-[inset_0_0_32px_rgba(255,255,255,0.045),0_14px_32px_rgba(0,0,0,0.42)]">
+          <div className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-white/[0.1] bg-black shadow-[inset_0_0_32px_rgba(255,255,255,0.045),0_14px_32px_rgba(0,0,0,0.42)]">
             <Image
               src={avatarSrc}
               alt=""
@@ -1661,14 +1662,15 @@ function ActivityTabContent() {
       getMyPageMatePosts(),
       getMyPageMateParticipations(),
     ])
-      .then(([reviewResult, postResult, participationResult]) => {
+      .then(async([reviewResult, postResult, participationResult]) => {
         if (!isMounted) return;
 
-        setReviews(
-          reviewResult.status === "fulfilled"
-            ? reviewResult.value.map(mapReviewToActivity)
-            : [],
-        );
+          if (reviewResult.status === "fulfilled") {
+              const enriched = await enrichMyPageReviewsWithThemeImages(reviewResult.value);
+              if (isMounted) setReviews(enriched.map(mapReviewToActivity));
+          } else {
+              setReviews([]);
+          }
         setPosts(
           postResult.status === "fulfilled"
             ? postResult.value.map(mapMatePostToActivityPost)

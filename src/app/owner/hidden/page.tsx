@@ -172,7 +172,7 @@ export default function OwnerHiddenPage() {
                 const st = STATUS_MAP[r.status];
                 return (
                   <tr key={r.reportId} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
-                    <td className="px-4 py-3 text-xs text-[#555] font-mono whitespace-nowrap">{formatReportNo(r.createdAt, index)}</td>
+                    <td className="px-4 py-3 text-xs text-[#888] font-mono whitespace-nowrap">{formatReportNo(r.createdAt, index)}</td>
                     <td className="px-4 py-3 text-xs font-medium text-[#f5f5f5] whitespace-nowrap">{r.themeTitle}</td>
                     <td className="px-4 py-3 text-xs text-[#ccc]">{r.reporterNickname}</td>
                     <td className="px-4 py-3 text-xs text-[#888] max-w-xs">
@@ -257,6 +257,13 @@ export default function OwnerHiddenPage() {
               <div className="bg-[#111] border border-[#2a2a2a] rounded-lg p-4">
                 <p className="text-[10px] text-[#555] mb-2">문제 후기 내용</p>
                 <p className="text-xs text-[#888] leading-relaxed">{detailTarget.reviewContent}</p>
+                  {detailTarget.detail && (
+                      <>
+                          <div className="border-t border-[#2a2a2a] my-3" />
+                          <p className="text-[10px] text-[#555] mt-3 mb-2">신고 상세 내용</p>
+                          <p className="text-xs text-[#888] leading-relaxed">{detailTarget.detail}</p>
+                      </>
+                  )}
               </div>
             </div>
               <div className="px-6 py-4 border-t border-[#2a2a2a] space-y-3">
