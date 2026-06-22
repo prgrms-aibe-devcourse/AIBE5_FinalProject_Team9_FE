@@ -20,7 +20,7 @@ const NAV_ITEMS = [
 
 ];
 
-export default function OwnerSidebar() {
+export default function AdminSidebar() {
     const pathname = usePathname();
     const { logout } = useAuthStore();
     const { pendingCount } = useAdminStore();
@@ -88,7 +88,7 @@ export default function OwnerSidebar() {
                     <span className="font-medium">설정</span>
                 </Link>
                 <button
-                    onClick={async () => { await logout(); router.push('/login'); }}
+                    onClick={async () => { await logout(); router.push('/admin/login'); }}
                     className="w-full flex items-center gap-2.5 px-2 py-2 rounded text-xs text-[#666] hover:text-[#f5f5f5] hover:bg-[#161616] transition-colors"
                 >
                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

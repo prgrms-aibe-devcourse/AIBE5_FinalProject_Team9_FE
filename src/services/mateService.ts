@@ -306,3 +306,26 @@ export const getMatePostParticipants = async (
 
   return unwrapParticipantList(data);
 };
+
+//mate 글쓰기
+export interface MateComment {
+    id: number;
+    authorNickname: string;
+    content: string;
+    createdAt: string;
+    replies?: MateComment[];
+}
+
+export const getMateComments = async (postId: number): Promise<MateComment[]> => {
+    const { data } = await axiosInstance.get(`/api/mate-posts/${postId}/comments`);
+    return Array.isArray(data) ? data : data.data ?? data.items ?? data.content ?? [];
+};
+
+export const createMateComment = async (postId: number, content: string): Promise<MateComment> => {
+    const { data } = await axiosInstance.post(`/api/mate-posts/${postId}/comments`, { content });
+    return data.data ?? data;
+};
+
+export const deleteMateComment = async (postId: number, commentId: number): Promise<void> => {
+    await axiosInstance.delete(`/api/mate-posts/${postId}/comments/${commentId}`);
+};
