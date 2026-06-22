@@ -7,9 +7,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { getAuthErrorMessage } from '@/services/authService';
 import { AuthRole } from '@/types/user';
 
-export default function LoginForm() {
+export default function LoginForm({ adminOnly = false }: { adminOnly?: boolean }) {
   const { handleLogin } = useAuth();
-  const [role, setRole] = useState<AuthRole>('member');
+  const [role, setRole] = useState<AuthRole>(adminOnly ? 'admin' : 'member');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
@@ -36,7 +36,8 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex border-b border-[#2a2a2a]">
+        {!adminOnly && (
+        <div className="flex border-b border-[#2a2a2a]">
         {(['member', 'manager'] as const).map((authRole) => (
           <button
             key={authRole}
@@ -53,7 +54,7 @@ export default function LoginForm() {
           </button>
         ))}
       </div>
-
+        )}
       <div>
         <label className="block text-sm text-[#888] mb-1">이메일</label>
         <input

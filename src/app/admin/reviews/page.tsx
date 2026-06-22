@@ -68,7 +68,7 @@ export default function AdminReviewsPage() {
         setDateTo('');};
 
     const handleApprove = async () => {
-        if (!viewTarget || !adminReason.trim()) return;
+        if (!viewTarget) return;
         await approveReviewReport(viewTarget.id, adminReason);
         setReports(prev => prev.map(r => r.id === viewTarget.id ? { ...r, status: 'ADMIN_APPROVED' } : r));
         setViewTarget(null);

@@ -1,7 +1,9 @@
 ﻿"use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link from "next/link"
+import axiosInstance from '@/lib/axios';
+import { useRouter } from 'next/navigation';
 import { enrichMyPageReviewsWithThemeImages } from '@/lib/myPageReview';
 import { type ReactNode, useEffect, useState } from "react";
 import {
@@ -89,6 +91,7 @@ type AchievementItem = {
 
 type ActivityReview = {
   id: number;
+  themeId?: number;
   themeTitle: string;
   date: string;
   rating: number;
@@ -143,7 +146,7 @@ const K = {
   scheduled: "\uc608\uc815",
   cleared: "\ud074\ub9ac\uc5b4",
   failed: "\uc2e4\ud328",
-  change: "\uc608\uc57d \ubcc0\uacbd",
+  change: "예약 취소",
   reviewView: "\ud6c4\uae30 \ubcf4\uae30",
   reviewWrite: "\ud6c4\uae30 \uc4f0\uae30",
   clearTime: "\ud074\ub9ac\uc5b4 \ud0c0\uc784",
@@ -865,6 +868,7 @@ function mapAchievementToUi(achievement: MyPageAchievement, index: number): Achi
 function mapReviewToActivity(review: MyPageReview): ActivityReview {
   return {
     id: review.reviewId,
+      themeId: review.themeId,
     themeTitle: review.themeTitle || "후기 테마",
     date: formatDate(review.visitedAt ?? review.createdAt),
     rating: review.rating,
@@ -1153,10 +1157,68 @@ function ReservationRowCard({
   reservation: Reservation;
   isLast?: boolean;
 }) {
+    const [confirming, setConfirming] = useState(false);
+    const [cancelled, setCancelled] = useState(false);
   const status = getStatusStyle(reservation);
   const action = getActionText(reservation);
   const showStatusBadge = reservation.status !== "upcoming";
+    const router = useRouter();
+
+    const handleCancel = async () => {
+        try {
+            await axiosInstance.post(`/api/reservations/${reservation.id}/cancel`);
+            setCancelled(true);
+        } catch {
+            alert("예약 취소에 실패했습니다.");
+        }
+    };
+
   return (
+      <>
+      {/* 취소 확인 모달 */}
+      {confirming && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="w-[340px] rounded-2xl border border-white/[0.08] bg-[#171717] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.6)]">
+                  <p className="mb-1 text-[11px] font-black tracking-[0.2em] text-[#cc2222]">// CONFIRM</p>
+                  <h3 className="mb-2 text-[18px] font-black text-[#f5f5f5]">예약을 취소하시겠습니까?</h3>
+                  <p className="mb-6 text-sm font-bold text-[#888]">취소된 예약은 복구할 수 없습니다.</p>
+                  <div className="flex gap-2">
+                      <button
+                          type="button"
+                          onClick={() => setConfirming(false)}
+                          className="flex-1 h-10 rounded-xl border border-white/[0.1] text-sm font-black text-[#888] transition-all hover:border-white/20 hover:text-[#f5f5f5]"
+                      >
+                          취소
+                      </button>
+                      <button
+                          type="button"
+                          onClick={() => { setConfirming(false); handleCancel(); }}
+                          className="flex-1 h-10 rounded-xl border border-[#cc2222]/60 bg-[#cc2222]/12 text-sm font-black text-[#ef5353] transition-all hover:bg-[#cc2222]/24 hover:text-white"
+                      >
+                          확인
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* 취소 완료 모달 */}
+      {cancelled && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+              <div className="w-[340px] rounded-2xl border border-white/[0.08] bg-[#171717] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.6)]">
+                  <p className="mb-1 text-[11px] font-black tracking-[0.2em] text-[#2ecc71]">// DONE</p>
+                  <h3 className="mb-2 text-[18px] font-black text-[#f5f5f5]">예약이 취소되었습니다.</h3>
+                  <p className="mb-6 text-sm font-bold text-[#888]">환불은 영업일 기준 3~5일 내 처리됩니다.</p>
+                  <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="w-full h-10 rounded-xl border border-white/[0.1] text-sm font-black text-[#f5f5f5] transition-all hover:border-white/20"
+                  >
+                      확인
+                  </button>
+              </div>
+          </div>
+      )}
     <div
       className={[
         "grid min-h-[108px] items-center gap-4 px-4 py-4 transition-all hover:bg-white/[0.026] hover:shadow-[inset_0_0_28px_rgba(204,34,34,0.025)] sm:grid-cols-[150px_1fr] md:grid-cols-[150px_1fr_150px_150px_174px] xl:grid-cols-[160px_1fr_178px_178px_188px]",
@@ -1231,13 +1293,22 @@ function ReservationRowCard({
           </span>
         )}
         <button
-          type="button"
+            onClick={() => {
+                if (reservation.status === "upcoming") {
+                    setConfirming(true);
+                } else if (action === K.reviewWrite) {
+                    router.push(`/mypage/reviews/write?reservationId=${reservation.id}&themeId=${reservation.themeId}&themeTitle=${encodeURIComponent(reservation.themeTitle)}&reservationDate=${reservation.date}`);
+                } else if (action === K.reviewView) {
+                    router.push(`/mypage/reviews`);
+                }
+            }}
           className="h-9 min-w-[104px] rounded-lg border border-[#cc2222]/58 bg-[#101010]/55 px-4 text-[13px] font-black text-[#ef5353] transition-all hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white max-sm:flex-1"
         >
           {action}
         </button>
       </div>
     </div>
+      </>
   );
 }
 
@@ -1645,6 +1716,7 @@ function getProgressBarStyle() {
 }
 
 function ActivityTabContent() {
+    const router = useRouter();
   const [reviews, setReviews] = useState<ActivityReview[]>([]);
   const [posts, setPosts] = useState<ActivityPost[]>([]);
   const [mates, setMates] = useState<ActivityMate[]>([]);
@@ -1740,7 +1812,10 @@ function ActivityTabContent() {
         ) : (
           <div className="space-y-3.5">
             {previewReviews.map((review) => (
-              <ReviewActivityCard key={review.id} review={review} />
+              <ReviewActivityCard key={review.id} review={review}
+                                  onEdit={() => router.push(`/mypage/reviews?action=edit&themeId=${review.themeId}&createdAt=${review.date}`)}
+                                  onDelete={() => router.push(`/mypage/reviews?action=delete&themeId=${review.themeId}&createdAt=${review.date}`)}
+              />
             ))}
             {hiddenReviewCount > 0 && (
               <div className="flex flex-col gap-3 rounded-xl border border-white/[0.075] bg-black/[0.18] px-4 py-4 text-sm font-bold text-[#8c8c8c] sm:flex-row sm:items-center sm:justify-between">
@@ -1814,7 +1889,8 @@ function ActivitySection({
   );
 }
 
-function ReviewActivityCard({ review }: { review: ActivityReview }) {
+function ReviewActivityCard({ review, onEdit, onDelete,}: { review: ActivityReview; onEdit: () => void;
+    onDelete: () => void; }) {
   return (
     <article className="flex flex-col gap-4 rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_9%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] p-3 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all hover:border-white/[0.13] hover:bg-white/[0.018] md:flex-row md:items-center md:p-4">
       <ThemeThumbnail
@@ -1839,12 +1915,14 @@ function ReviewActivityCard({ review }: { review: ActivityReview }) {
             <div className="flex gap-2">
               <button
                 type="button"
+                onClick={onEdit}
                 className="h-8 rounded-md border border-white/[0.11] bg-[#101010]/55 px-3 text-xs font-black text-[#aaa] transition-all hover:border-white/[0.2] hover:text-white"
               >
                 수정
               </button>
               <button
                 type="button"
+                onClick={onDelete}
                 className="h-8 rounded-md border border-[#cc2222]/45 bg-[#101010]/55 px-3 text-xs font-black text-[#ef5353] transition-all hover:border-[#cc2222]/80 hover:bg-[#cc2222]/10 hover:text-white"
               >
                 삭제
@@ -1890,14 +1968,16 @@ function PostActivityRow({
   post: ActivityPost;
   isLast?: boolean;
 }) {
+    const router = useRouter();
   const categoryStyle =
     post.category === "모집"
       ? "border-[#d7b46a]/35 bg-[#d7b46a]/8 text-[#d7b46a]"
       : "border-[#5d8fd8]/35 bg-[#5d8fd8]/8 text-[#7fa8df]";
   return (
     <article
+        onClick={() => router.push(`/mate/${post.id}`)}
       className={[
-        "grid min-h-[74px] items-center gap-3 px-4 py-3.5 transition-all hover:bg-white/[0.026] sm:grid-cols-[64px_92px_1fr_72px]",
+        "grid min-h-[74px] items-center gap-3 px-4 py-3.5 transition-all hover:bg-white/[0.026] sm:grid-cols-[64px_92px_1fr_72px] cursor-pointer",
         !isLast ? "border-b border-white/[0.042]" : "",
       ].join(" ")}
     >
@@ -2115,6 +2195,12 @@ export default function MyPage() {
           <p className="mt-3 text-sm font-bold text-[#aaa]">
             {currentSubtitle}
           </p>
+            <Link
+                href="/mypage/settings"
+                className="absolute right-10 top-5 text-[#888] transition-all hover:text-[#f5f5f5]"
+            >
+                ⚙️
+            </Link>
         </header>
 
         <ProfileSummaryCard

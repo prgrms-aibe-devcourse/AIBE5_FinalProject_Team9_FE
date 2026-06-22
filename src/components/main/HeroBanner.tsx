@@ -6,7 +6,7 @@ export default function HeroBanner() {
   return (
     <section className="relative isolate flex min-h-[calc(100vh-52px)] items-center overflow-hidden border-b border-[#211313] bg-[#0d0d0d] py-12 lg:py-0">
       <div className="pointer-events-none absolute inset-y-0 right-[-10vw] z-0 w-[92vw] opacity-100 lg:right-[-8vw] lg:w-[78vw]">
-        <div
+          <div
           className="absolute inset-y-[3%] right-0 w-full bg-cover bg-[center_center] brightness-110 contrast-110 saturate-110 lg:bg-[center_center]"
           style={{
             backgroundImage: "url('/images/horror/grimgate_hero_highres.webp')",

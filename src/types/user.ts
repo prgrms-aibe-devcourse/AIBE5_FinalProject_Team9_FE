@@ -32,7 +32,7 @@ export interface SignupRequest {
   marketingAgreed?: boolean;
 }
 
-export type AuthRole = 'member' | 'manager';
+export type AuthRole = 'member' | 'manager' | 'admin';
 
 export interface ApiResponse<T> {
   success: boolean;
