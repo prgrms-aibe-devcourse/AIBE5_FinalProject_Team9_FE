@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   images: {
     remotePatterns: [

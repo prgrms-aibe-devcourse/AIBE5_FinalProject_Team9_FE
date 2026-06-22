@@ -1179,7 +1179,7 @@ function ReservationRowCard({
       {confirming && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
               <div className="w-[340px] rounded-2xl border border-white/[0.08] bg-[#171717] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.6)]">
-                  <p className="mb-1 text-[11px] font-black tracking-[0.2em] text-[#cc2222]">// CONFIRM</p>
+                  <p className="mb-1 text-[11px] font-black tracking-[0.2em] text-[#cc2222]"></p>
                   <h3 className="mb-2 text-[18px] font-black text-[#f5f5f5]">예약을 취소하시겠습니까?</h3>
                   <p className="mb-6 text-sm font-bold text-[#888]">취소된 예약은 복구할 수 없습니다.</p>
                   <div className="flex gap-2">
@@ -1206,7 +1206,7 @@ function ReservationRowCard({
       {cancelled && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
               <div className="w-[340px] rounded-2xl border border-white/[0.08] bg-[#171717] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.6)]">
-                  <p className="mb-1 text-[11px] font-black tracking-[0.2em] text-[#2ecc71]">// DONE</p>
+                  <p className="mb-1 text-[11px] font-black tracking-[0.2em] text-[#2ecc71]"></p>
                   <h3 className="mb-2 text-[18px] font-black text-[#f5f5f5]">예약이 취소되었습니다.</h3>
                   <p className="mb-6 text-sm font-bold text-[#888]">환불은 영업일 기준 3~5일 내 처리됩니다.</p>
                   <button
