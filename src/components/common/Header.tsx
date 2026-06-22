@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useAuthStore } from '@/stores/authStore';
 import { repairMojibake } from '@/lib/text';
+import { useRouter } from 'next/navigation';
 
 export default function Header() {
   const { isLoggedIn, user, logout } = useAuthStore();
   const nickname = repairMojibake(user?.nickname);
-
+    const router = useRouter();
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#241414] bg-[#0c0c0c]/96 backdrop-blur">
       <div className="gg-container grid h-[52px] grid-cols-[1fr_auto_1fr] items-center">
@@ -17,7 +18,7 @@ export default function Header() {
 
         <nav className="hidden items-center gap-9 justify-self-center text-[12px] font-bold text-[#cfcfcf] md:flex">
           <Link href="/themes" className="transition-colors hover:text-[#cc2222]">
-            GATE 소개
+            전체 테마
           </Link>
           <Link href="/reservation" className="transition-colors hover:text-[#cc2222]">
             빠른예약
@@ -42,7 +43,7 @@ export default function Header() {
                   {user?.profileImageUrl ? <span className="sr-only">{nickname}</span> : nickname?.[0]?.toUpperCase() ?? 'U'}
                 </div>
               </Link>
-              <button onClick={logout} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">
+              <button  onClick={() => { logout(); router.push('/login'); }} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">
                 로그아웃
               </button>
             </>
