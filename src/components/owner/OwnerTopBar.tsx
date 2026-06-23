@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { useOwnerStore } from '@/stores/ownerStore';
 
 const PAGE_TITLES: Record<string, string> = {
   '/owner/dashboard': '대시보드',
@@ -14,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
 export default function OwnerTopBar() {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const { pendingCount } = useOwnerStore();
   const title =
     Object.entries(PAGE_TITLES).find(
       ([key]) => pathname === key || pathname.startsWith(key + '/')
@@ -28,7 +30,9 @@ export default function OwnerTopBar() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
-          <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-[#e63946] rounded-full text-white text-[8px] flex items-center justify-center font-bold leading-none">3</span>
+            {pendingCount > 0 && (
+          <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-[#e63946] rounded-full text-white text-[8px] flex items-center justify-center font-bold leading-none">{pendingCount}</span>
+                )}
         </button>
         {/* User */}
         <div className="flex items-center gap-2">

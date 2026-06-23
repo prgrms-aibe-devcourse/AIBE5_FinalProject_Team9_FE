@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     },
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   images: {
+      unoptimized: true,
     remotePatterns: [
       { protocol: 'https', hostname: 'picsum.photos' },
       { protocol: 'https', hostname: 'team9-grimgate-bucket.s3.amazonaws.com'  },
