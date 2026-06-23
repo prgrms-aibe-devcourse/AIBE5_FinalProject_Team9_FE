@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 // ─── SOUND ───
 let _audioCtx: AudioContext | null = null;
@@ -245,7 +246,6 @@ function stopOpeningBgm() {
 // ─── TYPES ───
 type Screen =
     | 'opening'
-    | 'banner'
     | 'calendar'
     | 'door'
     | 'stage1'
@@ -254,11 +254,12 @@ type Screen =
     | 'ending';
 
 // ─── CONSTANTS ───
-const TOTAL_SECONDS = 900; // 15:00
+const TOTAL_SECONDS = 300; // 5:00
 
 export default function MinigamePage() {
     const [screen, setScreen] = useState<Screen>('calendar');
     const [transitioning, setTransitioning] = useState(false);
+    const router = useRouter();
 
     // Timer
     const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
@@ -508,51 +509,14 @@ export default function MinigamePage() {
                         <span className="line" style={{ animationDelay: '3.5s' }}>"네가 여기서 얼마나 버틸지 내기에 꽤 큰돈을 걸었거든."</span>
                         <span className="line dim" style={{ animationDelay: '5s' }}>— 전화 연결음 —</span>
                         <span className="line" style={{ animationDelay: '6.5s' }}>"어, 상품은 준비됐어. 지금 나가는 중이야."</span>
-                        <span className="line" style={{ animationDelay: '8s' }}>"거기까지 15분이면 충분해. 딱 맞춰 갈 테니까 기다리고 있어."</span>
+                        <span className="line" style={{ animationDelay: '8s' }}>"거기까지 5분이면 충분해. 딱 맞춰 갈 테니까 기다리고 있어."</span>
                         <span className="line italic" style={{ animationDelay: '9.5s' }} onAnimationStart={() => setTimeout(() => playSound('clank'), 100)}>철컥 — 문이 잠긴다.</span>
-                        <span className="line red" style={{ animationDelay: '11s' }}>놈이 자리를 비운 이 15분이 내 인생의 마지막 기회다.</span>
+                        <span className="line red" style={{ animationDelay: '11s' }}>놈이 자리를 비운 이 5분이 내 인생의 마지막 기회다.</span>
                     </div>
                     <button className="skip-btn" onClick={goToDoor}>건너뛰기 →</button>
                 </div>
             )}
 
-            {/* BANNER */}
-            {screen === 'banner' && (
-                <div style={{ ...styles.screen, ...styles.bannerScreen }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div className="logo">GRIM<span>GATE</span></div>
-                        <div style={styles.bannerSub}>용기 있는 자만이 도전하는 공포 방탈출</div>
-                    </div>
-                    <div style={styles.bannerThemes}>
-                        {[
-                            { icon: '🎭', name: '저주받은 극장', info: '공포 · 난이도 ★★★☆☆' },
-                            { icon: '🏥', name: '폐병원 301호', info: '공포 · 난이도 ★★★★☆' },
-                            { icon: '🌲', name: '저주의 숲', info: '공포 · 난이도 ★★★☆☆' },
-                        ].map(card => (
-                            <div key={card.name} className="theme-card">
-                                <div style={styles.themeCardImg}>{card.icon}</div>
-                                <div style={{ padding: '14px' }}>
-                                    <div style={styles.themeCardName}>{card.name}</div>
-                                    <div style={styles.themeCardInfo}>{card.info}</div>
-                                    <button className="theme-btn">예약하기</button>
-                                </div>
-                            </div>
-                        ))}
-                        {/* Hidden door card */}
-                        <div className="door-wrapper">
-                            <div className="door-closed"><span style={{ fontSize: 64 }}>🚪</span></div>
-                            <div className="hidden-card" onClick={() => goToScreen('calendar')}>
-                                <div style={{ ...styles.themeCardImg, background: 'linear-gradient(135deg,#1a0505,#0a0204)' }}>🕯️</div>
-                                <div style={{ padding: '14px' }}>
-                                    <div className="hidden-name">예약되지 않은 첫 번째 방</div>
-                                    <div style={styles.themeCardInfo}>지점: 기록 없음 · 상태: 예약 가능</div>
-                                    <button className="hidden-btn">예약하기</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* CALENDAR */}
             {screen === 'calendar' && (
@@ -657,8 +621,8 @@ export default function MinigamePage() {
                             )}
                         </div>
                         <div style={styles.roomRight}>
-                            <div className="choco-card" onClick={() => setChoco1Open(p => !p)}>
-                                <span className="choco-avatar">🐻</span>
+                            <div className="choco-card flex flex-col items-center" onClick={() => setChoco1Open(p => !p)}>
+                                <img src="/images/game/choco.png" alt="avatar" className="w-20 h-20 object-cover" />
                                 <div className="choco-name">초코</div>
                                 <div className="choco-necklace">✨ 목걸이가 빛난다</div>
                                 {choco1Open && <div className="choco-bubble">처음 찍힌 시간과 마지막으로 남은 시간을 이어봐.</div>}
@@ -748,8 +712,8 @@ export default function MinigamePage() {
                             </div>
                         </div>
                         <div style={styles.roomRight}>
-                            <div className="choco-card" onClick={() => setChoco2Open(p => !p)}>
-                                <span className="choco-avatar">🐻</span>
+                            <div className="choco-card flex flex-col items-center" onClick={() => setChoco2Open(p => !p)}>
+                                <img src="/images/game/choco.png" alt="avatar" className="w-20 h-20 object-cover" />
                                 <div className="choco-name">초코</div>
                                 <div className="choco-necklace">✨ 목걸이가 빛난다</div>
                                 {choco2Open && <div className="choco-bubble">다들 사라지는 시간. 배고픈 시간.</div>}
@@ -826,8 +790,8 @@ export default function MinigamePage() {
                             </div>
                         </div>
                         <div style={styles.roomRight}>
-                            <div className="choco-card" onClick={() => setChoco3Open(p => !p)}>
-                                <span className="choco-avatar">🐻</span>
+                            <div className="choco-card flex flex-col items-center" onClick={() => setChoco3Open(p => !p)}>
+                                <img src="/images/game/choco.png" alt="avatar" className="w-20 h-20 object-cover" />
                                 <div className="choco-name">초코</div>
                                 <div className="choco-necklace">✨ 목걸이가 빛난다</div>
                                 {choco3Open && <div className="choco-bubble">처음이 있으면 끝도 있어.</div>}
@@ -854,8 +818,8 @@ export default function MinigamePage() {
                         하지만 문 밖에는 또 다른 공포 테마들이 기다리고 있습니다.
                     </div>
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
-                        <button className="ending-btn primary" onClick={() => goToScreen('banner')}>추천 테마 보러가기</button>
-                        <button className="ending-btn secondary" onClick={resetGame}>메인 페이지로 이동하기</button>
+                        <button className="ending-btn primary" onClick={() => router.push('/themes')}>추천 테마 보러가기</button>
+                        <button className="ending-btn secondary" onClick={() => router.push('/')}>메인 페이지로 이동하기</button>
                     </div>
                 </div>
 
