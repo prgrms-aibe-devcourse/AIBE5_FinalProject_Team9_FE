@@ -308,24 +308,145 @@ export const getMatePostParticipants = async (
 };
 
 //mate 글쓰기
-export interface MateComment {
-    id: number;
-    authorNickname: string;
-    content: string;
-    createdAt: string;
-    replies?: MateComment[];
+interface MateCommentApiResponse {
+  commentId?: number;
+  id?: number;
+  parentCommentId?: number | null;
+  authorId?: number | null;
+  authorNickname?: string | null;
+  content?: string;
+  deleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  replies?: MateCommentApiResponse[];
 }
 
-export const getMateComments = async (postId: number): Promise<MateComment[]> => {
-    const { data } = await axiosInstance.get(`/api/mate-posts/${postId}/comments`);
-    return Array.isArray(data) ? data : data.data ?? data.items ?? data.content ?? [];
+interface MateCommentListApiResponse {
+  data?: MateCommentListApiResponse | MateCommentApiResponse[];
+  comments?: MateCommentApiResponse[];
+  items?: MateCommentApiResponse[];
+  content?: MateCommentApiResponse[];
+  totalCount?: number;
+}
+
+export interface MateCommentItem {
+  commentId: number;
+  parentCommentId: number | null;
+  authorId: number | null;
+  authorNickname: string | null;
+  content: string;
+  deleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MateCommentReply extends MateCommentItem {
+  parentCommentId: number;
+}
+
+export interface MateComment extends MateCommentItem {
+  parentCommentId: null;
+  replies: MateCommentReply[];
+}
+
+export interface MateCommentListResponse {
+  totalCount: number;
+  comments: MateComment[];
+}
+
+const mapCommentItem = (comment: MateCommentApiResponse): MateCommentItem => ({
+  commentId: comment.commentId ?? comment.id ?? 0,
+  parentCommentId: comment.parentCommentId ?? null,
+  authorId: comment.authorId ?? null,
+  authorNickname: comment.authorNickname ? repairMojibake(comment.authorNickname) : null,
+  content: comment.deleted && !comment.content ? '삭제된 댓글입니다.' : repairMojibake(comment.content),
+  deleted: comment.deleted ?? false,
+  createdAt: comment.createdAt ?? '',
+  updatedAt: comment.updatedAt ?? '',
+});
+
+const mapCommentReply = (comment: MateCommentApiResponse): MateCommentReply => ({
+  ...mapCommentItem(comment),
+  parentCommentId: comment.parentCommentId ?? 0,
+});
+
+const mapComment = (comment: MateCommentApiResponse): MateComment => ({
+  ...mapCommentItem(comment),
+  parentCommentId: null,
+  replies: (comment.replies ?? []).map(mapCommentReply),
+});
+
+const unwrapCommentList = (
+  body: MateCommentListApiResponse | MateCommentApiResponse[],
+): MateCommentListResponse => {
+  if (Array.isArray(body)) {
+    const comments = body.map(mapComment);
+    return { totalCount: comments.length, comments };
+  }
+
+  const source =
+    body.data && !Array.isArray(body.data)
+      ? body.data
+      : body;
+  const rawComments = Array.isArray(body.data)
+    ? body.data
+    : source.comments ?? source.items ?? source.content ?? [];
+  const comments = rawComments.map(mapComment);
+
+  return {
+    totalCount: source.totalCount ?? comments.length,
+    comments,
+  };
 };
 
-export const createMateComment = async (postId: number, content: string): Promise<MateComment> => {
-    const { data } = await axiosInstance.post(`/api/mate-posts/${postId}/comments`, { content });
-    return data.data ?? data;
+export const getMateComments = async (
+  postId: number,
+): Promise<MateCommentListResponse> => {
+  const { data } = await axiosInstance.get<MateCommentListApiResponse | MateCommentApiResponse[]>(
+    `/api/mate-posts/${postId}/comments`,
+  );
+
+  return unwrapCommentList(data);
+};
+
+export const createMateComment = async (
+  postId: number,
+  content: string,
+): Promise<MateCommentItem> => {
+  const { data } = await axiosInstance.post<ApiItemResponse<MateCommentApiResponse>>(
+    `/api/mate-posts/${postId}/comments`,
+    { content },
+  );
+
+  return mapCommentItem(unwrapItem(data));
+};
+
+export const createMateCommentReply = async (
+  postId: number,
+  commentId: number,
+  content: string,
+): Promise<MateCommentReply> => {
+  const { data } = await axiosInstance.post<ApiItemResponse<MateCommentApiResponse>>(
+    `/api/mate-posts/${postId}/comments/${commentId}/replies`,
+    { content },
+  );
+
+  return mapCommentReply(unwrapItem(data));
+};
+
+export const updateMateComment = async (
+  postId: number,
+  commentId: number,
+  content: string,
+): Promise<MateCommentItem> => {
+  const { data } = await axiosInstance.patch<ApiItemResponse<MateCommentApiResponse>>(
+    `/api/mate-posts/${postId}/comments/${commentId}`,
+    { content },
+  );
+
+  return mapCommentItem(unwrapItem(data));
 };
 
 export const deleteMateComment = async (postId: number, commentId: number): Promise<void> => {
-    await axiosInstance.delete(`/api/mate-posts/${postId}/comments/${commentId}`);
+  await axiosInstance.delete(`/api/mate-posts/${postId}/comments/${commentId}`);
 };
