@@ -44,15 +44,32 @@ export interface MyPageReservation {
   difficulty?: number;
 }
 
+export type MyPageAchievementConditionType =
+  | 'TOTAL_PLAY_COUNT'
+  | 'CLEAR_TIME_UNDER'
+  | 'HORROR_LEVEL_SUCCESS'
+  | 'MATE_PARTICIPATE_COUNT'
+  | 'SAME_MATE_COUNT'
+  | 'MINIGAME_CLEAR'
+  | (string & {});
+
 export interface MyPageAchievement {
   id: number;
+  achievementId?: number;
   name: string;
   description: string;
-  conditionType: string;
+  conditionType: MyPageAchievementConditionType;
   conditionValue?: number | null;
+  progress?: number | null;
+  current?: number | null;
+  currentValue?: number | null;
+  target?: number | null;
   acquiredAt?: string | null;
   acquired?: boolean;
   isAcquired?: boolean;
+  achieved?: boolean;
+  completed?: boolean;
+  unlocked?: boolean;
 }
 
 export interface MyPageReview {
@@ -191,9 +208,17 @@ export const getMyPageAchievements = async (): Promise<MyPageAchievement[]> => {
 
   return unwrapList(data).map((achievement) => ({
     ...achievement,
+    id: achievement.id ?? achievement.achievementId ?? 0,
     name: repairMojibake(achievement.name),
     description: repairMojibake(achievement.description),
-    acquired: achievement.acquired ?? achievement.isAcquired ?? false,
+    conditionValue: achievement.conditionValue ?? achievement.target ?? null,
+    acquired:
+      achievement.acquired ??
+      achievement.isAcquired ??
+      achievement.achieved ??
+      achievement.completed ??
+      achievement.unlocked ??
+      false,
   }));
 };
 

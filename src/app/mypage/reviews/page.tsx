@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ConfirmModal from '@/components/common/ConfirmModal';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
+import RatingIcons from '@/components/common/RatingIcons';
 import RatingStars from '@/components/common/RatingStars';
 import ReviewForm from '@/components/review/ReviewForm';
 import { enrichMyPageReviewsWithThemeImages, parseReviewTags } from '@/lib/myPageReview';
@@ -42,28 +43,6 @@ function formatReviewDate(value: string) {
     String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0'),
   ].join('.');
-}
-
-function DotRating({
-  level,
-  max = 5,
-  color = '#e63946',
-}: {
-  level: number;
-  max?: number;
-  color?: string;
-}) {
-  return (
-    <span className="flex gap-1">
-      {Array.from({ length: max }).map((_, index) => (
-        <span
-          key={index}
-          className="h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: index < level ? color : '#2a2a2a' }}
-        />
-      ))}
-    </span>
-  );
 }
 
 function ReviewEditModal({
@@ -404,11 +383,11 @@ export default function MyReviewsPage() {
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-[#8b8b8b]">
                         <span>공포도</span>
-                        <DotRating level={review.horrorRating} color="#e63946" />
+                        <RatingIcons value={review.horrorRating} type="horror" size="xs" />
                       </div>
                       <div className="flex items-center gap-2 text-xs font-bold text-[#8b8b8b]">
                         <span>난이도</span>
-                        <DotRating level={review.difficultyRating} color="#d4af55" />
+                        <RatingIcons value={review.difficultyRating} type="difficulty" size="xs" />
                       </div>
                     </div>
 

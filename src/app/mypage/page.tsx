@@ -26,7 +26,7 @@ import type { Theme } from "@/types/theme";
 
 type TabKey = "reservation" | "achievement" | "activity";
 type ReservationStatus = "upcoming" | "cleared" | "failed";
-type TitleStatus = "earned" | "current" | "locked" | "next";
+type TitleStatus = "earned" | "current" | "locked" | "next" | "reference";
 type AchievementStatus = "complete" | "progress" | "locked";
 type IconName =
   | "ghost"
@@ -41,6 +41,7 @@ type IconName =
   | "chick"
   | "key"
   | "search"
+  | "gamepad"
   | "crown";
 type PostCategory = "모집" | "정보";
 type MateActivityStatus = "open" | "joined" | "closed";
@@ -65,7 +66,7 @@ type Reservation = {
 type TitleItem = {
   id: number;
   name: string;
-  condition: string;
+  description?: string;
   status: TitleStatus;
   icon: IconName;
 };
@@ -78,6 +79,8 @@ type AchievementItem = {
   icon: IconName;
   progress?: number;
   total?: number;
+  progressLabel?: string;
+  targetLabel?: string;
   accent?:
     | "lime"
     | "red"
@@ -138,7 +141,7 @@ const K = {
   successRate: "\uc131\uacf5\ub960",
   bestClear: "\ucd5c\ub2e8 \ud074\ub9ac\uc5b4",
   achievements: "\ud68d\ub4dd \uc5c5\uc801",
-  rankLabel: "\ud604\uc7ac \ub4f1\uae09",
+  rankLabel: "\ud604\uc7ac \uce6d\ud638",
   upcoming: "\uc608\uc815\ub41c \uc608\uc57d",
   past: "\uc9c0\ub09c \uc608\uc57d",
   horror: "\uacf5\ud3ec\ub3c4",
@@ -172,9 +175,28 @@ const DEFAULT_STATS: MyPageStats = {
   totalAchievementCount: 0,
 };
 
+const TITLE_DEFINITIONS: Array<{
+  id: number;
+  name: string;
+  description: string;
+  icon: IconName;
+}> = [
+  { id: 1, name: "쫄보", description: "성공률 30% 미만", icon: "ghost" },
+  { id: 2, name: "일반인", description: "성공률 30~50%", icon: "user" },
+  { id: 3, name: "강심장", description: "성공률 50~70%", icon: "heart" },
+  { id: 4, name: "오컬트동호회장", description: "성공률 70~85%", icon: "group" },
+  {
+    id: 5,
+    name: "퇴마사",
+    description: "성공률 85% 이상 + 5회 이상 클리어",
+    icon: "flame",
+  },
+];
+
 const ACHIEVEMENT_ICON_BY_CONDITION: Partial<Record<string, IconName>> = {
   TOTAL_PLAY_COUNT: "foot",
   CLEAR_TIME_UNDER: "timer",
+  MINIGAME_CLEAR: "gamepad",
   HORROR_LEVEL_SUCCESS: "skull",
   MATE_PARTICIPATE_COUNT: "group",
   SAME_MATE_COUNT: "heart",
@@ -191,6 +213,26 @@ const ACHIEVEMENT_ACCENTS: NonNullable<AchievementItem["accent"]>[] = [
   "gold",
 ];
 const ACTIVITY_REVIEW_PREVIEW_COUNT = 5;
+
+const ACHIEVEMENT_META_BY_TOTAL_PLAY_TARGET: Partial<
+  Record<number, { icon: IconName; accent: NonNullable<AchievementItem["accent"]> }>
+> = {
+  1: { icon: "foot", accent: "lime" },
+  3: { icon: "chick", accent: "amber" },
+  7: { icon: "key", accent: "gold" },
+  15: { icon: "search", accent: "teal" },
+  30: { icon: "crown", accent: "deepRed" },
+};
+
+const ACHIEVEMENT_META_BY_CONDITION: Partial<
+  Record<string, { icon: IconName; accent: NonNullable<AchievementItem["accent"]> }>
+> = {
+  CLEAR_TIME_UNDER: { icon: "timer", accent: "orange" },
+  MINIGAME_CLEAR: { icon: "gamepad", accent: "rose" },
+  HORROR_LEVEL_SUCCESS: { icon: "skull", accent: "rose" },
+  MATE_PARTICIPATE_COUNT: { icon: "group", accent: "red" },
+  SAME_MATE_COUNT: { icon: "heart", accent: "red" },
+};
 
 function SkullIcon({ className }: { className?: string }) {
   return (
@@ -512,6 +554,16 @@ function AchievementIcon({
       </svg>
     );
   }
+  if (type === "gamepad") {
+    return (
+      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <path
+          {...solid}
+          d="M7.4 7.1h9.2c2.8 0 4.8 2 5.2 5.1l.4 3.2c.3 2.3-.9 4-2.8 4-1.1 0-1.9-.5-2.7-1.5l-1.1-1.4H8.4l-1.1 1.4c-.8 1-1.6 1.5-2.7 1.5-1.9 0-3.1-1.7-2.8-4l.4-3.2c.4-3.1 2.4-5.1 5.2-5.1Zm.4 3.2H5.9v1.9H4v1.8h1.9v1.9h1.9V14h1.9v-1.8H7.8v-1.9Zm8 4.7a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Zm3.1-3.1a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Z"
+        />
+      </svg>
+    );
+  }
   if (type === "search") {
     return (
       <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
@@ -598,6 +650,36 @@ function TitleSymbol({
         <path
           {...line}
           d="m23.8 4.9 1.2-2 1.2 2 2.2.5-1.6 1.6.2 2.3-2-.9-2 .9.2-2.3-1.6-1.6 2.2-.5ZM15.9 5.3l1.1-2 1.1 2"
+        />
+      </svg>
+    );
+  }
+  if (type === "heart") {
+    return (
+      <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+        <path
+          {...solid}
+          d="M16 27.8S5.2 21.3 5.2 12.9c0-4 2.7-6.8 6.3-6.8 2 0 3.7 1 4.5 2.6.8-1.6 2.5-2.6 4.5-2.6 3.6 0 6.3 2.8 6.3 6.8 0 8.4-10.8 14.9-10.8 14.9Z"
+        />
+      </svg>
+    );
+  }
+  if (type === "lock") {
+    return (
+      <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+        <path
+          {...solid}
+          d="M10.2 13.8V10a5.8 5.8 0 0 1 11.6 0v3.8h1.1c1.3 0 2.3 1 2.3 2.3v8.7c0 1.3-1 2.3-2.3 2.3H9.1c-1.3 0-2.3-1-2.3-2.3v-8.7c0-1.3 1-2.3 2.3-2.3h1.1Zm3.1 0h5.4V10a2.7 2.7 0 0 0-5.4 0v3.8Zm4.1 6.3a1.4 1.4 0 1 0-2.8 0c0 .6.4 1.1.9 1.3v2.1h1v-2.1c.5-.2.9-.7.9-1.3Z"
+        />
+      </svg>
+    );
+  }
+  if (type === "crown") {
+    return (
+      <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+        <path
+          {...solid}
+          d="m4.8 10.1 6.1 4.1L16 5.1l5.1 9.1 6.1-4.1-2.1 14.6H6.9L4.8 10.1Zm3.4 16.5h15.6v2.2H8.2v-2.2Z"
         />
       </svg>
     );
@@ -834,34 +916,138 @@ function getStatsItems(stats: MyPageStats, isLoading = false) {
   ];
 }
 
-function getCurrentTitleItem(profile: MyPageProfile, stats: MyPageStats): TitleItem {
-  const titleName = profile.titleName || "칭호 정보 없음";
-  const condition = stats.totalAchievementCount
-    ? `획득 업적 ${stats.acquiredAchievementCount}/${stats.totalAchievementCount} · 성공률 ${stats.successRate}%`
-    : `성공률 ${stats.successRate}%`;
+function getTitleDefinition(name?: string | null) {
+  const targetName = normalizeCompareText(name);
+  if (!targetName) return undefined;
+
+  return TITLE_DEFINITIONS.find(
+    (title) => normalizeCompareText(title.name) === targetName,
+  );
+}
+
+function getCurrentTitleItem(profile: MyPageProfile): TitleItem {
+  const definition = getTitleDefinition(profile.titleName);
+  const titleName = profile.titleName || "칭호 없음";
 
   return {
-    id: 1,
+    id: definition?.id ?? 0,
     name: titleName,
-    condition,
+    description: definition?.description,
     status: profile.titleName ? "current" : "locked",
-    icon: profile.titleName ? "group" : "lock",
+    icon: definition?.icon ?? (profile.titleName ? "crown" : "lock"),
   };
 }
 
-function mapAchievementToUi(achievement: MyPageAchievement, index: number): AchievementItem {
-  const acquired = achievement.acquired ?? achievement.isAcquired ?? false;
-  const total = achievement.conditionValue ?? undefined;
+function getTitleItems(profile: MyPageProfile): TitleItem[] {
+  const currentName = normalizeCompareText(profile.titleName);
+
+  return TITLE_DEFINITIONS.map((title) => ({
+    ...title,
+    status: normalizeCompareText(title.name) === currentName ? "current" : "reference",
+  }));
+}
+
+function getAchievementPresentationMeta(
+  achievement: MyPageAchievement,
+  index: number,
+): Pick<AchievementItem, "icon" | "accent"> {
+  const total = achievement.conditionValue ?? achievement.target ?? undefined;
+  const byTotalPlay =
+    achievement.conditionType === "TOTAL_PLAY_COUNT" && typeof total === "number"
+      ? ACHIEVEMENT_META_BY_TOTAL_PLAY_TARGET[total]
+      : undefined;
+  const byCondition = ACHIEVEMENT_META_BY_CONDITION[achievement.conditionType];
 
   return {
-    id: achievement.id,
+    icon:
+      byTotalPlay?.icon ??
+      byCondition?.icon ??
+      ACHIEVEMENT_ICON_BY_CONDITION[achievement.conditionType] ??
+      "key",
+    accent:
+      byTotalPlay?.accent ??
+      byCondition?.accent ??
+      ACHIEVEMENT_ACCENTS[index % ACHIEVEMENT_ACCENTS.length],
+  };
+}
+
+function getAchievementProgressLabels(
+  achievement: MyPageAchievement,
+  stats?: MyPageStats,
+): Pick<AchievementItem, "progress" | "total" | "progressLabel" | "targetLabel"> {
+  const total = achievement.conditionValue ?? achievement.target ?? undefined;
+
+  if (achievement.conditionType === "TOTAL_PLAY_COUNT" && typeof total === "number") {
+    const current = Math.min(stats?.totalPlayCount ?? 0, total);
+    return {
+      progress: current,
+      total,
+      progressLabel: `${current}/${total}`,
+      targetLabel: `목표 ${total}회`,
+    };
+  }
+
+  if (achievement.conditionType === "CLEAR_TIME_UNDER" && typeof total === "number") {
+    const targetLabel = `목표 ${total}분 이내`;
+
+    return {
+      total,
+      progressLabel: stats?.bestClearTime
+        ? `최고 기록 ${formatBestClearTime(stats.bestClearTime)} · ${targetLabel}`
+        : undefined,
+      targetLabel,
+    };
+  }
+
+  if (achievement.conditionType === "MINIGAME_CLEAR") {
+    return {
+      targetLabel: "1회성 업적",
+    };
+  }
+
+  return {
+    total,
+    targetLabel: typeof total === "number" ? `목표 ${total}` : undefined,
+  };
+}
+
+function mapAchievementToUi(
+  achievement: MyPageAchievement,
+  index: number,
+  stats?: MyPageStats,
+): AchievementItem {
+  const acquired =
+    achievement.acquired ??
+    achievement.isAcquired ??
+    achievement.achieved ??
+    achievement.completed ??
+    achievement.unlocked ??
+    false;
+  const apiProgress =
+    achievement.progress ??
+    achievement.current ??
+    achievement.currentValue ??
+    undefined;
+  const progressMeta = getAchievementProgressLabels(achievement, stats);
+  const hasApiProgress =
+    typeof apiProgress === "number" &&
+    typeof progressMeta.total === "number" &&
+    progressMeta.total > 0;
+  const presentation = getAchievementPresentationMeta(achievement, index);
+
+  return {
+    id: achievement.id ?? achievement.achievementId ?? index,
     name: achievement.name || "업적",
     condition: achievement.description || achievement.conditionType || "업적 조건 정보가 없습니다.",
-    status: acquired ? "complete" : total ? "progress" : "locked",
-    icon: ACHIEVEMENT_ICON_BY_CONDITION[achievement.conditionType] ?? "key",
-    progress: acquired ? total : total ? 0 : undefined,
-    total,
-    accent: ACHIEVEMENT_ACCENTS[index % ACHIEVEMENT_ACCENTS.length],
+    status: acquired ? "complete" : "progress",
+    icon: presentation.icon,
+    progress: hasApiProgress ? apiProgress : progressMeta.progress,
+    total: progressMeta.total,
+    progressLabel: hasApiProgress
+      ? `${apiProgress}/${progressMeta.total}`
+      : progressMeta.progressLabel,
+    targetLabel: progressMeta.targetLabel,
+    accent: presentation.accent,
   };
 }
 
@@ -996,7 +1182,7 @@ function ProfileSummaryCard({
           ))}
         </div>
 
-        <RankBadgeCard profile={profile} stats={stats} />
+        <RankBadgeCard profile={profile} />
       </div>
     </section>
   );
@@ -1004,12 +1190,10 @@ function ProfileSummaryCard({
 
 function RankBadgeCard({
   profile,
-  stats,
 }: {
   profile: MyPageProfile;
-  stats: MyPageStats;
 }) {
-  const title = getCurrentTitleItem(profile, stats);
+  const title = getCurrentTitleItem(profile);
   return (
     <div className="m-4 flex min-h-[132px] flex-col items-center justify-center rounded-xl border border-[#cc2222]/68 bg-[radial-gradient(circle_at_50%_0%,rgba(229,57,57,0.24),transparent_66%),linear-gradient(180deg,rgba(204,34,34,0.065),rgba(0,0,0,0.16)),#171010] px-5 text-center shadow-[0_0_34px_rgba(204,34,34,0.16),inset_0_0_24px_rgba(204,34,34,0.04)]">
       <p className="mb-3 text-[11px] font-black tracking-[0.16em] text-[#c09a9a]">
@@ -1024,12 +1208,9 @@ function RankBadgeCard({
           {title.name}
         </span>
       </div>
-      <p className="text-sm font-black text-[#ef5353]">
-        획득 업적 {stats.acquiredAchievementCount}/{stats.totalAchievementCount}
-      </p>
-      <p className="mt-1 text-xs font-black text-[#d58a80]">
-        성공률 {stats.successRate}%
-      </p>
+      {profile.titleName && (
+        <p className="text-sm font-black text-[#ef5353]">현재 장착 중인 칭호</p>
+      )}
     </div>
   );
 }
@@ -1487,7 +1668,8 @@ function AchievementTabContent({
   const [achievements, setAchievements] = useState<AchievementItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const currentTitle = getCurrentTitleItem(profile, stats);
+  const currentTitle = getCurrentTitleItem(profile);
+  const titles = getTitleItems(profile);
 
   useEffect(() => {
     let isMounted = true;
@@ -1498,7 +1680,11 @@ function AchievementTabContent({
     getMyPageAchievements()
       .then((data) => {
         if (!isMounted) return;
-        setAchievements(data.map(mapAchievementToUi));
+        setAchievements(
+          data.map((achievement, index) =>
+            mapAchievementToUi(achievement, index, stats),
+          ),
+        );
       })
       .catch(() => {
         if (!isMounted) return;
@@ -1512,13 +1698,18 @@ function AchievementTabContent({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [stats]);
 
   return (
     <div className="mt-5 space-y-8">
       <AchievementSectionTitle title="칭호" tone="red" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <TitleCard title={currentTitle} />
+      <div className="space-y-4">
+        <CurrentTitlePanel title={currentTitle} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {titles.map((title) => (
+            <TitleCard key={title.id} title={title} />
+          ))}
+        </div>
       </div>
 
       <AchievementSectionTitle title="업적" tone="red" className="pt-1" />
@@ -1555,13 +1746,55 @@ function AchievementSectionTitle({
   );
 }
 
+function CurrentTitlePanel({ title }: { title: TitleItem }) {
+  const hasTitle = title.status === "current";
+
+  return (
+    <section className="relative overflow-hidden rounded-xl border border-[#cc2222]/50 bg-[radial-gradient(circle_at_18%_0%,rgba(239,83,83,0.24),transparent_38%),linear-gradient(135deg,rgba(28,13,13,0.98),rgba(16,16,16,0.94)_58%,rgba(12,12,12,0.98))] px-5 py-5 shadow-[0_22px_64px_rgba(0,0,0,0.36),0_0_34px_rgba(204,34,34,0.08)]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-[#cc2222]/38 bg-[#210f0f] shadow-[inset_0_0_26px_rgba(239,83,83,0.1),0_12px_26px_rgba(0,0,0,0.28)]">
+            <TitleSymbol
+              type={title.icon}
+              className="h-11 w-11 text-[#ef5353] drop-shadow-[0_0_18px_rgba(239,83,83,0.2)]"
+            />
+          </div>
+          <div className="min-w-0">
+            <p className="mb-1 text-[11px] font-black tracking-[0.16em] text-[#c09a9a]">
+              현재 장착 중인 칭호
+            </p>
+            <h4 className="truncate text-[26px] font-black leading-tight text-[#f5f5f5]">
+              {title.name}
+            </h4>
+            <p className="mt-1 text-sm font-bold text-[#9a9a9a]">
+              {hasTitle
+                ? title.description ?? "현재 프로필에 적용된 칭호입니다."
+                : "아직 장착 중인 칭호가 없습니다."}
+            </p>
+          </div>
+        </div>
+        <span
+          className={[
+            "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-3 text-xs font-black",
+            hasTitle
+              ? "border-[#cc2222]/55 bg-[#cc2222]/12 text-[#ef5353]"
+              : "border-white/[0.1] bg-white/[0.035] text-[#8a8a8a]",
+          ].join(" ")}
+        >
+          {hasTitle ? "장착 중" : "미장착"}
+        </span>
+      </div>
+    </section>
+  );
+}
+
 function TitleCard({ title }: { title: TitleItem }) {
   const isCurrent = title.status === "current";
   const isLocked = title.status === "locked";
   return (
     <article
       className={[
-        "relative flex min-h-[104px] items-center rounded-xl border bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] px-5 py-4 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all",
+        "relative flex min-h-[118px] items-center rounded-xl border bg-[radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] px-5 py-4 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all",
         isCurrent
           ? "border-[#cc2222]/58 shadow-[0_0_30px_rgba(204,34,34,0.12),0_18px_42px_rgba(0,0,0,0.34)]"
           : "border-white/[0.075]",
@@ -1586,9 +1819,16 @@ function TitleCard({ title }: { title: TitleItem }) {
           <h4 className="truncate whitespace-nowrap text-[15px] font-black text-[#f5f5f5]">
             {title.name}
           </h4>
-          <p className="mt-0.5 line-clamp-2 text-[11px] font-bold leading-relaxed text-[#858585]">
-            {title.condition}
-          </p>
+          {title.description && (
+            <p className="mt-0.5 line-clamp-2 text-[11px] font-bold leading-relaxed text-[#858585]">
+              {title.description}
+            </p>
+          )}
+          {!isCurrent && !isLocked && (
+            <p className="mt-2 text-[11px] font-black text-[#6f6f6f]">
+              조건 참고
+            </p>
+          )}
         </div>
       </div>
     </article>
@@ -1608,6 +1848,8 @@ function getTitleSymbolStyle(title: TitleItem) {
     return "text-[#a8a8a8] drop-shadow-[0_0_12px_rgba(255,255,255,0.05)]";
   if (title.icon === "group")
     return "text-[#a8a8a8] drop-shadow-[0_0_12px_rgba(255,255,255,0.05)]";
+  if (title.icon === "heart")
+    return "text-[#c97878] drop-shadow-[0_0_12px_rgba(239,83,83,0.06)]";
   return "text-[#8a7d67] drop-shadow-[0_0_12px_rgba(255,255,255,0.04)]";
 }
 
@@ -1615,11 +1857,15 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
   const locked = achievement.status === "locked";
   const complete = achievement.status === "complete";
   const inProgress = achievement.status === "progress";
+  const hasMeasuredProgress =
+    typeof achievement.progress === "number" &&
+    typeof achievement.total === "number" &&
+    achievement.total > 0;
   const percent =
-    achievement.progress && achievement.total
+    hasMeasuredProgress
       ? Math.min(
           100,
-          Math.round((achievement.progress / achievement.total) * 100),
+          Math.round(((achievement.progress ?? 0) / achievement.total!) * 100),
         )
       : 0;
   return (
@@ -1640,8 +1886,9 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
             "flex h-14 w-14 shrink-0 items-center justify-center rounded-full border",
             getAchievementIconStyle(achievement),
           ].join(" ")}
-        ></div>
-        <AchievementIcon type={achievement.icon} className="h-8 w-8" />
+        >
+          <AchievementIcon type={achievement.icon} className="h-8 w-8" />
+        </div>
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-start justify-between gap-3">
             <h4 className="text-[16px] font-black text-[#f5f5f5]">
@@ -1669,16 +1916,28 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
                 <span className="rounded-md border border-[#cc2222]/35 bg-[#cc2222]/8 px-2 py-0.5 text-[#ef5353]">
                   {"진행 중"}
                 </span>
-                <span className="text-[#aaa]">
-                  {achievement.progress}/{achievement.total}
-                </span>
+                {hasMeasuredProgress ? (
+                  <span className="text-[#aaa]">
+                    {achievement.progressLabel ?? `${achievement.progress}/${achievement.total}`}
+                  </span>
+                ) : achievement.progressLabel ? (
+                  <span className="text-[#aaa]">{achievement.progressLabel}</span>
+                ) : achievement.total ? (
+                  <span className="text-[#aaa]">
+                    {achievement.targetLabel ?? `목표 ${achievement.total}`}
+                  </span>
+                ) : achievement.targetLabel ? (
+                  <span className="text-[#aaa]">{achievement.targetLabel}</span>
+                ) : null}
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
-                <div
-                  className={getProgressBarStyle()}
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
+              {hasMeasuredProgress && (
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.075]">
+                  <div
+                    className={getProgressBarStyle()}
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              )}
             </div>
           )}
           {locked && (

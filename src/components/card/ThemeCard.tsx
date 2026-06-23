@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
+import RatingIcons from "@/components/common/RatingIcons";
 import RatingStars from "@/components/common/RatingStars";
 import { Theme } from "@/types/theme";
 
@@ -13,59 +14,6 @@ interface ThemeCardProps {
   showPrice?: boolean;
   actionLabel?: string;
   onAction?: (theme: Theme) => void;
-}
-
-function SkullIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
-      <path
-        fill="currentColor"
-        d="M8 1.7c-3.1 0-5.2 2.1-5.2 5.1 0 1.8.8 3.2 2 4v2.1c0 .8.6 1.4 1.4 1.4h3.6c.8 0 1.4-.6 1.4-1.4v-2.1c1.2-.8 2-2.2 2-4 0-3-2.1-5.1-5.2-5.1Zm-2.1 7.6c-.8 0-1.4-.6-1.4-1.4s.6-1.4 1.4-1.4 1.4.6 1.4 1.4-.6 1.4-1.4 1.4Zm2.1 1.5c-.4 0-.8-.3-.8-.7 0-.3.5-1.2.8-1.7.3.5.8 1.4.8 1.7 0 .4-.4.7-.8.7Zm2.1-1.5c-.8 0-1.4-.6-1.4-1.4s.6-1.4 1.4-1.4 1.4.6 1.4 1.4-.6 1.4-1.4 1.4ZM6.1 12.1h.8v1h-.8v-1Zm1.5 0h.8v1h-.8v-1Zm1.5 0h.8v1h-.8v-1Z"
-      />
-    </svg>
-  );
-}
-
-function LockIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" className={className}>
-      <path
-        fill="currentColor"
-        d="M4.2 6.7V5.2C4.2 3 5.8 1.5 8 1.5s3.8 1.5 3.8 3.7v1.5h.4c.8 0 1.3.6 1.3 1.3v5.1c0 .8-.6 1.4-1.4 1.4H3.9c-.8 0-1.4-.6-1.4-1.4V8c0-.8.6-1.3 1.3-1.3h.4Zm1.7 0h4.2V5.2c0-1.2-.8-2-2.1-2s-2.1.8-2.1 2v1.5Z"
-      />
-    </svg>
-  );
-}
-
-function RatingIcons({
-  level,
-  type,
-}: {
-  level: number;
-  type: "horror" | "difficulty";
-}) {
-  const Icon = type === "horror" ? SkullIcon : LockIcon;
-  const activeColor = type === "horror" ? "text-[#c94a4a]" : "text-[#d7b46a]";
-  const activeShadow =
-    type === "horror"
-      ? "drop-shadow-[0_0_5px_rgba(204,34,34,0.16)]"
-      : "drop-shadow-[0_0_5px_rgba(215,180,106,0.2)]";
-
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <Icon
-          key={index}
-          className={[
-            "h-4 w-4 transition-all",
-            index < level
-              ? `${activeColor} ${activeShadow} opacity-100`
-              : "text-[#303030] opacity-45",
-          ].join(" ")}
-        />
-      ))}
-    </span>
-  );
 }
 
 function RankBadge({ rank }: { rank: number }) {
@@ -123,11 +71,11 @@ export default function ThemeCard({
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[13px] text-[#8f8f8f]">
             <span className="inline-flex items-center gap-3">
               <span className="shrink-0 text-[#9a9a9a]">공포도</span>
-              <RatingIcons level={theme.horrorLevel} type="horror" />
+              <RatingIcons value={theme.horrorLevel} type="horror" />
             </span>
             <span className="inline-flex items-center gap-3">
               <span className="shrink-0 text-[#9a9a9a]">난이도</span>
-              <RatingIcons level={theme.difficulty} type="difficulty" />
+              <RatingIcons value={theme.difficulty} type="difficulty" />
             </span>
           </div>
 

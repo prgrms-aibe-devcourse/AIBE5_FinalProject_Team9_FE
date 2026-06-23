@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import RatingIcons from "@/components/common/RatingIcons";
 import RatingStars from "@/components/common/RatingStars";
 import ReviewReportModal from "@/components/review/ReviewReportModal";
 import { Review } from "@/types/review";
@@ -8,31 +9,6 @@ import { Review } from "@/types/review";
 interface ReviewCardProps {
   review: Review;
   onReport?: (id: number) => void;
-}
-
-function RatingGlyphs({
-  level,
-  type,
-  max = 5,
-}: {
-  level: number;
-  type: "horror" | "difficulty";
-  max?: number;
-}) {
-  const icon = type === "horror" ? "💀" : "🔒";
-
-  return (
-    <span className="inline-flex items-center gap-0.5 leading-none">
-      {Array.from({ length: max }).map((_, index) => (
-        <span
-          key={index}
-          className={index < level ? "opacity-100" : "grayscale opacity-30"}
-        >
-          {icon}
-        </span>
-      ))}
-    </span>
-  );
 }
 
 export default function ReviewCard({ review, onReport }: ReviewCardProps) {
@@ -88,11 +64,11 @@ export default function ReviewCard({ review, onReport }: ReviewCardProps) {
           <div className="inline-flex max-w-full flex-wrap items-center justify-start gap-x-8 gap-y-2 rounded-[12px] border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs">
             <div className="inline-flex flex-none items-center gap-2">
               <span className="font-black text-[#b8b8b8]">공포도</span>
-              <RatingGlyphs level={review.horrorLevel} type="horror" />
+              <RatingIcons value={review.horrorLevel} type="horror" size="xs" />
             </div>
             <div className="inline-flex flex-none items-center gap-2">
               <span className="font-black text-[#b8b8b8]">난이도</span>
-              <RatingGlyphs level={review.difficulty} type="difficulty" />
+              <RatingIcons value={review.difficulty} type="difficulty" size="xs" />
             </div>
           </div>
         </div>

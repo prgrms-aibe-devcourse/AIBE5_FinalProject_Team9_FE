@@ -3,6 +3,7 @@
 import { useState, FormEvent } from 'react';
 import Button from '@/components/common/Button';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
+import RatingIcons from '@/components/common/RatingIcons';
 import RatingStars from '@/components/common/RatingStars';
 import { ReviewFormValues } from '@/types/review';
 
@@ -20,25 +21,6 @@ interface ReviewFormProps {
 }
 
 const TAGS = ['무서워요', '퍼즐이 좋아요', '스토리가 좋아요', '팀워크 필요', '스피디해요', '연출이 좋아요', '재관람 추천', '혼자서 추천'];
-
-function DotRating({ value, onChange, color = '#e63946' }: { value: number; onChange: (v: number) => void; color?: string }) {
-  return (
-    <span className="flex gap-1.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <button
-          key={i}
-          type="button"
-          onClick={() => onChange(i + 1)}
-          className="h-3.5 w-3.5 rounded-full border transition-all hover:scale-110"
-          style={{
-            backgroundColor: i < value ? color : 'transparent',
-            borderColor: color,
-          }}
-        />
-      ))}
-    </span>
-  );
-}
 
 export default function ReviewForm({
   themeId,
@@ -135,11 +117,23 @@ export default function ReviewForm({
           </div>
           <div className="rounded-lg border border-white/[0.055] bg-[#111]/75 px-3 py-3">
             <p className="mb-2 text-xs font-black text-[#888]">공포도</p>
-            <DotRating value={horrorLevel} onChange={setHorrorLevel} color="#e63946" />
+            <RatingIcons
+              value={horrorLevel}
+              type="horror"
+              size="md"
+              interactive
+              onChange={setHorrorLevel}
+            />
           </div>
           <div className="rounded-lg border border-white/[0.055] bg-[#111]/75 px-3 py-3">
             <p className="mb-2 text-xs font-black text-[#888]">난이도</p>
-            <DotRating value={difficulty} onChange={setDifficulty} color="#d4af55" />
+            <RatingIcons
+              value={difficulty}
+              type="difficulty"
+              size="md"
+              interactive
+              onChange={setDifficulty}
+            />
           </div>
         </div>
       </section>
