@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { AxiosError } from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,12 +9,20 @@ import ImageWithFallback from "@/components/common/ImageWithFallback";
 import RatingStars from "@/components/common/RatingStars";
 import {
   closeMatePost,
+  createMateComment,
+  createMateCommentReply,
   deleteMatePost,
+  deleteMateComment,
+  getMateComments,
   getMatePostById,
   getMatePostParticipants,
   getMyMateParticipations,
   joinMatePost,
   leaveMatePost,
+  MateComment,
+  MateCommentItem,
+  MateCommentReply,
+  updateMateComment,
 } from "@/services/mateService";
 import { getThemeById, getThemes } from "@/services/themeService";
 import {
@@ -113,7 +121,7 @@ function Badge({ children, className = "" }: { children: React.ReactNode; classN
 
 function isMyMatePost(post: MatePost | null, userId?: number) {
   if (!post) return false;
-  return Boolean(post.openChatUrl || (userId && userId === post.memberId));
+  return Boolean(userId && userId === post.memberId);
 }
 
 function MateSkullIcon({ className }: { className?: string }) {
@@ -302,7 +310,7 @@ function ThemePreviewModal({
   );
 }
 
-interface MateComment {
+interface LegacyMateComment {
   id: number;
   authorNickname: string;
   content: string;
@@ -312,7 +320,7 @@ interface MateComment {
 function CommentsSection({
   comments = [],
 }: {
-  comments?: MateComment[];
+  comments?: LegacyMateComment[];
 }) {
   return (
     <section className="rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.22)]">
@@ -356,6 +364,450 @@ function CommentsSection({
           ))}
         </div>
       )}
+
+    </section>
+  );
+}
+
+const COMMENT_CONTENT_LIMIT = 500;
+
+function getCommentAuthorName(comment: MateCommentItem) {
+  return comment.authorNickname || "알 수 없음";
+}
+
+function validateCommentContent(value: string) {
+  const content = value.trim();
+
+  if (!content) return { content: "", error: "내용을 입력해주세요." };
+  if (content.length > COMMENT_CONTENT_LIMIT) {
+    return { content, error: "댓글은 500자 이하로 입력해주세요." };
+  }
+
+  return { content, error: "" };
+}
+
+function MateCommentsSection({
+  postId,
+  currentUserId,
+  isLoggedIn,
+}: {
+  postId: number;
+  currentUserId?: number;
+  isLoggedIn: boolean;
+}) {
+  const [comments, setComments] = useState<MateComment[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [newComment, setNewComment] = useState("");
+  const [replyTargetId, setReplyTargetId] = useState<number | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [busyCommentId, setBusyCommentId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const loadComments = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage("");
+
+    try {
+      const data = await getMateComments(postId);
+      setComments(data.comments);
+      setTotalCount(data.totalCount);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "댓글을 불러오지 못했습니다."));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [postId]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsLoading(true);
+    setErrorMessage("");
+    getMateComments(postId)
+      .then((data) => {
+        if (!isMounted) return;
+        setComments(data.comments);
+        setTotalCount(data.totalCount);
+      })
+      .catch((error) => {
+        if (isMounted) setErrorMessage(getApiErrorMessage(error, "댓글을 불러오지 못했습니다."));
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [postId]);
+
+  const showLoginRequired = () => {
+    setErrorMessage("로그인이 필요한 기능입니다.");
+  };
+
+  const submitNewComment = async () => {
+    if (!isLoggedIn) {
+      showLoginRequired();
+      return;
+    }
+
+    const validation = validateCommentContent(newComment);
+    if (validation.error) {
+      setErrorMessage(validation.error);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      await createMateComment(postId, validation.content);
+      setNewComment("");
+      await loadComments();
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "댓글 등록에 실패했습니다."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openReplyForm = (commentId: number) => {
+    if (!isLoggedIn) {
+      showLoginRequired();
+      return;
+    }
+
+    setEditingCommentId(null);
+    setEditingContent("");
+    setReplyContent("");
+    setReplyTargetId((currentId) => (currentId === commentId ? null : commentId));
+    setErrorMessage("");
+  };
+
+  const submitReply = async (commentId: number) => {
+    if (!isLoggedIn) {
+      showLoginRequired();
+      return;
+    }
+
+    const validation = validateCommentContent(replyContent);
+    if (validation.error) {
+      setErrorMessage(validation.error);
+      return;
+    }
+
+    setBusyCommentId(commentId);
+    setErrorMessage("");
+
+    try {
+      await createMateCommentReply(postId, commentId, validation.content);
+      setReplyContent("");
+      setReplyTargetId(null);
+      await loadComments();
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "답글 등록에 실패했습니다."));
+    } finally {
+      setBusyCommentId(null);
+    }
+  };
+
+  const startEdit = (comment: MateCommentItem) => {
+    if (!isLoggedIn) {
+      showLoginRequired();
+      return;
+    }
+
+    if (comment.deleted) return;
+    setReplyTargetId(null);
+    setReplyContent("");
+    setEditingCommentId(comment.commentId);
+    setEditingContent(comment.content);
+    setErrorMessage("");
+  };
+
+  const submitEdit = async (commentId: number) => {
+    if (!isLoggedIn) {
+      showLoginRequired();
+      return;
+    }
+
+    const validation = validateCommentContent(editingContent);
+    if (validation.error) {
+      setErrorMessage(validation.error);
+      return;
+    }
+
+    setBusyCommentId(commentId);
+    setErrorMessage("");
+
+    try {
+      await updateMateComment(postId, commentId, validation.content);
+      setEditingCommentId(null);
+      setEditingContent("");
+      await loadComments();
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "댓글 수정에 실패했습니다."));
+    } finally {
+      setBusyCommentId(null);
+    }
+  };
+
+  const requestDeleteComment = (commentId: number) => {
+    if (!isLoggedIn) {
+      showLoginRequired();
+      return;
+    }
+
+    setDeleteTargetId(commentId);
+    setErrorMessage("");
+  };
+
+  const confirmDeleteComment = async () => {
+    if (!deleteTargetId) return;
+
+    if (!isLoggedIn) {
+      showLoginRequired();
+      return;
+    }
+
+    setBusyCommentId(deleteTargetId);
+    setErrorMessage("");
+
+    try {
+      await deleteMateComment(postId, deleteTargetId);
+      setDeleteTargetId(null);
+      await loadComments();
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "댓글 삭제에 실패했습니다."));
+    } finally {
+      setBusyCommentId(null);
+    }
+  };
+
+  const renderComment = (comment: MateComment | MateCommentReply, isReply = false) => {
+    const isMine = Boolean(currentUserId && comment.authorId === currentUserId);
+    const canManage = !comment.deleted && isMine;
+    const isEditing = editingCommentId === comment.commentId;
+    const isBusy = busyCommentId === comment.commentId;
+
+    return (
+      <article
+        key={comment.commentId}
+        className={[
+          "rounded-xl border border-white/[0.055] bg-[#101010]/55 p-4",
+          isReply ? "ml-4 border-l-[#e63946]/25 bg-[#0d0d0d]/80 sm:ml-8" : "",
+          comment.deleted ? "border-white/[0.04] bg-[#101010]/35" : "",
+        ].join(" ")}
+      >
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            {isReply && <span className="text-xs font-black text-[#555]">ㄴ</span>}
+            <p className="truncate text-sm font-black text-[#f5f5f5]">
+              {getCommentAuthorName(comment)}
+            </p>
+          </div>
+          <p className="text-xs font-bold text-[#666]">{formatDateTime(comment.createdAt)}</p>
+        </div>
+
+        {isEditing ? (
+          <div className="rounded-lg border border-white/[0.06] bg-[#0d0d0d] p-3">
+            <textarea
+              rows={3}
+              value={editingContent}
+              maxLength={COMMENT_CONTENT_LIMIT + 1}
+              onChange={(event) => setEditingContent(event.target.value)}
+              className="block w-full resize-none bg-transparent text-sm leading-6 text-[#f5f5f5] outline-none placeholder:text-[#555]"
+            />
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-bold text-[#666]">
+                {editingContent.trim().length}/{COMMENT_CONTENT_LIMIT}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingCommentId(null);
+                    setEditingContent("");
+                  }}
+                  disabled={isBusy}
+                  className="rounded-lg border border-white/[0.1] px-3 py-1.5 text-xs font-bold text-[#888] transition-colors hover:border-white/[0.2] hover:text-white disabled:opacity-45"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => submitEdit(comment.commentId)}
+                  disabled={isBusy}
+                  className="rounded-lg bg-[#e63946] px-3 py-1.5 text-xs font-black text-white transition-colors hover:bg-[#c1121f] disabled:opacity-45"
+                >
+                  {isBusy ? "저장 중" : "저장"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className={["whitespace-pre-line text-sm leading-6", comment.deleted ? "text-[#777]" : "text-[#c9c9c9]"].join(" ")}>
+            {comment.content}
+          </p>
+        )}
+
+        {!comment.deleted && !isEditing && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {!isReply && (
+              <button
+                type="button"
+                onClick={() => openReplyForm(comment.commentId)}
+                className="rounded-lg border border-white/[0.08] px-2.5 py-1 text-xs font-bold text-[#888] transition-colors hover:border-[#e63946]/40 hover:text-[#ff8b8b]"
+              >
+                답글
+              </button>
+            )}
+            {canManage && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => startEdit(comment)}
+                  disabled={isBusy}
+                  className="rounded-lg border border-white/[0.08] px-2.5 py-1 text-xs font-bold text-[#888] transition-colors hover:border-white/[0.2] hover:text-white disabled:opacity-45"
+                >
+                  수정
+                </button>
+                <button
+                  type="button"
+                  onClick={() => requestDeleteComment(comment.commentId)}
+                  disabled={isBusy}
+                  className="rounded-lg border border-[#cc2222]/35 px-2.5 py-1 text-xs font-bold text-[#ef5353] transition-colors hover:bg-[#cc2222]/10 disabled:opacity-45"
+                >
+                  삭제
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </article>
+    );
+  };
+
+  return (
+    <section className="rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.22)]">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black text-[#f5f5f5]">
+          댓글 <span className="text-[#ef5353]">{totalCount}</span>
+        </h2>
+      </div>
+
+      <div className="rounded-xl border border-white/[0.06] bg-[#101010]/70 p-3">
+        <textarea
+          rows={3}
+          value={newComment}
+          maxLength={COMMENT_CONTENT_LIMIT + 1}
+          onChange={(event) => setNewComment(event.target.value)}
+          placeholder="댓글을 입력하세요."
+          className="block w-full resize-none rounded-lg border border-white/[0.08] bg-[#0d0d0d] px-3 py-3 text-sm leading-6 text-[#f5f5f5] outline-none transition-colors placeholder:text-[#555] focus:border-[#e63946]/55"
+        />
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-bold text-[#666]">
+            {newComment.trim().length}/{COMMENT_CONTENT_LIMIT}
+          </span>
+          <button
+            type="button"
+            onClick={submitNewComment}
+            disabled={isSubmitting}
+            className="rounded-lg bg-[#e63946] px-4 py-2 text-sm font-black text-white transition-colors hover:bg-[#c1121f] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {isSubmitting ? "등록 중" : "등록"}
+          </button>
+        </div>
+      </div>
+
+      {errorMessage && (
+        <p className="mt-3 rounded-lg border border-[#e63946]/20 bg-[#e63946]/10 px-3 py-2 text-xs font-bold text-[#ff8b8b]">
+          {errorMessage}
+        </p>
+      )}
+
+      {isLoading ? (
+        <div className="mt-4 rounded-xl border border-white/[0.055] bg-[#101010]/45 py-8 text-center">
+          <p className="text-sm font-black text-[#d8d8d8]">댓글을 불러오는 중입니다.</p>
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-white/[0.055] bg-[#101010]/45 py-8 text-center">
+          <p className="text-sm font-black text-[#d8d8d8]">아직 댓글이 없습니다.</p>
+          <p className="mt-1 text-xs text-[#666]">첫 댓글을 남겨보세요.</p>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {comments.map((comment) => (
+            <div key={comment.commentId} className="space-y-3">
+              {renderComment(comment)}
+
+              {replyTargetId === comment.commentId && (
+                <div className="ml-4 rounded-xl border border-[#e63946]/15 bg-[#101010]/70 p-3 sm:ml-8">
+                  <textarea
+                    rows={3}
+                    value={replyContent}
+                    maxLength={COMMENT_CONTENT_LIMIT + 1}
+                    onChange={(event) => setReplyContent(event.target.value)}
+                    placeholder="답글을 입력하세요."
+                    className="block w-full resize-none rounded-lg border border-white/[0.08] bg-[#0d0d0d] px-3 py-3 text-sm leading-6 text-[#f5f5f5] outline-none transition-colors placeholder:text-[#555] focus:border-[#e63946]/55"
+                  />
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-[#666]">
+                      {replyContent.trim().length}/{COMMENT_CONTENT_LIMIT}
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyTargetId(null);
+                          setReplyContent("");
+                        }}
+                        disabled={busyCommentId === comment.commentId}
+                        className="rounded-lg border border-white/[0.1] px-3 py-1.5 text-xs font-bold text-[#888] transition-colors hover:border-white/[0.2] hover:text-white disabled:opacity-45"
+                      >
+                        취소
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => submitReply(comment.commentId)}
+                        disabled={busyCommentId === comment.commentId}
+                        className="rounded-lg bg-[#e63946] px-3 py-1.5 text-xs font-black text-white transition-colors hover:bg-[#c1121f] disabled:opacity-45"
+                      >
+                        {busyCommentId === comment.commentId ? "등록 중" : "답글 등록"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {comment.replies.length > 0 && (
+                <div className="space-y-3">
+                  {comment.replies.map((reply) => renderComment(reply, true))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <ConfirmModal
+        open={deleteTargetId !== null}
+        title="댓글을 삭제할까요?"
+        description="삭제한 댓글은 복구할 수 없습니다."
+        cancelText="취소"
+        confirmText="삭제"
+        onCancel={() => {
+          if (busyCommentId !== deleteTargetId) setDeleteTargetId(null);
+        }}
+        onConfirm={confirmDeleteComment}
+        isLoading={deleteTargetId !== null && busyCommentId === deleteTargetId}
+        variant="danger"
+      />
     </section>
   );
 }
@@ -364,6 +816,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
   const { mateId } = use(params);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const postId = Number(mateId);
   const [post, setPost] = useState<MatePost | null>(null);
   const [participants, setParticipants] = useState<MateParticipantListResponse>(EMPTY_PARTICIPANTS);
@@ -405,7 +858,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
 
     Promise.allSettled([
       getMatePostById(postId),
-      getMyMateParticipations(),
+      isLoggedIn ? getMyMateParticipations() : Promise.resolve([]),
     ])
       .then(([postResult, myParticipationsResult]) => {
         if (!isMounted) return;
@@ -421,6 +874,8 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
               (participation) => participation.matePostId === postId,
             ),
           );
+        } else {
+          setJoined(false);
         }
       })
       .finally(() => {
@@ -430,7 +885,7 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     return () => {
       isMounted = false;
     };
-  }, [postId]);
+  }, [postId, isLoggedIn]);
 
   useEffect(() => {
     if (!post) return;
@@ -755,7 +1210,11 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
             </div>
 
             <div className="mt-5">
-              <CommentsSection />
+              <MateCommentsSection
+                postId={post.id}
+                currentUserId={user?.id}
+                isLoggedIn={isLoggedIn}
+              />
             </div>
           </section>
 
