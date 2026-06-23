@@ -1,8 +1,10 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type MouseEvent, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import RatingStars from "@/components/common/RatingStars";
 import ReviewReportModal from "@/components/review/ReviewReportModal";
 import {
@@ -15,6 +17,7 @@ import {
   ThemeTimeSlot,
 } from "@/services/themeService";
 import { useReservationStore } from "@/stores/reservationStore";
+import { useAuthStore } from "@/stores/authStore";
 import { Theme, ThemeDetail } from "@/types/theme";
 
 function DrawerSkullIcon({ className }: { className?: string }) {
@@ -254,6 +257,8 @@ export default function ThemeDetailDrawer({
   onClose: () => void;
   initialTab?: DrawerTab;
 }) {
+  const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const [isVisible, setIsVisible] = useState(false);
   const [activeTab, setActiveTab] = useState<DrawerTab>(initialTab);
   const [selectedDate, setSelectedDate] = useState(() =>
@@ -279,6 +284,7 @@ export default function ThemeDetailDrawer({
   const [reportTargetReviewId, setReportTargetReviewId] = useState<number | null>(null);
   const [reportedReviewIds, setReportedReviewIds] = useState<Set<number>>(() => new Set());
   const [reviewReportMessage, setReviewReportMessage] = useState("");
+  const [loginRedirectUrl, setLoginRedirectUrl] = useState("");
   const { setTheme, setLocation, setDateTime, setHeadcount } = useReservationStore();
   const displayTheme = detailTheme ?? theme;
   const displayThemeId = displayTheme.id || theme.id;
@@ -439,6 +445,23 @@ export default function ThemeDetailDrawer({
     setLocation(displayRegion ?? "", displayBranchName ?? "");
     setDateTime(selectedDate, selectedTime);
     setHeadcount(displayTheme.minPlayers || 1, 0);
+  };
+
+  const reservationHref =
+    selectedDate && selectedTime && selectedTimeSlotId
+      ? `/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}&timeSlotId=${selectedTimeSlotId}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${displayThemeId}&tab=reservation`)}`
+      : "";
+
+  const handleReservationClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!reservationHref) return;
+
+    if (!isLoggedIn) {
+      event.preventDefault();
+      setLoginRedirectUrl(`/login?redirect=${encodeURIComponent(reservationHref)}`);
+      return;
+    }
+
+    saveReservationDraft();
   };
 
   const handleReviewReportSuccess = (reviewId: number) => {
@@ -943,8 +966,8 @@ export default function ThemeDetailDrawer({
             </button>
             {selectedDate && selectedTime && selectedTimeSlotId ? (
               <Link
-                href={`/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}&timeSlotId=${selectedTimeSlotId}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${displayThemeId}&tab=reservation`)}`}
-                onClick={saveReservationDraft}
+                href={reservationHref}
+                onClick={handleReservationClick}
                 className="h-12 flex-[1.7] rounded-[10px] bg-[#cc2222] text-center text-sm font-black leading-[48px] text-white transition-all hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]"
               >
                 예약 진행하기
@@ -967,6 +990,17 @@ export default function ThemeDetailDrawer({
         reviewId={reportTargetReviewId}
         onClose={() => setReportTargetReviewId(null)}
         onSuccess={handleReviewReportSuccess}
+      />
+      <ConfirmModal
+        open={Boolean(loginRedirectUrl)}
+        title="로그인이 필요합니다"
+        description="예약을 계속 진행하려면 로그인해주세요. 로그인 후 선택한 예약 정보로 돌아옵니다."
+        cancelText="취소"
+        confirmText="로그인하기"
+        onCancel={() => setLoginRedirectUrl("")}
+        onConfirm={() => {
+          if (loginRedirectUrl) router.push(loginRedirectUrl);
+        }}
       />
     </div>
   );
