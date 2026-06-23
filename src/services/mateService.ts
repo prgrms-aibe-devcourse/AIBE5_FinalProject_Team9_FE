@@ -30,7 +30,15 @@ interface MatePostApiResponse {
   content?: string;
   imageUrl?: string;
   meetingTime?: string;
+  meetingAt?: string;
+  meetingDateTime?: string;
+  meetAt?: string;
+  promiseTime?: string;
+  scheduledAt?: string;
   deadline?: string;
+  deadlineAt?: string;
+  deadlineDateTime?: string;
+  recruitmentDeadline?: string;
   currentPeople?: number;
   maxPeople?: number;
   tags?: string[] | string;
@@ -134,8 +142,20 @@ const mapMatePost = (post: MatePostApiResponse): MatePost => ({
   title: repairMojibake(post.title),
   content: repairMojibake(post.content),
   imageUrl: post.imageUrl ?? undefined,
-  meetingTime: post.meetingTime ?? '',
-  deadline: post.deadline ?? '',
+  meetingTime:
+    post.meetingTime ??
+    post.meetingAt ??
+    post.meetingDateTime ??
+    post.meetAt ??
+    post.promiseTime ??
+    post.scheduledAt ??
+    '',
+  deadline:
+    post.deadline ??
+    post.deadlineAt ??
+    post.deadlineDateTime ??
+    post.recruitmentDeadline ??
+    '',
   currentPeople: post.currentPeople ?? 0,
   maxPeople: post.maxPeople ?? 0,
   tags: parseTags(post.tags),

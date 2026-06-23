@@ -14,6 +14,15 @@ export const useAuth = () => {
   const router = useRouter();
   const { user, isLoggedIn, login, logout, setUser } = useAuthStore();
 
+  const getSafeRedirectPath = () => {
+    if (typeof window === 'undefined') return '';
+
+    const redirect = new URLSearchParams(window.location.search).get('redirect');
+    if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) return '';
+
+    return redirect;
+  };
+
   const handleLogin = async (
     credentials: LoginRequest,
     role: AuthRole = 'member'
@@ -45,13 +54,13 @@ export const useAuth = () => {
       currentUser = initialUser;
     }
 
-      if (currentUser.role === 'OWNER') {
-          router.push('/owner/dashboard');
-      } else if (currentUser.role === 'ADMIN') {
-          router.push('/admin/reviews');
-      } else {
-          router.push('/');
-      }
+    if (currentUser.role === 'OWNER') {
+      router.push('/owner/dashboard');
+    } else if (currentUser.role === 'ADMIN') {
+      router.push('/admin/reviews');
+    } else {
+      router.push(getSafeRedirectPath() || '/');
+    }
 
     return currentUser;
   };

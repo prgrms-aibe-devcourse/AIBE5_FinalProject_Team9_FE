@@ -118,7 +118,14 @@ function isNextMonthDisabled(monthDate: Date, maxDate: string) {
 }
 
 function normalizeTimeOption(value: string) {
-  return TIME_OPTIONS.includes(value) ? value : '';
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (!match) return '';
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return '';
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
 function normalizeOpenChatUrl(value: string) {
@@ -136,11 +143,26 @@ function getOpenChatCode(value: string) {
 }
 
 function splitDateTime(value?: string) {
-  if (!value) return { date: '', time: '' };
-  const date = new Date(value);
+  const normalizedValue = value?.trim();
+  if (!normalizedValue) return { date: '', time: '' };
+
+  const explicitMatch = normalizedValue.match(
+    /^(\d{4}-\d{2}-\d{2})(?:[T\s]+)(\d{1,2}:\d{2}(?::\d{2})?)/,
+  );
+
+  if (explicitMatch) {
+    return {
+      date: explicitMatch[1],
+      time: normalizeTimeOption(explicitMatch[2]),
+    };
+  }
+
+  const timeOnly = normalizeTimeOption(normalizedValue);
+  if (timeOnly) return { date: '', time: timeOnly };
+
+  const date = new Date(normalizedValue);
   if (Number.isNaN(date.getTime())) {
-    const [rawDate, rawTime = ''] = value.split('T');
-    return { date: rawDate ?? '', time: normalizeTimeOption(rawTime.slice(0, 5)) };
+    return { date: '', time: '' };
   }
 
   const yyyy = date.getFullYear();
@@ -150,6 +172,10 @@ function splitDateTime(value?: string) {
   const mi = String(date.getMinutes()).padStart(2, '0');
 
   return { date: `${yyyy}-${mm}-${dd}`, time: normalizeTimeOption(`${hh}:${mi}`) };
+}
+
+function isValidTimeValue(value: string) {
+  return Boolean(normalizeTimeOption(value));
 }
 
 function getApiErrorMessage(error: unknown, fallback: string) {
@@ -321,6 +347,10 @@ function DarkTimePicker({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const timeOptions = useMemo(
+    () => (value && !TIME_OPTIONS.includes(value) ? [value, ...TIME_OPTIONS] : TIME_OPTIONS),
+    [value],
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -369,7 +399,7 @@ function DarkTimePicker({
         <div className="absolute left-0 right-0 top-[76px] z-30 rounded-xl border border-[#303030] bg-[#111] p-2 shadow-[0_18px_50px_rgba(0,0,0,0.55)]">
           <div className="max-h-[236px] overflow-y-auto pr-1">
             <div className="grid grid-cols-2 gap-1">
-              {TIME_OPTIONS.map((timeValue) => {
+              {timeOptions.map((timeValue) => {
                 const isSelected = value === timeValue;
 
                 return (
@@ -505,8 +535,8 @@ export default function MateWritePage() {
     if (meetingDate < todayValue) return '오늘 이전 날짜는 선택할 수 없습니다.';
     if (deadlineDate < todayValue) return '오늘 이전 날짜는 선택할 수 없습니다.';
     if (deadlineDate > meetingDate) return '모집 마감일은 모임 날짜보다 늦을 수 없습니다.';
-    if (!TIME_OPTIONS.includes(meetingTime) || !TIME_OPTIONS.includes(deadlineTime)) {
-      return '시간은 30분 단위로 선택해주세요.';
+    if (!isValidTimeValue(meetingTime) || !isValidTimeValue(deadlineTime)) {
+      return '시간을 확인해주세요.';
     }
     if (maxPeople < 2) return '최대 인원은 2명 이상이어야 합니다.';
     if (!getOpenChatCode(openChatUrl).trim()) return '오픈채팅 코드를 입력해주세요.';

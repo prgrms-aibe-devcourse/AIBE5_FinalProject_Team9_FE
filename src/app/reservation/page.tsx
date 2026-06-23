@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import ConfirmModal from '@/components/common/ConfirmModal';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
 import RatingStars from '@/components/common/RatingStars';
 import { useReservationStore } from '@/stores/reservationStore';
@@ -28,6 +29,7 @@ import {
   clearPendingPaymentSession,
   savePendingPaymentSession,
 } from '@/lib/reservationPaymentSession';
+import { useAuthStore } from '@/stores/authStore';
 
 const SORT_OPTIONS = [
   { value: 'popular', label: '인기순' },
@@ -83,6 +85,13 @@ function formatSlotTime(value: string) {
 
 function formatSlotRange(slot: AvailableThemeSlot) {
   return slot.endTime ? `${formatSlotTime(slot.startTime)}~${formatSlotTime(slot.endTime)}` : formatSlotTime(slot.startTime);
+}
+
+function parseNonNegativeInteger(value: string | null) {
+  if (!value) return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) return null;
+  return parsed;
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
@@ -923,6 +932,8 @@ function PaymentStep({
   time,
   slot,
   timeSlotId,
+  initialAdultCount,
+  initialTeenCount,
   onBack,
 }: {
   theme: Theme;
@@ -930,8 +941,12 @@ function PaymentStep({
   time: string;
   slot?: AvailableThemeSlot | null;
   timeSlotId?: number | null;
+  initialAdultCount?: number | null;
+  initialTeenCount?: number | null;
   onBack: () => void;
 }) {
+  const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const {
     setTheme,
     setLocation,
@@ -940,8 +955,20 @@ function PaymentStep({
     setReservationResult,
   } = useReservationStore();
 
-  const [adultCount, setAdultCount] = useState(2);
-  const [teenCount, setTeenCount] = useState(0);
+  const minPlayers = Math.max(1, theme.minPlayers || 1);
+  const maxPlayers = Math.max(minPlayers, theme.maxPlayers || minPlayers);
+  const defaultAdultCount = Math.min(maxPlayers, Math.max(2, minPlayers));
+  const normalizedInitialAdultCount = Math.min(
+    maxPlayers,
+    Math.max(0, initialAdultCount ?? defaultAdultCount),
+  );
+  const normalizedInitialTeenCount = Math.min(
+    maxPlayers - normalizedInitialAdultCount,
+    Math.max(0, initialTeenCount ?? 0),
+  );
+
+  const [adultCount, setAdultCount] = useState(normalizedInitialAdultCount);
+  const [teenCount, setTeenCount] = useState(normalizedInitialTeenCount);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeCancellation, setAgreeCancellation] = useState(false);
@@ -959,6 +986,7 @@ function PaymentStep({
     customerEmail?: string;
   } | null>(null);
   const [isRequestingPayment, setIsRequestingPayment] = useState(false);
+  const [loginRedirectUrl, setLoginRedirectUrl] = useState('');
 
   const requiredAgreed = agreeTerms && agreePrivacy && agreeCancellation;
   const agreeAll = requiredAgreed && agreeMarketing;
@@ -966,12 +994,16 @@ function PaymentStep({
   const totalAmount = adultCount * (theme.price ?? 25000) + teenCount * TEEN_PRICE;
   const displayTime = slot ? formatSlotRange(slot) : time;
   const selectedTimeSlotId = slot?.timeSlotId ?? timeSlotId ?? null;
+  const meetsMinPlayers = totalPlayers >= minPlayers;
+  const withinMaxPlayers = totalPlayers <= maxPlayers;
+  const minPeopleMessage = `이 테마는 최소 ${minPlayers}명부터 예약할 수 있습니다.`;
   const displayThemeTitle = theme.title?.trim() || '선택한 테마';
   const adultSubtotal = adultCount * (theme.price ?? 25000);
   const teenSubtotal = teenCount * TEEN_PRICE;
   const canPay =
     requiredAgreed &&
-    totalPlayers > 0 &&
+    meetsMinPlayers &&
+    withinMaxPlayers &&
     Boolean(selectedTimeSlotId) &&
     !isSubmitting &&
     !readyResult;
@@ -988,7 +1020,28 @@ function PaymentStep({
   };
 
   const handlePay = async () => {
-    if (!requiredAgreed || !selectedTimeSlotId || isSubmitting) return;
+    if (isSubmitting || readyResult) return;
+    if (!meetsMinPlayers) {
+      setFlowError(minPeopleMessage);
+      return;
+    }
+    if (!requiredAgreed || !selectedTimeSlotId || !withinMaxPlayers) return;
+
+    if (!isLoggedIn) {
+      const params = new URLSearchParams({
+        themeId: String(theme.id),
+        date,
+        time: slot?.startTime ? formatSlotTime(slot.startTime) : time,
+        source: 'reservation-login',
+        adultCount: String(adultCount),
+        teenCount: String(teenCount),
+      });
+
+      params.set('timeSlotId', String(selectedTimeSlotId));
+      setLoginRedirectUrl(`/login?redirect=${encodeURIComponent(`/reservation?${params.toString()}`)}`);
+      setFlowError('');
+      return;
+    }
 
     setIsSubmitting(true);
     setFlowError('');
@@ -1236,7 +1289,8 @@ function PaymentStep({
                     <button
                       type="button"
                       onClick={() => row.set(Math.max(row.min, row.count - 1))}
-                      className="flex h-9 w-9 items-center justify-center text-lg leading-none text-[#d8d8d8] transition-colors hover:bg-[#e63946]/12 hover:text-white"
+                      disabled={row.count <= row.min || totalPlayers <= minPlayers}
+                      className="flex h-9 w-9 items-center justify-center text-lg leading-none text-[#d8d8d8] transition-colors hover:bg-[#e63946]/12 hover:text-white disabled:cursor-not-allowed disabled:text-[#444]"
                     >
                       -
                     </button>
@@ -1246,7 +1300,7 @@ function PaymentStep({
                     <button
                       type="button"
                       onClick={() => row.set(row.count + 1)}
-                      disabled={totalPlayers >= (theme.maxPlayers ?? 6)}
+                      disabled={totalPlayers >= maxPlayers}
                       className="flex h-9 w-9 items-center justify-center text-lg leading-none text-[#d8d8d8] transition-colors hover:bg-[#e63946]/12 hover:text-white disabled:cursor-not-allowed disabled:text-[#444]"
                     >
                       +
@@ -1260,9 +1314,14 @@ function PaymentStep({
             ))}
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-white/[0.07] bg-[#101010] px-4 py-3 text-xs font-bold text-[#888]">
-            <span>최소 {theme.minPlayers}명 · 최대 {theme.maxPlayers}명</span>
+            <span>최소 {minPlayers}명 · 최대 {maxPlayers}명</span>
             <span>총 <span className="text-[#f5f5f5]">{totalPlayers}</span>명</span>
           </div>
+          {!meetsMinPlayers && (
+            <p className="mt-3 rounded-[12px] border border-[#e4b660]/25 bg-[#e4b660]/10 px-4 py-3 text-xs font-black text-[#f0c674]">
+              {minPeopleMessage}
+            </p>
+          )}
         </section>
 
         <section className="rounded-[18px] border border-white/[0.08] bg-[#151515]/92 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.28)] sm:p-6">
@@ -1410,6 +1469,18 @@ function PaymentStep({
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        open={Boolean(loginRedirectUrl)}
+        title="로그인이 필요합니다"
+        description="예약을 계속 진행하려면 로그인해주세요. 로그인 후 선택한 예약 정보로 돌아옵니다."
+        cancelText="취소"
+        confirmText="로그인하기"
+        onCancel={() => setLoginRedirectUrl('')}
+        onConfirm={() => {
+          if (loginRedirectUrl) router.push(loginRedirectUrl);
+        }}
+      />
     </div>
   );
 }
@@ -1421,6 +1492,8 @@ function ReservationContent() {
   const urlDate = searchParams.get('date');
   const urlTime = searchParams.get('time');
   const urlTimeSlotId = searchParams.get('timeSlotId');
+  const urlAdultCount = parseNonNegativeInteger(searchParams.get('adultCount'));
+  const urlTeenCount = parseNonNegativeInteger(searchParams.get('teenCount'));
   const source = searchParams.get('source');
   const returnTo = searchParams.get('returnTo');
   const rawTimeSlotId = urlTimeSlotId ? Number(urlTimeSlotId) : null;
@@ -1500,11 +1573,19 @@ function ReservationContent() {
     setSelectedTime(formatSlotTime(slot.startTime));
     setSelectedSlot(slot);
     setStep('payment');
-    window.history.pushState(
-      null,
-      '',
-      `/reservation?source=quick-reservation&returnTo=${encodeURIComponent('/quick-reservation')}`,
-    );
+    const params = new URLSearchParams({
+      themeId: String(item.themeId),
+      date: slot.slotDate,
+      time: formatSlotTime(slot.startTime),
+      source: 'quick-reservation',
+      returnTo: '/quick-reservation',
+    });
+
+    if (slot.timeSlotId) {
+      params.set('timeSlotId', String(slot.timeSlotId));
+    }
+
+    window.history.pushState(null, '', `/reservation?${params.toString()}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1566,6 +1647,8 @@ function ReservationContent() {
           time={selectedTime}
           slot={selectedSlot}
           timeSlotId={parsedUrlTimeSlotId}
+          initialAdultCount={urlAdultCount}
+          initialTeenCount={urlTeenCount}
           onBack={handleChangeTime}
         />
       )}

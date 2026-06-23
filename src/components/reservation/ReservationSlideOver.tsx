@@ -1,8 +1,12 @@
 "use client";
 
+import { type MouseEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import ConfirmModal from "@/components/common/ConfirmModal";
 import ImageWithFallback from "@/components/common/ImageWithFallback";
 import ReservationCalendar from "@/components/reservation/ReservationCalendar";
 import { useReservationStore } from "@/stores/reservationStore";
+import { useAuthStore } from "@/stores/authStore";
 import Link from "next/link";
 
 interface ReservationTheme {
@@ -38,6 +42,9 @@ export default function ReservationSlideOver({
   onSelectTime,
   onClose,
 }: ReservationSlideOverProps) {
+  const router = useRouter();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const [loginRedirectUrl, setLoginRedirectUrl] = useState("");
   const { setTheme, setLocation, setDateTime, setHeadcount } =
     useReservationStore();
   const minPlayers = Math.max(1, theme.minPlayers || 1);
@@ -45,6 +52,7 @@ export default function ReservationSlideOver({
   const selectedHeadcount = minPlayers;
   const totalPrice = theme.price * selectedHeadcount;
   const canReserve = Boolean(selectedDate && selectedTime);
+  const reservationHref = `/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${theme.id}&tab=reservation`)}`;
 
   const handleReserve = () => {
     if (!canReserve) return;
@@ -53,6 +61,18 @@ export default function ReservationSlideOver({
     setLocation(theme.locationName ?? "", theme.branchName ?? "");
     setDateTime(selectedDate, selectedTime);
     setHeadcount(selectedHeadcount, 0);
+  };
+
+  const handleReserveClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!canReserve) return;
+
+    if (!isLoggedIn) {
+      event.preventDefault();
+      setLoginRedirectUrl(`/login?redirect=${encodeURIComponent(reservationHref)}`);
+      return;
+    }
+
+    handleReserve();
   };
 
   return (
@@ -193,8 +213,8 @@ export default function ReservationSlideOver({
             </button>
             {canReserve ? (
               <Link
-                href={`/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${theme.id}&tab=reservation`)}`}
-                onClick={handleReserve}
+                href={reservationHref}
+                onClick={handleReserveClick}
                 className="h-12 flex-[1.7] rounded-[10px] bg-[#cc2222] text-center text-sm font-black leading-[48px] text-white transition-all hover:bg-[#e23b3b] hover:shadow-[0_0_22px_rgba(204,34,34,0.22)]"
               >
                 예약 진행하기
@@ -211,6 +231,17 @@ export default function ReservationSlideOver({
           </footer>
         </div>
       </aside>
+      <ConfirmModal
+        open={Boolean(loginRedirectUrl)}
+        title="로그인이 필요합니다"
+        description="예약을 계속 진행하려면 로그인해주세요. 로그인 후 선택한 예약 정보로 돌아옵니다."
+        cancelText="취소"
+        confirmText="로그인하기"
+        onCancel={() => setLoginRedirectUrl("")}
+        onConfirm={() => {
+          if (loginRedirectUrl) router.push(loginRedirectUrl);
+        }}
+      />
     </div>
   );
 }
