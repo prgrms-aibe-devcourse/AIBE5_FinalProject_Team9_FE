@@ -23,6 +23,7 @@ jobs:
         run: npm run build
         env:
           NEXT_PUBLIC_API_BASE_URL: https://grimgate.shop
+          NEXT_PUBLIC_TOSS_CLIENT_KEY: test_ck_DpexMgkW36yOMLL7nbgb8GbR5ozO
 
       - name: Copy to EC2
         uses: appleboy/scp-action@v0.1.4
