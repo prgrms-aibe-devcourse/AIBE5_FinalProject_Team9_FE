@@ -6,7 +6,7 @@ import Footer from '@/components/common/Footer';
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const hideLayout = pathname.startsWith('/owner') || pathname.startsWith('/admin');
+    const hideLayout = pathname.startsWith('/owner') || pathname.startsWith('/admin') || pathname.startsWith('/minigame');
 
     return (
         <>

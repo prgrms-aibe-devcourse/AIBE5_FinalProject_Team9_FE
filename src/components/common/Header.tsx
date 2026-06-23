@@ -43,7 +43,7 @@ export default function Header() {
                   {user?.profileImageUrl ? <span className="sr-only">{nickname}</span> : nickname?.[0]?.toUpperCase() ?? 'U'}
                 </div>
               </Link>
-              <button  onClick={() => { logout(); router.push('/login'); }} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">
+              <button  onClick={() => { logout(); router.push('/'); }} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">
                 로그아웃
               </button>
             </>
