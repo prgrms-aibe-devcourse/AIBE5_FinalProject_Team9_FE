@@ -42,7 +42,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/app/frontend
-            npm ci --production
+            npm ci
             pm2 delete grimgate-fe || true
-            pm2 restart grimgate-fe || pm2 start npm --name grimgate-fe -- start
+            pm2 start npm --name grimgate-fe -- start
             pm2 save
