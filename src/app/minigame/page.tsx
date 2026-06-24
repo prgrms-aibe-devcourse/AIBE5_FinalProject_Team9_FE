@@ -482,6 +482,7 @@ export default function MinigamePage() {
             <div style={{ ...styles.hudTimer, ...(isUrgent ? styles.urgent : {}) }}>
                 {formatTime(secondsLeft)}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={styles.hudLocks}>
                 {locks.map((unlocked, i) => (
                     <div key={i} style={{ ...styles.lockPip, ...(unlocked ? styles.lockUnlocked : {}) }}>
@@ -489,6 +490,13 @@ export default function MinigamePage() {
                     </div>
                 ))}
             </div>
+            <button
+                onClick={() => router.push('/')}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: '#d8d8d8', cursor: 'pointer', border: '1px solid #d8d8d8', padding: '4px 10px', borderRadius: 2, background: 'transparent' }}
+            >
+                나가기
+            </button>
+        </div>
         </div>
     );
 
@@ -853,11 +861,11 @@ const styles: Record<string, React.CSSProperties> = {
     doorProgress: { width: 200, height: 2, background: 'var(--border)', borderRadius: 1, overflow: 'hidden' },
     roomScreen: { padding: 0, justifyContent: 'flex-start' },
     hud: { width: '100%', background: 'var(--bg-dark)', borderBottom: '1px solid var(--border)', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 },
-    hudTitle: { fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-muted)', letterSpacing: '0.1em' },
+    hudTitle: { fontFamily: 'var(--font-mono)', fontSize: 13, color: '#9a9a9a', letterSpacing: '0.1em' },
     hudTimer: { fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 700, letterSpacing: '0.05em', color: 'var(--red-bright)' },
     urgent: { animation: 'timer-urgent 0.5s infinite' },
     hudLocks: { display: 'flex', gap: 8 },
-    lockPip: { width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', background: 'var(--bg-card)', transition: 'all 0.4s' },
+    lockPip: { width: 28, height: 28, borderRadius: '50%', border: '2px solid #9a9a9a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: '#9a9a9a', background: 'var(--bg-card)', transition: 'all 0.4s' },
     lockUnlocked: { borderColor: 'var(--red-bright)', color: 'var(--red-bright)', boxShadow: '0 0 10px var(--red-glow)' },
     roomContent: { flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 20px', gap: 24, overflowY: 'auto', width: '100%' },
     roomLeft: { flex: 1, maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 16 },

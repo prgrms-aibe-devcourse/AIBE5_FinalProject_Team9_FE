@@ -2,11 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
-import { useState } from "react";
+import { useState, useEffect} from "react";
+
+
 
 export default function HeroBanner() {
     const router = useRouter();
     const [hovered, setHovered] = useState(false);
+
+    useEffect(() => {
+        const img = new Image();
+        img.src = '/images/horror/intoGame.png';
+    }, []);
 
   return (
     <section className="relative isolate flex min-h-[calc(100vh-52px)] items-center overflow-hidden border-b border-[#211313] bg-[#0d0d0d] py-12 lg:py-0">
