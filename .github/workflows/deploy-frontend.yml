@@ -43,4 +43,6 @@ jobs:
           script: |
             cd /home/ubuntu/app/frontend
             npm ci --production
+            pm2 delete grimgate-fe || true
             pm2 restart grimgate-fe || pm2 start npm --name grimgate-fe -- start
+            pm2 save
