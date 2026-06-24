@@ -2,21 +2,27 @@
 
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
+import { useState } from "react";
 
 export default function HeroBanner() {
     const router = useRouter();
+    const [hovered, setHovered] = useState(false);
 
   return (
     <section className="relative isolate flex min-h-[calc(100vh-52px)] items-center overflow-hidden border-b border-[#211313] bg-[#0d0d0d] py-12 lg:py-0">
         <div
             className="absolute top-[50%] bottom-[40%] right-[26%] w-[10%] z-20 cursor-pointer"
             onClick={() => router.push('/minigame')}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
         />
         <div className="pointer-events-none absolute inset-y-0 right-[-10vw] z-0 w-[92vw] opacity-100 lg:right-[-8vw] lg:w-[78vw]">
           <div
           className="absolute inset-y-[3%] right-0 w-full bg-cover bg-[center_center] brightness-110 contrast-110 saturate-110 lg:bg-[center_center]"
           style={{
-            backgroundImage: "url('/images/horror/grimgate_hero_highres.webp')",
+              backgroundImage: hovered
+                  ? "url('/images/horror/intoGame.png')"
+                  : "url('/images/horror/grimgate_hero_highres.webp')",
             maskImage:
               "linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.4) 9%, black 20%, black 78%, rgba(0,0,0,0.58) 91%, transparent 100%)",
             WebkitMaskImage:
