@@ -72,14 +72,23 @@ function formatPrice(value?: number) {
 
 function isValidPeopleRange(minPlayers?: number, maxPlayers?: number) {
   if (!minPlayers || !maxPlayers) return false;
-  return minPlayers > 0 && maxPlayers > 0 && minPlayers <= maxPlayers && maxPlayers <= 20;
+  return (
+    minPlayers > 0 &&
+    maxPlayers > 0 &&
+    minPlayers <= maxPlayers &&
+    maxPlayers <= 20
+  );
 }
 
 function isValidDuration(duration?: number) {
   return Boolean(duration && duration >= 10 && duration <= 240);
 }
 
-function mergeThemeData(detail: ThemeDetail, fallback?: Theme, fallbackTitle?: string): ThemeDetail {
+function mergeThemeData(
+  detail: ThemeDetail,
+  fallback?: Theme,
+  fallbackTitle?: string,
+): ThemeDetail {
   return {
     ...detail,
     title: detail.title || fallback?.title || fallbackTitle || "",
@@ -91,13 +100,13 @@ function mergeThemeData(detail: ThemeDetail, fallback?: Theme, fallbackTitle?: s
     branchName: detail.branchName || fallback?.branchName,
     minPlayers: isValidPeopleRange(detail.minPlayers, detail.maxPlayers)
       ? detail.minPlayers
-      : fallback?.minPlayers ?? detail.minPlayers,
+      : (fallback?.minPlayers ?? detail.minPlayers),
     maxPlayers: isValidPeopleRange(detail.minPlayers, detail.maxPlayers)
       ? detail.maxPlayers
-      : fallback?.maxPlayers ?? detail.maxPlayers,
+      : (fallback?.maxPlayers ?? detail.maxPlayers),
     duration: isValidDuration(detail.duration)
       ? detail.duration
-      : fallback?.duration ?? detail.duration,
+      : (fallback?.duration ?? detail.duration),
     price: detail.price || fallback?.price || 0,
     rating: detail.rating || fallback?.rating || 0,
     reviewCount: detail.reviewCount || fallback?.reviewCount || 0,
@@ -105,15 +114,29 @@ function mergeThemeData(detail: ThemeDetail, fallback?: Theme, fallbackTitle?: s
 }
 
 function getStatusClass(status: MatePostStatus) {
-  if (status === "RECRUITING") return "border-[#9f2b2b]/35 bg-[#a72a2a]/80 text-white";
-  if (status === "CLOSING_SOON") return "border-[#f39c12]/35 bg-[#f39c12]/10 text-[#f0b35f]";
-  if (status === "MATCHED") return "border-[#2ecc71]/25 bg-[#2ecc71]/10 text-[#75d799]";
+  if (status === "RECRUITING")
+    return "border-[#9f2b2b]/35 bg-[#a72a2a]/80 text-white";
+  if (status === "CLOSING_SOON")
+    return "border-[#f39c12]/35 bg-[#f39c12]/10 text-[#f0b35f]";
+  if (status === "MATCHED")
+    return "border-[#2ecc71]/25 bg-[#2ecc71]/10 text-[#75d799]";
   return "border-white/[0.08] bg-[#252525] text-[#777]";
 }
 
-function Badge({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Badge({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <span className={["inline-flex h-[22px] items-center rounded-md border px-2 text-[11px] font-bold", className].join(" ")}>
+    <span
+      className={[
+        "inline-flex h-[22px] items-center rounded-md border px-2 text-[11px] font-bold",
+        className,
+      ].join(" ")}
+    >
       {children}
     </span>
   );
@@ -167,7 +190,9 @@ function MateRatingIcons({
           key={index}
           className={[
             "h-4 w-4 transition-all",
-            index < level ? `${activeColor} ${activeShadow} opacity-100` : "text-[#303030] opacity-45",
+            index < level
+              ? `${activeColor} ${activeShadow} opacity-100`
+              : "text-[#303030] opacity-45",
           ].join(" ")}
         />
       ))}
@@ -175,7 +200,13 @@ function MateRatingIcons({
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: React.ReactNode }) {
+function SummaryItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
     <div className="min-w-0">
       <p className="mb-1 text-[11px] font-black text-[#626262]">{label}</p>
@@ -185,8 +216,15 @@ function SummaryItem({ label, value }: { label: string; value: React.ReactNode }
 }
 
 function getApiErrorMessage(error: unknown, fallback: string) {
-  const axiosError = error as AxiosError<{ message?: string; data?: { message?: string } }>;
-  return axiosError.response?.data?.message ?? axiosError.response?.data?.data?.message ?? fallback;
+  const axiosError = error as AxiosError<{
+    message?: string;
+    data?: { message?: string };
+  }>;
+  return (
+    axiosError.response?.data?.message ??
+    axiosError.response?.data?.data?.message ??
+    fallback
+  );
 }
 
 const EMPTY_PARTICIPANTS: MateParticipantListResponse = {
@@ -209,30 +247,70 @@ function ThemePreviewModal({
   onClose: () => void;
 }) {
   const title = theme?.title || fallbackTitle || "정보 없음";
-  const description = theme?.story || theme?.description || "테마 설명이 아직 준비되지 않았습니다.";
+  const description =
+    theme?.story ||
+    theme?.description ||
+    "테마 설명이 아직 준비되지 않았습니다.";
   const minPlayers = theme?.minPlayers ?? 0;
   const maxPlayers = theme?.maxPlayers ?? 0;
   const detailItems = theme
     ? [
-        { label: "공포도", value: <MateRatingIcons level={theme.horrorLevel || 0} type="horror" /> },
-        { label: "난이도", value: <MateRatingIcons level={theme.difficulty || 0} type="difficulty" /> },
-        { label: "인원", value: isValidPeopleRange(minPlayers, maxPlayers) ? `${minPlayers}~${maxPlayers}명` : "정보 없음" },
-        { label: "플레이타임", value: isValidDuration(theme.duration) ? `${theme.duration}분` : "정보 없음" },
+        {
+          label: "공포도",
+          value: (
+            <MateRatingIcons level={theme.horrorLevel || 0} type="horror" />
+          ),
+        },
+        {
+          label: "난이도",
+          value: (
+            <MateRatingIcons level={theme.difficulty || 0} type="difficulty" />
+          ),
+        },
+        {
+          label: "인원",
+          value: isValidPeopleRange(minPlayers, maxPlayers)
+            ? `${minPlayers}~${maxPlayers}명`
+            : "정보 없음",
+        },
+        {
+          label: "플레이타임",
+          value: isValidDuration(theme.duration)
+            ? `${theme.duration}분`
+            : "정보 없음",
+        },
         { label: "가격", value: formatPrice(theme.price) },
-        { label: "평점", value: <RatingStars value={theme.rating || 0} showValue reviewCount={theme.reviewCount || 0} size="xs" /> },
+        {
+          label: "평점",
+          value: (
+            <RatingStars
+              value={theme.rating || 0}
+              showValue
+              reviewCount={theme.reviewCount || 0}
+              size="xs"
+            />
+          ),
+        },
       ]
     : [];
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/72 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div
         className="max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#151515] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#e63946]">Theme Preview</p>
-            <h2 className="mt-1 text-lg font-black text-[#f5f5f5]">테마 정보</h2>
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#e63946]">
+              Theme Preview
+            </p>
+            <h2 className="mt-1 text-lg font-black text-[#f5f5f5]">
+              테마 정보
+            </h2>
           </div>
           <button
             type="button"
@@ -245,7 +323,9 @@ function ThemePreviewModal({
 
         <div className="max-h-[calc(88vh-72px)] overflow-y-auto p-5">
           {isLoading ? (
-            <div className="py-16 text-center text-sm font-bold text-[#888]">테마 정보를 불러오는 중입니다.</div>
+            <div className="py-16 text-center text-sm font-bold text-[#888]">
+              테마 정보를 불러오는 중입니다.
+            </div>
           ) : errorMessage ? (
             <div className="rounded-xl border border-[#e63946]/20 bg-[#e63946]/10 px-4 py-8 text-center text-sm font-bold text-[#ff8b8b]">
               {errorMessage}
@@ -264,13 +344,25 @@ function ThemePreviewModal({
               </div>
 
               <div className="mt-5 min-w-0">
-                <h3 className="text-2xl font-black leading-snug text-[#f5f5f5] md:text-3xl">{title}</h3>
+                <h3 className="text-2xl font-black leading-snug text-[#f5f5f5] md:text-3xl">
+                  {title}
+                </h3>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {[theme.storeName, theme.branchName, theme.locationName, theme.genre].filter(Boolean).map((item) => (
-                    <span key={item} className="rounded-full border border-white/[0.07] bg-[#101010] px-2.5 py-1 text-xs font-bold text-[#888]">
-                      {item}
-                    </span>
-                  ))}
+                  {[
+                    theme.storeName,
+                    theme.branchName,
+                    theme.locationName,
+                    theme.genre,
+                  ]
+                    .filter(Boolean)
+                    .map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full border border-white/[0.07] bg-[#101010] px-2.5 py-1 text-xs font-bold text-[#888]"
+                      >
+                        {item}
+                      </span>
+                    ))}
                 </div>
 
                 <p className="mt-4 whitespace-pre-line rounded-xl border border-white/[0.06] bg-[#101010]/70 px-4 py-3 text-sm leading-7 text-[#c9c9c9]">
@@ -279,9 +371,16 @@ function ThemePreviewModal({
 
                 <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3">
                   {detailItems.map(({ label, value }) => (
-                    <div key={label} className="rounded-lg border border-white/[0.06] bg-[#101010]/70 px-3 py-2">
-                      <p className="mb-1 text-[11px] font-black text-[#626262]">{label}</p>
-                      <div className="min-h-5 text-sm font-bold text-[#e7e7e7]">{value}</div>
+                    <div
+                      key={label}
+                      className="rounded-lg border border-white/[0.06] bg-[#101010]/70 px-3 py-2"
+                    >
+                      <p className="mb-1 text-[11px] font-black text-[#626262]">
+                        {label}
+                      </p>
+                      <div className="min-h-5 text-sm font-bold text-[#e7e7e7]">
+                        {value}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -348,23 +447,33 @@ function CommentsSection({
 
       {comments.length === 0 ? (
         <div className="mt-4 rounded-xl border border-white/[0.055] bg-[#101010]/45 py-8 text-center">
-          <p className="text-sm font-black text-[#d8d8d8]">아직 댓글이 없어요</p>
+          <p className="text-sm font-black text-[#d8d8d8]">
+            아직 댓글이 없어요
+          </p>
           <p className="mt-1 text-xs text-[#666]">첫 댓글을 남겨보세요.</p>
         </div>
       ) : (
         <div className="mt-4 space-y-3">
           {comments.map((comment) => (
-            <article key={comment.id} className="rounded-xl border border-white/[0.055] bg-[#101010]/55 p-4">
+            <article
+              key={comment.id}
+              className="rounded-xl border border-white/[0.055] bg-[#101010]/55 p-4"
+            >
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-sm font-black text-[#f5f5f5]">{comment.authorNickname}</p>
-                <p className="text-xs font-bold text-[#666]">{formatDateTime(comment.createdAt)}</p>
+                <p className="text-sm font-black text-[#f5f5f5]">
+                  {comment.authorNickname}
+                </p>
+                <p className="text-xs font-bold text-[#666]">
+                  {formatDateTime(comment.createdAt)}
+                </p>
               </div>
-              <p className="text-sm leading-6 text-[#c9c9c9]">{comment.content}</p>
+              <p className="text-sm leading-6 text-[#c9c9c9]">
+                {comment.content}
+              </p>
             </article>
           ))}
         </div>
       )}
-
     </section>
   );
 }
@@ -435,7 +544,10 @@ function MateCommentsSection({
         setTotalCount(data.totalCount);
       })
       .catch((error) => {
-        if (isMounted) setErrorMessage(getApiErrorMessage(error, "댓글을 불러오지 못했습니다."));
+        if (isMounted)
+          setErrorMessage(
+            getApiErrorMessage(error, "댓글을 불러오지 못했습니다."),
+          );
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -485,7 +597,9 @@ function MateCommentsSection({
     setEditingCommentId(null);
     setEditingContent("");
     setReplyContent("");
-    setReplyTargetId((currentId) => (currentId === commentId ? null : commentId));
+    setReplyTargetId((currentId) =>
+      currentId === commentId ? null : commentId,
+    );
     setErrorMessage("");
   };
 
@@ -589,7 +703,10 @@ function MateCommentsSection({
     }
   };
 
-  const renderComment = (comment: MateComment | MateCommentReply, isReply = false) => {
+  const renderComment = (
+    comment: MateComment | MateCommentReply,
+    isReply = false,
+  ) => {
     const isMine = Boolean(currentUserId && comment.authorId === currentUserId);
     const canManage = !comment.deleted && isMine;
     const isEditing = editingCommentId === comment.commentId;
@@ -606,12 +723,16 @@ function MateCommentsSection({
       >
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            {isReply && <span className="text-xs font-black text-[#555]">ㄴ</span>}
+            {isReply && (
+              <span className="text-xs font-black text-[#555]">ㄴ</span>
+            )}
             <p className="truncate text-sm font-black text-[#f5f5f5]">
               {getCommentAuthorName(comment)}
             </p>
           </div>
-          <p className="text-xs font-bold text-[#666]">{formatDateTime(comment.createdAt)}</p>
+          <p className="text-xs font-bold text-[#666]">
+            {formatDateTime(comment.createdAt)}
+          </p>
         </div>
 
         {isEditing ? (
@@ -651,7 +772,12 @@ function MateCommentsSection({
             </div>
           </div>
         ) : (
-          <p className={["whitespace-pre-line text-sm leading-6", comment.deleted ? "text-[#777]" : "text-[#c9c9c9]"].join(" ")}>
+          <p
+            className={[
+              "whitespace-pre-line text-sm leading-6",
+              comment.deleted ? "text-[#777]" : "text-[#c9c9c9]",
+            ].join(" ")}
+          >
             {comment.content}
           </p>
         )}
@@ -733,11 +859,15 @@ function MateCommentsSection({
 
       {isLoading ? (
         <div className="mt-4 rounded-xl border border-white/[0.055] bg-[#101010]/45 py-8 text-center">
-          <p className="text-sm font-black text-[#d8d8d8]">댓글을 불러오는 중입니다.</p>
+          <p className="text-sm font-black text-[#d8d8d8]">
+            댓글을 불러오는 중입니다.
+          </p>
         </div>
       ) : comments.length === 0 ? (
         <div className="mt-4 rounded-xl border border-white/[0.055] bg-[#101010]/45 py-8 text-center">
-          <p className="text-sm font-black text-[#d8d8d8]">아직 댓글이 없습니다.</p>
+          <p className="text-sm font-black text-[#d8d8d8]">
+            아직 댓글이 없습니다.
+          </p>
           <p className="mt-1 text-xs text-[#666]">첫 댓글을 남겨보세요.</p>
         </div>
       ) : (
@@ -778,7 +908,9 @@ function MateCommentsSection({
                         disabled={busyCommentId === comment.commentId}
                         className="rounded-lg bg-[#e63946] px-3 py-1.5 text-xs font-black text-white transition-colors hover:bg-[#c1121f] disabled:opacity-45"
                       >
-                        {busyCommentId === comment.commentId ? "등록 중" : "답글 등록"}
+                        {busyCommentId === comment.commentId
+                          ? "등록 중"
+                          : "답글 등록"}
                       </button>
                     </div>
                   </div>
@@ -812,20 +944,27 @@ function MateCommentsSection({
   );
 }
 
-export default function MateDetailPage({ params }: { params: Promise<{ mateId: string }> }) {
+export default function MateDetailPage({
+  params,
+}: {
+  params: Promise<{ mateId: string }>;
+}) {
   const { mateId } = use(params);
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const postId = Number(mateId);
   const [post, setPost] = useState<MatePost | null>(null);
-  const [participants, setParticipants] = useState<MateParticipantListResponse>(EMPTY_PARTICIPANTS);
+  const [participants, setParticipants] =
+    useState<MateParticipantListResponse>(EMPTY_PARTICIPANTS);
   const [isLoading, setIsLoading] = useState(true);
   const [isParticipantsLoading, setIsParticipantsLoading] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<"close" | "delete" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"close" | "delete" | null>(
+    null,
+  );
   const [joined, setJoined] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [actionError, setActionError] = useState("");
@@ -933,7 +1072,9 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
             ? listResult.value.find((theme) => theme.id === post.themeId)
             : undefined;
 
-        setSummaryTheme(mergeThemeData(detailResult.value, fallback, post.themeTitle));
+        setSummaryTheme(
+          mergeThemeData(detailResult.value, fallback, post.themeTitle),
+        );
       })
       .catch(() => {
         if (isMounted) setSummaryTheme(null);
@@ -949,7 +1090,8 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
   const isAuthor = isMyMatePost(post, user?.id);
   const canViewParticipants = isAuthor;
   const isAlreadyParticipant = Boolean(
-    user?.id && participants.items.some((participant) => participant.memberId === user.id),
+    user?.id &&
+    participants.items.some((participant) => participant.memberId === user.id),
   );
   const isClosed =
     !post ||
@@ -963,7 +1105,10 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     (post.status === "RECRUITING" || post.status === "CLOSING_SOON"),
   );
   const remaining = Math.max(maxPeople - currentPeople, 0);
-  const progress = maxPeople > 0 ? Math.min(100, Math.round((currentPeople / maxPeople) * 100)) : 0;
+  const progress =
+    maxPeople > 0
+      ? Math.min(100, Math.round((currentPeople / maxPeople) * 100))
+      : 0;
 
   const handleJoin = async () => {
     if (!post || isClosed || isAuthor) return;
@@ -973,7 +1118,10 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     try {
       await joinMatePost(post.id);
       setJoined(true);
-      await Promise.allSettled([loadPost(), isAuthor ? loadParticipants() : Promise.resolve()]);
+      await Promise.allSettled([
+        loadPost(),
+        isAuthor ? loadParticipants() : Promise.resolve(),
+      ]);
     } catch (error) {
       const message = getApiErrorMessage(error, "참여 신청에 실패했습니다.");
       if (message.includes("이미 참여")) {
@@ -993,7 +1141,10 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
     try {
       await leaveMatePost(post.id);
       setJoined(false);
-      await Promise.allSettled([loadPost(), isAuthor ? loadParticipants() : Promise.resolve()]);
+      await Promise.allSettled([
+        loadPost(),
+        isAuthor ? loadParticipants() : Promise.resolve(),
+      ]);
     } catch (error) {
       setActionError(getApiErrorMessage(error, "참여 취소에 실패했습니다."));
     } finally {
@@ -1061,7 +1212,9 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
       setThemePreview(mergeThemeData(detail, listTheme, post.themeTitle));
     } catch (error) {
       setThemePreview(null);
-      setThemePreviewError(getApiErrorMessage(error, "테마 정보를 불러오지 못했습니다."));
+      setThemePreviewError(
+        getApiErrorMessage(error, "테마 정보를 불러오지 못했습니다."),
+      );
     } finally {
       setIsThemePreviewLoading(false);
     }
@@ -1078,8 +1231,13 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
   if (errorMessage || !post) {
     return (
       <div className="min-h-screen bg-[#0d0d0d] px-4 py-24 text-center">
-        <p className="text-sm font-black text-[#ef5353]">{errorMessage || "모집 글을 찾을 수 없습니다."}</p>
-        <Link href="/mate" className="mt-6 inline-flex rounded-lg border border-white/[0.1] px-4 py-2.5 text-sm font-bold text-[#888] transition-colors hover:border-white/[0.2] hover:text-[#f5f5f5]">
+        <p className="text-sm font-black text-[#ef5353]">
+          {errorMessage || "모집 글을 찾을 수 없습니다."}
+        </p>
+        <Link
+          href="/mate"
+          className="mt-6 inline-flex rounded-lg border border-white/[0.1] px-4 py-2.5 text-sm font-bold text-[#888] transition-colors hover:border-white/[0.2] hover:text-[#f5f5f5]"
+        >
           목록으로
         </Link>
       </div>
@@ -1092,11 +1250,20 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
       <div className="relative border-b border-white/[0.06]">
         <div className="mx-auto max-w-7xl px-4 py-3">
           <nav className="flex items-center gap-1.5 text-xs font-bold text-[#777]">
-            <Link href="/" className="transition-colors hover:text-[#f5f5f5]">홈</Link>
+            <Link href="/" className="transition-colors hover:text-[#f5f5f5]">
+              홈
+            </Link>
             <span>&middot;</span>
-            <Link href="/mate" className="transition-colors hover:text-[#f5f5f5]">메이트 모집</Link>
+            <Link
+              href="/mate"
+              className="transition-colors hover:text-[#f5f5f5]"
+            >
+              메이트 모집
+            </Link>
             <span>&middot;</span>
-            <span className="line-clamp-1 max-w-xs text-[#aaa]">{post.title}</span>
+            <span className="line-clamp-1 max-w-xs text-[#aaa]">
+              {post.title}
+            </span>
           </nav>
         </div>
       </div>
@@ -1107,8 +1274,14 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
             <div className="mb-5 rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.25)]">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.055] pb-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className={getStatusClass(post.status)}>{STATUS_LABEL[post.status]}</Badge>
-                  {isAuthor && <Badge className="border-[#e63946]/30 bg-[#e63946]/10 text-[#ff8b8b]">내 모집 글</Badge>}
+                  <Badge className={getStatusClass(post.status)}>
+                    {STATUS_LABEL[post.status]}
+                  </Badge>
+                  {isAuthor && (
+                    <Badge className="border-[#e63946]/30 bg-[#e63946]/10 text-[#ff8b8b]">
+                      내 모집 글
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -1117,22 +1290,37 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                   {post.authorNickname[0] ?? "?"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-[22px] font-black leading-snug text-[#f5f5f5] md:text-[28px]">{post.title}</h1>
+                  <h1 className="text-[22px] font-black leading-snug text-[#f5f5f5] md:text-[28px]">
+                    {post.title}
+                  </h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#707070]">
-                    <span className="font-bold text-[#bdbdbd]">{post.authorNickname}</span>
+                    <span className="font-bold text-[#bdbdbd]">
+                      {post.authorNickname}
+                    </span>
                     <span>&middot;</span>
-                    <span>{post.createdAt ? formatRelativeTime(post.createdAt) : "-"}</span>
+                    <span>
+                      {post.createdAt
+                        ? formatRelativeTime(post.createdAt)
+                        : "-"}
+                    </span>
                   </div>
                 </div>
               </div>
 
               <div className="mb-4 flex flex-wrap gap-1.5">
                 {post.tags.map((tag) => (
-                  <span key={tag} className="rounded-full border border-white/[0.07] bg-[#101010] px-2.5 py-1 text-xs font-bold text-[#777]">#{tag}</span>
+                  <span
+                    key={tag}
+                    className="rounded-full border border-white/[0.07] bg-[#101010] px-2.5 py-1 text-xs font-bold text-[#777]"
+                  >
+                    #{tag}
+                  </span>
                 ))}
               </div>
 
-              <p className="whitespace-pre-line text-sm leading-7 text-[#c9c9c9]">{post.content}</p>
+              <p className="whitespace-pre-line text-sm leading-7 text-[#c9c9c9]">
+                {post.content}
+              </p>
             </div>
 
             <div className="mb-5 rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.22)]">
@@ -1145,16 +1333,22 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                   <ImageWithFallback
                     src={summaryTheme?.imageUrl || post.imageUrl}
                     fallbackSrc="/images/theme-placeholder.png"
-                    alt={summaryTheme?.title || post.themeTitle || "테마 이미지"}
+                    alt={
+                      summaryTheme?.title || post.themeTitle || "테마 이미지"
+                    }
                     fill
                     sizes="(max-width: 640px) 100vw, 220px"
                     className="object-cover"
                   />
                 </div>
                 <div className="min-w-0 flex-1 py-1">
-                  <p className="mb-1 text-[11px] font-black text-[#626262]">테마</p>
+                  <p className="mb-1 text-[11px] font-black text-[#626262]">
+                    테마
+                  </p>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <h3 className="min-w-0 text-xl font-black leading-tight text-[#f5f5f5]">{summaryTheme?.title || post.themeTitle || "-"}</h3>
+                    <h3 className="min-w-0 text-xl font-black leading-tight text-[#f5f5f5]">
+                      {summaryTheme?.title || post.themeTitle || "-"}
+                    </h3>
                     <button
                       type="button"
                       onClick={handleOpenThemePreview}
@@ -1165,10 +1359,18 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                     </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1.5">
-                    {[summaryTheme?.storeName, summaryTheme?.branchName, summaryTheme?.locationName, summaryTheme?.genre]
+                    {[
+                      summaryTheme?.storeName,
+                      summaryTheme?.branchName,
+                      summaryTheme?.locationName,
+                      summaryTheme?.genre,
+                    ]
                       .filter(Boolean)
                       .map((item) => (
-                        <span key={item} className="rounded-full border border-white/[0.07] bg-[#171717] px-2.5 py-1 text-xs font-bold text-[#888]">
+                        <span
+                          key={item}
+                          className="rounded-full border border-white/[0.07] bg-[#171717] px-2.5 py-1 text-xs font-bold text-[#888]"
+                        >
                           {item}
                         </span>
                       ))}
@@ -1177,34 +1379,77 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <SummaryItem label="모임 시간" value={formatDateTime(post.meetingTime)} />
-                <SummaryItem label="모집 마감" value={formatDateTime(post.deadline)} />
-                <SummaryItem label="남은 자리" value={isClosed ? "마감" : `${remaining}자리 남음`} />
-                <SummaryItem label="경험 레벨" value={EXPERIENCE_LABEL[post.experienceLevel]} />
+                <SummaryItem
+                  label="모임 시간"
+                  value={formatDateTime(post.meetingTime)}
+                />
+                <SummaryItem
+                  label="모집 마감"
+                  value={formatDateTime(post.deadline)}
+                />
+                <SummaryItem
+                  label="남은 자리"
+                  value={isClosed ? "마감" : `${remaining}자리 남음`}
+                />
+                <SummaryItem
+                  label="경험 레벨"
+                  value={EXPERIENCE_LABEL[post.experienceLevel]}
+                />
               </div>
 
               <div className="mt-5 rounded-xl border border-white/[0.055] bg-[#101010]/70 px-4 py-3">
                 <div className="mb-2 flex items-center justify-between gap-3 text-xs font-bold">
                   <span className="text-[#888]">모집 진행률</span>
-                  <span className="text-[#d8d8d8]">{progress}% · {currentPeople}/{maxPeople}명</span>
+                  <span className="text-[#d8d8d8]">
+                    {progress}% · {currentPeople}/{maxPeople}명
+                  </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
-                  <span className="block h-full rounded-full bg-[#e63946] shadow-[0_0_12px_rgba(230,57,70,0.35)]" style={{ width: `${progress}%` }} />
+                  <span
+                    className="block h-full rounded-full bg-[#e63946] shadow-[0_0_12px_rgba(230,57,70,0.35)]"
+                    style={{ width: `${progress}%` }}
+                  />
                 </div>
                 <p className="mt-3 text-sm font-bold text-[#d8d8d8]">
-                  {currentPeople}명 참여 중 <span className="mx-1 text-[#555]">&middot;</span> {isClosed ? "마감" : `${remaining}자리 남음`}
+                  {currentPeople}명 참여 중{" "}
+                  <span className="mx-1 text-[#555]">&middot;</span>{" "}
+                  {isClosed ? "마감" : `${remaining}자리 남음`}
                 </p>
               </div>
             </div>
 
             <div className="rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.22)]">
-              <h2 className="mb-4 text-sm font-black text-[#f5f5f5]">모집 정보</h2>
+              <h2 className="mb-4 text-sm font-black text-[#f5f5f5]">
+                모집 정보
+              </h2>
               <div className="grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2">
                 <SummaryItem label="작성자" value={post.authorNickname} />
                 <SummaryItem label="상태" value={STATUS_LABEL[post.status]} />
-                <SummaryItem label="오픈채팅" value={post.openChatUrl ? <a href={post.openChatUrl} target="_blank" rel="noreferrer" className="text-[#ef5353] hover:text-white">링크 열기</a> : "-"} />
-                <SummaryItem label="생성일" value={formatDateTime(post.createdAt)} />
-                <SummaryItem label="수정일" value={post.updatedAt ? formatDateTime(post.updatedAt) : "-"} />
+                <SummaryItem
+                  label="오픈채팅"
+                  value={
+                    post.openChatUrl ? (
+                      <a
+                        href={post.openChatUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#ef5353] hover:text-white"
+                      >
+                        링크 열기
+                      </a>
+                    ) : (
+                      "-"
+                    )
+                  }
+                />
+                <SummaryItem
+                  label="생성일"
+                  value={formatDateTime(post.createdAt)}
+                />
+                <SummaryItem
+                  label="수정일"
+                  value={post.updatedAt ? formatDateTime(post.updatedAt) : "-"}
+                />
                 <SummaryItem label="모집글 번호" value={`#${post.id}`} />
               </div>
             </div>
@@ -1224,7 +1469,9 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                 <h2 className="text-sm font-black text-[#f5f5f5]">
                   {canViewParticipants ? "참여 신청자" : "참여 현황"}{" "}
                   <span className="text-[#ef5353]">
-                    {canViewParticipants ? participants.items.length : `${currentPeople}/${maxPeople}`}
+                    {canViewParticipants
+                      ? participants.items.length
+                      : `${currentPeople}/${maxPeople}`}
                   </span>
                 </h2>
                 <p className="mt-1 text-[11px] leading-4 text-[#666]">
@@ -1235,7 +1482,9 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
               </div>
               <div className="max-h-[430px] overflow-y-auto px-4">
                 {isParticipantsLoading ? (
-                  <div className="py-7 text-center text-xs font-bold text-[#777]">참여자 목록을 불러오는 중입니다.</div>
+                  <div className="py-7 text-center text-xs font-bold text-[#777]">
+                    참여자 목록을 불러오는 중입니다.
+                  </div>
                 ) : !canViewParticipants ? (
                   <div className="py-7 text-center">
                     <p className="text-xs font-bold text-[#777]">
@@ -1247,21 +1496,32 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                   </div>
                 ) : participants.items.length === 0 ? (
                   <div className="py-7 text-center">
-                    <p className="text-xs font-bold text-[#777]">아직 참여 신청자가 없어요</p>
-                    <p className="mt-1 text-[11px] text-[#555]">이 목록은 작성자를 제외한 참여 신청자 기준입니다.</p>
+                    <p className="text-xs font-bold text-[#777]">
+                      아직 참여 신청자가 없어요
+                    </p>
+                    <p className="mt-1 text-[11px] text-[#555]">
+                      이 목록은 작성자를 제외한 참여 신청자 기준입니다.
+                    </p>
                   </div>
                 ) : (
                   participants.items.map((participant) => (
-                    <div key={`${participant.memberId}-${participant.joinedAt ?? ""}`} className="border-b border-white/[0.045] py-3">
+                    <div
+                      key={`${participant.memberId}-${participant.joinedAt ?? ""}`}
+                      className="border-b border-white/[0.045] py-3"
+                    >
                       <div className="flex gap-2.5">
                         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e63946] text-xs font-bold text-white">
                           {participant.nickname[0] ?? "?"}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold text-[#f5f5f5]">{participant.nickname}</p>
+                          <p className="text-xs font-bold text-[#f5f5f5]">
+                            {participant.nickname}
+                          </p>
                           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                             {participant.joinedAt && (
-                              <p className="text-xs text-[#555]">{formatDateTime(participant.joinedAt)}</p>
+                              <p className="text-xs text-[#555]">
+                                {formatDateTime(participant.joinedAt)}
+                              </p>
                             )}
                             {participant.openChatUrl && (
                               <a
@@ -1288,9 +1548,16 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 flex justify-center">
         <div className="pointer-events-auto w-full max-w-7xl">
           <div className="border-t border-white/[0.06] bg-[#0d0d0d]/95 px-4 py-3 backdrop-blur">
-            {actionError && <p className="mb-2 text-right text-xs font-bold text-[#ef5353]">{actionError}</p>}
+            {actionError && (
+              <p className="mb-2 text-right text-xs font-bold text-[#ef5353]">
+                {actionError}
+              </p>
+            )}
             <div className="flex items-center justify-end gap-3">
-              <Link href="/mate" className="rounded-lg border border-white/[0.1] px-4 py-2.5 text-sm font-bold text-[#888] transition-colors hover:border-white/[0.2] hover:text-[#f5f5f5]">
+              <Link
+                href="/mate"
+                className="rounded-lg border border-white/[0.1] px-4 py-2.5 text-sm font-bold text-[#888] transition-colors hover:border-white/[0.2] hover:text-[#f5f5f5]"
+              >
                 목록으로
               </Link>
               {isAuthor ? (
@@ -1336,7 +1603,9 @@ export default function MateDetailPage({ params }: { params: Promise<{ mateId: s
                   disabled={isClosed || isJoining}
                   className={[
                     "rounded-lg px-6 py-2.5 text-sm font-black transition-colors",
-                    isClosed ? "cursor-not-allowed bg-[#2a2a2a] text-[#555]" : "bg-[#e63946] text-white hover:bg-[#c1121f]",
+                    isClosed
+                      ? "cursor-not-allowed bg-[#2a2a2a] text-[#555]"
+                      : "bg-[#e63946] text-white hover:bg-[#c1121f]",
                   ].join(" ")}
                 >
                   {isJoining ? "처리 중..." : isClosed ? "마감" : "참여하기"}

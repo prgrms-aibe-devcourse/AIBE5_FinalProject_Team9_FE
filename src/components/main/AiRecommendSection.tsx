@@ -95,7 +95,7 @@ export default function AiRecommendSection() {
                     <Link
                       key={prompt}
                       href="/ai-recommend"
-                      className="flex min-h-11 items-center rounded-full border border-white/[0.1] bg-[#1a1a1a]/78 px-4 text-left text-[12px] font-semibold text-[#d8d8d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:border-[#cc2222]/70 hover:bg-[#cc2222]/13 hover:text-white hover:shadow-[0_0_22px_rgba(204,34,34,0.16),inset_0_1px_0_rgba(255,255,255,0.06)]"
+                      className="flex min-h-11 items-center justify-center rounded-full border border-white/[0.1] bg-[#1a1a1a]/78 px-4 text-center text-[12px] font-semibold text-[#d8d8d8] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-all duration-300 hover:border-[#cc2222]/70 hover:bg-[#cc2222]/13 hover:text-white hover:shadow-[0_0_22px_rgba(204,34,34,0.16),inset_0_1px_0_rgba(255,255,255,0.06)]"
                     >
                       {prompt}
                     </Link>

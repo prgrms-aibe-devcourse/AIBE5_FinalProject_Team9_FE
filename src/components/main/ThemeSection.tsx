@@ -86,12 +86,20 @@ export default function ThemeSection({
       ) : errorMessage ? (
         <SectionStatusMessage tone="error">{errorMessage}</SectionStatusMessage>
       ) : visibleThemes.length === 0 ? (
-        <SectionStatusMessage>표시할 인기 테마가 없습니다.</SectionStatusMessage>
+        <SectionStatusMessage>
+          표시할 인기 테마가 없습니다.
+        </SectionStatusMessage>
       ) : (
-        <ThemeCarousel themes={visibleThemes} onThemeAction={setSelectedTheme} />
+        <ThemeCarousel
+          themes={visibleThemes}
+          onThemeAction={setSelectedTheme}
+        />
       )}
       {selectedTheme && (
-        <ThemeDetailDrawer theme={selectedTheme} onClose={() => setSelectedTheme(null)} />
+        <ThemeDetailDrawer
+          theme={selectedTheme}
+          onClose={() => setSelectedTheme(null)}
+        />
       )}
     </div>
   );

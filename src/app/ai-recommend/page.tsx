@@ -9,6 +9,15 @@ import {
   requestAiRecommendation,
   type AiRecommendedTheme,
 } from "@/services/aiRecommendService";
+import { getThemes } from "@/services/themeService";
+import type { Theme } from "@/types/theme";
+import {
+  hasRecommendationIntent,
+  isRecommendationConsent,
+  processPreferenceMessage,
+  type PendingSlot,
+  type RecommendationPreferences,
+} from "@/lib/aiRecommendConversation";
 
 const mascotSrc = "/images/령냥/령냥2_투명.png";
 const avatarSrc = "/images/령냥/ghost-cat-avatar.png";
@@ -36,6 +45,116 @@ type ChatMessageItem = {
   text: string;
 };
 
+const greetingPattern = /^(안녕|안녕하세요|하이|헬로|반가워)[!?.\s]*$/;
+
+const describePreferences = (preferences: RecommendationPreferences) => {
+  const conditions = [
+    preferences.people ? `인원 ${preferences.people}명` : null,
+    preferences.horror === "low"
+      ? "공포도 낮음"
+      : preferences.horror === "high"
+        ? "공포도 높음"
+        : preferences.horrorLevel
+          ? `공포도 ${preferences.horrorLevel}`
+          : null,
+    preferences.difficulty ? `난이도 ${preferences.difficulty}` : null,
+    preferences.genre === "mystery"
+      ? "미스터리·추리"
+      : preferences.genre === "story"
+        ? "스토리 중심"
+        : preferences.genreAny
+          ? "장르 무관"
+          : null,
+    preferences.region ? `지역 ${preferences.region}` : null,
+  ].filter(Boolean);
+
+  return conditions.length > 0 ? conditions.join(", ") : "별도 조건 없음";
+};
+
+const themeMatchesPeople = (theme: Theme, people?: number) => {
+  if (!people) return true;
+  if (!theme.minPlayers && !theme.maxPlayers) return true;
+  return people >= (theme.minPlayers || 1) && people <= (theme.maxPlayers || 99);
+};
+
+const themeMatchesGenre = (theme: Theme, genre?: RecommendationPreferences["genre"]) => {
+  if (!genre) return true;
+  const searchableText = `${theme.genre} ${theme.title} ${theme.description}`.toLowerCase();
+  return genre === "mystery"
+    ? /미스터리|추리|범죄|탐정/.test(searchableText)
+    : /스토리|드라마|감성|서사/.test(searchableText);
+};
+
+const toAiRecommendedTheme = (
+  theme: Theme,
+  preferences: RecommendationPreferences,
+): AiRecommendedTheme => ({
+  id: theme.id,
+  title: theme.title,
+  thumbnailUrl: theme.imageUrl,
+  horrorLevel: theme.horrorLevel,
+  difficulty: theme.difficulty,
+  rating: theme.rating,
+  description: theme.description,
+  branchName: theme.branchName || theme.storeName,
+  region: theme.locationName,
+  playTime: theme.duration,
+  price: theme.price,
+  reason: `${describePreferences(preferences)} 조건으로 실제 등록 테마에서 찾은 후보예요.`,
+});
+
+const findCatalogRecommendations = async (preferences: RecommendationPreferences) => {
+  const themes = await getThemes();
+  const baseCandidates = themes.filter((theme) => {
+    if (!themeMatchesPeople(theme, preferences.people)) return false;
+    if (preferences.difficulty && theme.difficulty !== preferences.difficulty) return false;
+    if (
+      preferences.region &&
+      !(theme.locationName ?? "").toLowerCase().includes(preferences.region.toLowerCase())
+    ) {
+      return false;
+    }
+    return themeMatchesGenre(theme, preferences.genre);
+  });
+
+  const exactCandidates = baseCandidates.filter((theme) => {
+    if (preferences.horrorLevel && theme.horrorLevel !== preferences.horrorLevel) return false;
+    if (preferences.horror === "low" && theme.horrorLevel > 2) return false;
+    if (preferences.horror === "high" && theme.horrorLevel < 4) return false;
+    return true;
+  });
+  const requestedLowHorror =
+    preferences.horror === "low" ||
+    (preferences.horrorLevel !== undefined && preferences.horrorLevel <= 2);
+  const isHorrorRelaxed =
+    requestedLowHorror && exactCandidates.length === 0 && baseCandidates.length > 0;
+  const lowestHorrorLevel = isHorrorRelaxed
+    ? Math.min(...baseCandidates.map((theme) => theme.horrorLevel))
+    : undefined;
+  const resolvedCandidates = isHorrorRelaxed
+    ? baseCandidates.filter((theme) => theme.horrorLevel === lowestHorrorLevel)
+    : exactCandidates;
+
+  const recommendations = resolvedCandidates
+    .sort((a, b) => b.rating - a.rating || a.horrorLevel - b.horrorLevel)
+    .slice(0, 3)
+    .map((theme) => {
+      const recommendation = toAiRecommendedTheme(theme, preferences);
+
+      if (isHorrorRelaxed) {
+        recommendation.reason = `요청한 공포도보다 높지만, ${preferences.people ? `${preferences.people}인 플레이가 가능하고 ` : ""}현재 등록 테마 중 공포도가 가장 낮은 후보예요.`;
+      }
+
+      return recommendation;
+    });
+
+  return {
+    recommendations,
+    isHorrorRelaxed,
+    lowestHorrorLevel,
+  };
+};
+
 export default function AIRecommendPage() {
   return <ChatBotPage />;
 }
@@ -47,6 +166,8 @@ function ChatBotPage() {
   const [hasRecommendation, setHasRecommendation] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [preferences, setPreferences] = useState<RecommendationPreferences>({});
+  const [pendingSlot, setPendingSlot] = useState<PendingSlot>(null);
 
   const sendMessage = async (message: string) => {
     const trimmedMessage = message.trim();
@@ -62,25 +183,95 @@ function ChatBotPage() {
 
     setMessages(nextMessages);
     setInputValue("");
-    setHasRecommendation(true);
-    setRecommendations([]);
     setErrorMessage("");
+
+    const lastAiMessage = [...messages].reverse().find((item) => item.speaker === "ai")?.text ?? "";
+    const conversationResult = processPreferenceMessage(
+      trimmedMessage,
+      preferences,
+      pendingSlot,
+    );
+    const isRetryConfirmation =
+      isRecommendationConsent(trimmedMessage) &&
+      /다시 찾아볼까요|넓혀서/.test(lastAiMessage);
+    const isReadyConsent =
+      isRecommendationConsent(trimmedMessage) &&
+      pendingSlot === null &&
+      Object.keys(preferences).length > 0;
+    const shouldRecommend =
+      hasRecommendationIntent(trimmedMessage) || isRetryConfirmation || isReadyConsent;
+
+    if (!shouldRecommend) {
+      if (greetingPattern.test(trimmedMessage)) {
+        setPendingSlot("partySize");
+        setMessages([
+          ...nextMessages,
+          {
+            id: nextId + 1,
+            speaker: "ai",
+            text: "안녕하세요! 몇 명이서 가시나요?",
+          },
+        ]);
+        return;
+      }
+
+      setPreferences(conversationResult.preferences);
+      setPendingSlot(conversationResult.pendingSlot);
+      setHasRecommendation(false);
+      setRecommendations([]);
+      setMessages([
+        ...nextMessages,
+        {
+          id: nextId + 1,
+          speaker: "ai",
+          text: conversationResult.reply,
+        },
+      ]);
+      return;
+    }
+
+    const recommendationPreferences = conversationResult.understood
+      ? conversationResult.preferences
+      : preferences;
+    setPreferences(recommendationPreferences);
+    setPendingSlot(null);
+    setHasRecommendation(false);
+    setRecommendations([]);
     setIsLoading(true);
 
     try {
-      const response = await requestAiRecommendation({
-        messages: nextMessages
-          .filter((item) => item.id !== 1 || item.speaker !== "ai")
-          .map((item) => ({
-            role: item.speaker === "ai" ? "assistant" : "user",
-            content: item.text,
-          })),
-      });
+      const preferenceSummary = describePreferences(recommendationPreferences);
+      let aiRecommendations: AiRecommendedTheme[] = [];
+      let aiMessage = "";
+
+      try {
+        const response = await requestAiRecommendation({
+          messages: [
+            {
+              role: "user",
+              content: `다음 조건을 모두 반영해서 실제 등록된 방탈출 테마를 추천해주세요: ${preferenceSummary}`,
+            },
+          ],
+        });
+        aiRecommendations = response.themes;
+        aiMessage = response.message;
+      } catch (error) {
+        logAiRecommendError("requestAiRecommendation", error);
+      }
+
+      const catalogResult = await findCatalogRecommendations(recommendationPreferences);
+      const resolvedRecommendations =
+        catalogResult.recommendations.length > 0
+          ? catalogResult.recommendations
+          : aiRecommendations;
       const responseText =
-        response.message ||
-        (response.themes.length > 0
-          ? "조건에 맞는 테마를 찾아봤어요."
-          : "조건을 조금 더 자세히 알려주시면 더 잘 추천할 수 있어요.");
+        resolvedRecommendations.length > 0
+          ? catalogResult.isHorrorRelaxed
+            ? `현재 등록된 테마에는 공포도 1~2가 없어요. 대신 ${recommendationPreferences.people ? `${recommendationPreferences.people}명이 플레이할 수 있는 ` : ""}테마 중 가장 낮은 공포도 ${catalogResult.lowestHorrorLevel} 후보를 보여드릴게요.`
+            : catalogResult.recommendations.length > 0
+              ? `${preferenceSummary} 조건으로 실제 등록 테마를 찾았어요.`
+              : aiMessage || `${preferenceSummary} 조건으로 테마를 찾아봤어요.`
+          : `${preferenceSummary} 조건을 만족하는 등록 테마를 찾지 못했어요. 인원이나 공포도 조건을 조금 넓혀서 다시 찾아볼까요?`;
 
       setMessages((currentMessages) => [
         ...currentMessages,
@@ -90,7 +281,10 @@ function ChatBotPage() {
           text: responseText,
         },
       ]);
-      setRecommendations(response.themes);
+      const isRecommendationResponse = resolvedRecommendations.length > 0;
+
+      setHasRecommendation(isRecommendationResponse);
+      setRecommendations(isRecommendationResponse ? resolvedRecommendations : []);
     } catch (error) {
       logAiRecommendError("requestAiRecommendation", error);
       const fallbackMessage = getAiRecommendErrorInfo(error).message;
@@ -113,6 +307,8 @@ function ChatBotPage() {
     event.preventDefault();
     sendMessage(inputValue);
   };
+
+  const hasUserContext = messages.some((message) => message.speaker === "user");
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#0d0d0d] text-white">
@@ -190,6 +386,7 @@ function ChatBotPage() {
             onInputChange={setInputValue}
             onSubmit={handleSubmit}
             onSuggestionSelect={sendMessage}
+            hasUserContext={hasUserContext}
           />
         </section>
       </div>
@@ -239,6 +436,7 @@ function ChatWindow({
   onInputChange,
   onSubmit,
   onSuggestionSelect,
+  hasUserContext,
 }: {
   messages: ChatMessageItem[];
   inputValue: string;
@@ -250,6 +448,7 @@ function ChatWindow({
   onInputChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSuggestionSelect: (message: string) => void;
+  hasUserContext: boolean;
 }) {
   return (
     <section className="relative flex min-h-[680px] lg:min-h-[760px]">
@@ -286,7 +485,7 @@ function ChatWindow({
             </ChatMessage>
           ))}
 
-          {!hasRecommendation && (
+          {!hasUserContext && (
             <div className="space-y-3">
               <PromptSuggestionButtons
                 suggestions={suggestions}

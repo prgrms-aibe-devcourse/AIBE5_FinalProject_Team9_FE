@@ -6,7 +6,8 @@
     "dev": "set NEXT_DIST_DIR=.next-dev&& next dev --turbopack",
     "build": "set NEXT_DIST_DIR=.next-build&& next build --turbopack",
     "start": "set NEXT_DIST_DIR=.next-build&& next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:ai-chat": "node --no-warnings --experimental-strip-types scripts/test-ai-recommend-conversation.mjs"
   },
   "dependencies": {
     "axios": "^1.16.1",
