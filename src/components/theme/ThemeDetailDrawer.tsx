@@ -112,6 +112,28 @@ function getReviewerInitial(nickname: string) {
   return nickname.trim().charAt(0) || "?";
 }
 
+function SpoilerContent({ content, isSpoiler }: { content: string; isSpoiler: boolean }) {
+    const [revealed, setRevealed] = useState(false);
+
+    if (!isSpoiler || revealed) {
+        return <p className="text-sm leading-6 text-[#b8b8b8] min-h-[35px]">{content}</p>;
+    }
+
+    return (
+        <div
+            className="relative cursor-pointer select-none rounded-[8px] overflow-hidden min-h-[35px]"
+            onClick={() => setRevealed(true)}
+        >
+            <p className="text-sm leading-6 text-[#b8b8b8] blur-sm">{content}</p>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-[8px]">
+        <span className="text-xs font-black text-[#888] ">
+          🚨 눌러서 스포일러 보기
+        </span>
+            </div>
+        </div>
+    );
+}
+
 function getReviewSummary(reviews: ThemeReview[]) {
   const count = reviews.length;
   const distribution = [5, 4, 3, 2, 1].map((score) => ({
@@ -698,7 +720,7 @@ export default function ThemeDetailDrawer({
                         </span>
                       </div>
 
-                      <p className="text-sm leading-6 text-[#b8b8b8]">{review.content}</p>
+                        <SpoilerContent content={review.content} isSpoiler={review.spoiler} />
 
                       <div className="mt-3.5 flex flex-wrap gap-2">
                         <div className="inline-flex max-w-full items-center gap-3 rounded-full border border-white/[0.045] bg-[#101010]/52 px-3 py-2">
