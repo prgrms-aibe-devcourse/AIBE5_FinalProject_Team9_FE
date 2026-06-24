@@ -8,6 +8,7 @@ import { createMatePost, getMatePostById, updateMatePost } from '@/services/mate
 import { getThemes } from '@/services/themeService';
 import { MateExperienceLevel } from '@/types/mate';
 import { Theme } from '@/types/theme';
+import RatingIcons from '@/components/common/RatingIcons';
 
 const ALL_TAGS = [
   '초보 환영',
@@ -429,6 +430,250 @@ function DarkTimePicker({
   );
 }
 
+function getThemeBranchName(theme: Theme) {
+  return theme.branchName || theme.storeName || theme.locationName || '지점 정보 없음';
+}
+
+function getThemeMeta(theme: Theme) {
+  const details = [getThemeBranchName(theme)];
+
+  if (theme.minPlayers || theme.maxPlayers) {
+    details.push(`${theme.minPlayers || 1}~${theme.maxPlayers || theme.minPlayers || 1}인`);
+  }
+  if (theme.duration) details.push(`${theme.duration}분`);
+
+  return details.join(' · ');
+}
+
+function ThemeSearchSelect({
+  themes,
+  value,
+  isLoading,
+  onChange,
+}: {
+  themes: Theme[];
+  value: string;
+  isLoading: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('전체');
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const selectedTheme = useMemo(
+    () => themes.find((theme) => theme.id === Number(value)),
+    [themes, value],
+  );
+  const branches = useMemo(
+    () => Array.from(new Set(themes.map(getThemeBranchName))).sort((a, b) => a.localeCompare(b, 'ko')),
+    [themes],
+  );
+  const filteredThemes = useMemo(() => {
+    const keyword = searchKeyword.trim().toLocaleLowerCase('ko');
+
+    return themes.filter((theme) => {
+      const branchName = getThemeBranchName(theme);
+      const matchesBranch = selectedBranch === '전체' || branchName === selectedBranch;
+      const matchesKeyword =
+        !keyword ||
+        theme.title.toLocaleLowerCase('ko').includes(keyword) ||
+        branchName.toLocaleLowerCase('ko').includes(keyword);
+
+      return matchesBranch && matchesKeyword;
+    });
+  }, [searchKeyword, selectedBranch, themes]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!popoverRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div ref={popoverRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+        className={[
+          'relative flex min-h-[48px] w-full items-center rounded-lg border bg-[#0d0d0d] px-4 pr-12 text-left outline-none transition-all',
+          isOpen
+            ? 'border-[#e63946] shadow-[0_0_0_3px_rgba(230,57,70,0.08)]'
+            : 'border-[#2a2a2a] hover:border-[#444]',
+        ].join(' ')}
+      >
+        {selectedTheme ? (
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-black text-[#f5f5f5]">
+              {selectedTheme.title}
+            </span>
+            <span className="mt-0.5 block truncate text-[11px] text-[#737373]">
+              {getThemeMeta(selectedTheme)}
+            </span>
+          </span>
+        ) : (
+          <span className="text-sm font-semibold text-[#666]">
+            {isLoading ? '테마를 불러오는 중...' : '테마를 선택해주세요'}
+          </span>
+        )}
+        <ChevronDownIcon
+          isOpen={isOpen}
+          className={[
+            'pointer-events-none absolute right-4 top-1/2 -translate-y-1/2',
+            isOpen ? 'text-[#e63946]' : 'text-[#888]',
+          ].join(' ')}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[56px] z-40 overflow-hidden rounded-xl border border-[#343434] bg-[#111] shadow-[0_24px_70px_rgba(0,0,0,0.68),0_0_28px_rgba(230,57,70,0.08)]">
+          <div className="border-b border-white/[0.07] p-3">
+            <div className="relative">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#666]"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.2-3.2" />
+              </svg>
+              <input
+                ref={searchInputRef}
+                value={searchKeyword}
+                onChange={(event) => setSearchKeyword(event.target.value)}
+                placeholder="테마명 또는 지점명으로 검색"
+                className="h-10 w-full rounded-lg border border-[#292929] bg-[#0b0b0b] pl-9 pr-3 text-sm font-semibold text-[#f5f5f5] outline-none placeholder:text-[#555] focus:border-[#e63946]/75"
+              />
+            </div>
+
+            {branches.length > 0 && (
+              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+                {['전체', ...branches].map((branch) => {
+                  const isSelected = selectedBranch === branch;
+
+                  return (
+                    <button
+                      key={branch}
+                      type="button"
+                      onClick={() => setSelectedBranch(branch)}
+                      className={[
+                        'shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-black transition-colors',
+                        isSelected
+                          ? 'border-[#e63946]/70 bg-[#e63946]/15 text-[#ff6b74]'
+                          : 'border-[#2d2d2d] bg-[#171717] text-[#777] hover:border-[#444] hover:text-[#bbb]',
+                      ].join(' ')}
+                    >
+                      {branch}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div role="listbox" className="max-h-[320px] overflow-y-auto p-2">
+            {isLoading ? (
+              <p className="px-3 py-10 text-center text-sm font-semibold text-[#666]">
+                테마 목록을 불러오는 중입니다.
+              </p>
+            ) : filteredThemes.length === 0 ? (
+              <p className="px-3 py-10 text-center text-sm font-semibold text-[#666]">
+                검색 결과가 없습니다.
+              </p>
+            ) : (
+              filteredThemes.map((theme) => {
+                const isSelected = theme.id === Number(value);
+
+                return (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    role="option"
+                    aria-selected={isSelected}
+                    onClick={() => {
+                      onChange(String(theme.id));
+                      setIsOpen(false);
+                      setSearchKeyword('');
+                    }}
+                    className={[
+                      'mb-1 flex w-full items-center justify-between gap-4 rounded-lg border px-3.5 py-3 text-left transition-all last:mb-0',
+                      isSelected
+                        ? 'border-[#e63946]/55 bg-[#e63946]/12 shadow-[inset_3px_0_0_#e63946]'
+                        : 'border-transparent bg-transparent hover:border-white/[0.06] hover:bg-white/[0.045]',
+                    ].join(' ')}
+                  >
+                    <span className="min-w-0">
+                      <span
+                        className={[
+                          'block truncate text-sm font-black',
+                          isSelected ? 'text-[#ff7079]' : 'text-[#ededed]',
+                        ].join(' ')}
+                      >
+                        {theme.title}
+                      </span>
+                      <span className="mt-1 block truncate text-[11px] font-semibold text-[#686868]">
+                        {getThemeMeta(theme)}
+                      </span>
+                    </span>
+                    {isSelected && (
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e63946] text-xs font-black text-white">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {selectedTheme && (
+        <div className="mt-3 rounded-xl border border-[#2b2b2b] bg-[linear-gradient(135deg,rgba(230,57,70,0.08),rgba(13,13,13,0.92)_38%)] p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black text-[#f5f5f5]">{selectedTheme.title}</p>
+              <p className="mt-1 text-xs font-semibold text-[#777]">{getThemeMeta(selectedTheme)}</p>
+            </div>
+            <span className="shrink-0 rounded-full border border-[#e63946]/35 bg-[#e63946]/10 px-2.5 py-1 text-[10px] font-black text-[#ff6b74]">
+              선택됨
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.06] pt-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-[#777]">공포도</span>
+              <RatingIcons value={selectedTheme.horrorLevel} type="horror" size="xs" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-[#777]">난이도</span>
+              <RatingIcons value={selectedTheme.difficulty} type="difficulty" size="xs" />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MateWritePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -505,11 +750,6 @@ export default function MateWritePage() {
       isMounted = false;
     };
   }, [editId, isEditMode]);
-
-  const selectedTheme = useMemo(
-    () => themes.find((theme) => theme.id === Number(themeId)),
-    [themeId, themes],
-  );
 
   useEffect(() => {
     if (meetingDate && deadlineDate && deadlineDate > meetingDate) {
@@ -638,26 +878,12 @@ export default function MateWritePage() {
 
           <div className="mb-5">
             <label className="mb-2 block text-xs text-[#888]">테마 <span className="text-[#e63946]">*</span></label>
-            <div className="group relative">
-              <select
-                value={themeId}
-                onChange={(event) => setThemeId(event.target.value)}
-                className="h-[46px] w-full appearance-none rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 pr-12 text-sm text-[#f5f5f5] outline-none transition-colors focus:border-[#e63946]"
-              >
-                <option value="">{isThemesLoading ? '테마 불러오는 중' : '테마 선택'}</option>
-                {themes.map((theme) => (
-                  <option key={theme.id} value={theme.id}>
-                    #{theme.id} {theme.title}{theme.branchName ? ` · ${theme.branchName}` : ''}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-[#aaa] group-focus-within:text-[#e63946]" />
-            </div>
-            {selectedTheme && (
-              <p className="mt-2 text-xs text-[#777]">
-                {selectedTheme.branchName || '지점 정보 없음'} · {selectedTheme.minPlayers}~{selectedTheme.maxPlayers}인 · {selectedTheme.duration}분
-              </p>
-            )}
+            <ThemeSearchSelect
+              themes={themes}
+              value={themeId}
+              isLoading={isThemesLoading}
+              onChange={setThemeId}
+            />
           </div>
 
           <div className="mb-5 grid gap-4 lg:grid-cols-2">

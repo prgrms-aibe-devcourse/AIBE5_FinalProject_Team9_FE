@@ -215,6 +215,11 @@ export default function ThemesPage() {
     setPage(1);
   };
 
+  const clearLocations = () => {
+    setSelectedLocations([]);
+    setPage(1);
+  };
+
   const setFilter = <T,>(setter: (v: T) => void, value: T) => {
     setter(value);
     setPage(1);
@@ -349,9 +354,22 @@ export default function ThemesPage() {
                 지역
               </h3>
               <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={clearLocations}
+                  className={[
+                    "flex h-9 items-center justify-center rounded-full border px-3 text-sm font-bold transition-all",
+                    selectedLocations.length === 0
+                      ? "border-[#cc2222]/60 bg-[#cc2222]/12 text-[#ef5353]"
+                      : "border-white/[0.1] bg-[#101010] text-[#cfcfcf] hover:border-white/20 hover:bg-[#202020]",
+                  ].join(" ")}
+                >
+                  전체
+                </button>
                 {availableLocations.map((loc) => (
                   <button
                     key={loc}
+                    type="button"
                     onClick={() => toggleLocation(loc)}
                     className={[
                       "flex h-9 items-center justify-center rounded-full border px-3 text-sm font-bold transition-all",
@@ -508,9 +526,22 @@ export default function ThemesPage() {
           <div className="min-w-0">
             {/* Mobile filter row */}
             <div className="mb-5 flex gap-2 overflow-x-auto pb-2 md:hidden">
+              <button
+                type="button"
+                onClick={clearLocations}
+                className={[
+                  "shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
+                  selectedLocations.length === 0
+                    ? "border-[#cc2222]/70 bg-[#cc2222]/12 text-[#ef5353]"
+                    : "border-white/[0.1] bg-[#171717] text-[#9a9a9a]",
+                ].join(" ")}
+              >
+                전체
+              </button>
               {availableLocations.map((loc) => (
                 <button
                   key={loc}
+                  type="button"
                   onClick={() => toggleLocation(loc)}
                   className={[
                     "shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",

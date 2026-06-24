@@ -1464,16 +1464,30 @@ export default function MateDetailPage({
           </section>
 
           <aside className="lg:sticky lg:top-5 lg:self-start">
-            <div className="rounded-xl border border-white/[0.08] bg-[#171717]/92 shadow-[0_16px_42px_rgba(0,0,0,0.25)]">
+            <div
+              className={[
+                "rounded-xl border bg-[#171717]/92 transition-colors",
+                isClosed
+                  ? "border-[#e63946]/30 shadow-[0_16px_42px_rgba(0,0,0,0.25),0_0_28px_rgba(230,57,70,0.07)]"
+                  : "border-white/[0.08] shadow-[0_16px_42px_rgba(0,0,0,0.25)]",
+              ].join(" ")}
+            >
               <div className="border-b border-white/[0.06] px-4 py-3">
-                <h2 className="text-sm font-black text-[#f5f5f5]">
-                  {canViewParticipants ? "참여 신청자" : "참여 현황"}{" "}
-                  <span className="text-[#ef5353]">
-                    {canViewParticipants
-                      ? participants.items.length
-                      : `${currentPeople}/${maxPeople}`}
-                  </span>
-                </h2>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-black text-[#f5f5f5]">
+                    {canViewParticipants ? "참여 신청자" : "참여 현황"}{" "}
+                    <span className="text-[#ef5353]">
+                      {canViewParticipants
+                        ? participants.items.length
+                        : `${currentPeople}/${maxPeople}`}
+                    </span>
+                  </h2>
+                  {isClosed && (
+                    <span className="shrink-0 rounded-full border border-[#e63946]/45 bg-[#e63946]/12 px-2.5 py-1 text-[10px] font-black text-[#ff6b74]">
+                      모집 마감
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 text-[11px] leading-4 text-[#666]">
                   {canViewParticipants
                     ? `모집 요약의 ${currentPeople}/${maxPeople}명에는 작성자가 포함될 수 있습니다.`
@@ -1481,6 +1495,37 @@ export default function MateDetailPage({
                 </p>
               </div>
               <div className="max-h-[430px] overflow-y-auto px-4">
+                {!isParticipantsLoading && isClosed && (
+                  <div
+                    className={[
+                      "my-4 rounded-xl border border-[#e63946]/24 bg-[radial-gradient(circle_at_50%_0%,rgba(230,57,70,0.13),transparent_62%),#121212] px-4 text-center",
+                      canViewParticipants && participants.items.length === 0
+                        ? "py-8"
+                        : "py-5",
+                    ].join(" ")}
+                  >
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-[#e63946]/35 bg-[#e63946]/12 text-[#ff6b74]">
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="h-5 w-5"
+                      >
+                        <rect x="5" y="10" width="14" height="10" rx="2" />
+                        <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+                      </svg>
+                    </div>
+                    <p className="mt-3 text-sm font-black text-[#f5f5f5]">
+                      모집이 마감되었습니다
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-[#777]">
+                      더 이상 참여 신청을 받을 수 없습니다.
+                    </p>
+                  </div>
+                )}
+
                 {isParticipantsLoading ? (
                   <div className="py-7 text-center text-xs font-bold text-[#777]">
                     참여자 목록을 불러오는 중입니다.
@@ -1495,14 +1540,16 @@ export default function MateDetailPage({
                     </p>
                   </div>
                 ) : participants.items.length === 0 ? (
-                  <div className="py-7 text-center">
-                    <p className="text-xs font-bold text-[#777]">
-                      아직 참여 신청자가 없어요
-                    </p>
-                    <p className="mt-1 text-[11px] text-[#555]">
-                      이 목록은 작성자를 제외한 참여 신청자 기준입니다.
-                    </p>
-                  </div>
+                  !isClosed && (
+                    <div className="py-7 text-center">
+                      <p className="text-xs font-bold text-[#777]">
+                        아직 참여 신청자가 없어요
+                      </p>
+                      <p className="mt-1 text-[11px] text-[#555]">
+                        이 목록은 작성자를 제외한 참여 신청자 기준입니다.
+                      </p>
+                    </div>
+                  )
                 ) : (
                   participants.items.map((participant) => (
                     <div
