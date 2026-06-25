@@ -20,12 +20,13 @@ import {
   type MyPageReview,
   type MyPageStats,
 } from "@/services/mypageService";
+import { getMatePostById } from "@/services/mateService";
 import { getThemes } from "@/services/themeService";
 import {
   DEFAULT_PROFILE_AVATAR,
   getProfileAvatar,
 } from "@/lib/profileAvatar";
-import type { MyPageMatePost } from "@/types/mate";
+import type { MatePost, MyPageMatePost } from "@/types/mate";
 import type { Theme } from "@/types/theme";
 import { useAuthStore } from "@/stores/authStore";
 import { getToken } from "@/lib/token";
@@ -1117,6 +1118,24 @@ function mapMatePostToActivityMate(post: MyPageMatePost, isAuthor = false): Acti
   };
 }
 
+function mapMateDetailToActivityMate(post: MatePost): ActivityMate {
+  const isClosed = ["CLOSED", "MATCHED", "DELETED"].includes(post.status);
+  const location = [post.storeName, post.branchName, post.region].filter(Boolean).join(" · ");
+
+  return {
+    id: post.id,
+    themeTitle: post.themeTitle || "참여 모집",
+    location: location || "-",
+    title: post.title || "메이트 모집",
+    date: formatDate(post.meetingTime || post.createdAt),
+    time: formatTime(post.meetingTime),
+    currentMembers: post.currentPeople,
+    totalMembers: post.maxPeople,
+    status: isClosed ? "closed" : "joined",
+    imageUrl: post.imageUrl || THEME_PLACEHOLDER_IMAGE,
+  };
+}
+
 function ProfileSummaryCard({
   profile,
   stats,
@@ -2051,11 +2070,22 @@ function ActivityTabContent() {
             ? postResult.value.map(mapMatePostToActivityPost)
             : [],
         );
-        setMates(
-          participationResult.status === "fulfilled"
-            ? participationResult.value.map((post) => mapMatePostToActivityMate(post))
-            : [],
-        );
+        if (participationResult.status === "fulfilled") {
+          const enrichedMates = await Promise.all(
+            participationResult.value.map(async (participation) => {
+              try {
+                const detail = await getMatePostById(participation.matePostId);
+                return mapMateDetailToActivityMate(detail);
+              } catch {
+                return mapMatePostToActivityMate(participation);
+              }
+            }),
+          );
+
+          if (isMounted) setMates(enrichedMates);
+        } else {
+          setMates([]);
+        }
 
         if (
           reviewResult.status === "rejected" &&
@@ -2116,8 +2146,8 @@ function ActivityTabContent() {
           <div className="space-y-3.5">
             {previewReviews.map((review) => (
               <ReviewActivityCard key={review.id} review={review}
-                                  onEdit={() => router.push(`/mypage/reviews?action=edit&themeId=${review.themeId}&createdAt=${review.date}`)}
-                                  onDelete={() => router.push(`/mypage/reviews?action=delete&themeId=${review.themeId}&createdAt=${review.date}`)}
+                                  onEdit={() => router.push(`/mypage/reviews?action=edit&reviewId=${review.id}`)}
+                                  onDelete={() => router.push(`/mypage/reviews?action=delete&reviewId=${review.id}`)}
               />
             ))}
             {hiddenReviewCount > 0 && (
@@ -2370,14 +2400,14 @@ function MateActivityCard({ mate }: { mate: ActivityMate }) {
         </div>
         <div className="flex items-center justify-between gap-3">
           <MateStatusBadge status={mate.status} />
-          <button
-            type="button"
+          <Link
+            href={`/mate/${mate.id}`}
             className={
-              "h-9 rounded-md border px-4 text-xs font-black transition-all border-[#cc2222]/58 bg-[#101010]/55 text-[#ef5353] hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white"
+              "inline-flex h-9 items-center justify-center rounded-md border px-4 text-xs font-black transition-all border-[#cc2222]/58 bg-[#101010]/55 text-[#ef5353] hover:border-[#cc2222]/90 hover:bg-[#cc2222]/10 hover:text-white"
             }
           >
             {isAuthor ? "관리하기" : "상세보기"}
-          </button>
+          </Link>
         </div>
       </div>
     </article>

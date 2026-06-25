@@ -35,19 +35,20 @@ const axiosInstance = axios.create({
   },
 });
 
-const AUTH_REQUIRED_PATHS = [
+const ALWAYS_AUTH_REQUIRED_PATHS = [
   '/api/auth/me',
   '/api/auth/logout',
   '/api/auth/password',
   '/api/auth/withdraw',
   '/api/mypage',
+  '/api/members/me',
   '/api/minigames',
   '/api/payments',
   '/api/owner',
   '/api/admin',
   '/owner',
 ];
-const PROTECTED_PAGE_PATHS = ['/mypage', '/owner', '/admin'];
+const PROTECTED_PAGE_PATHS = ['/mypage', '/mate/write', '/owner', '/admin'];
 let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
 let isHandlingUnauthorized = false;
 
@@ -60,11 +61,36 @@ const getRequestPath = (url?: string) => {
   }
 };
 
-const requiresAuth = (url?: string) => {
-  const path = getRequestPath(url);
-  return AUTH_REQUIRED_PATHS.some(
+const matchesPathPrefix = (path: string, prefixes: string[]) =>
+  prefixes.some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`),
   );
+
+const requiresAuth = (config: InternalAxiosRequestConfig) => {
+  const path = getRequestPath(config.url);
+  const method = (config.method ?? 'get').toUpperCase();
+  const isMutation = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+
+  if (matchesPathPrefix(path, ALWAYS_AUTH_REQUIRED_PATHS)) return true;
+
+  if (path === '/api/reviews' || path.startsWith('/api/reviews/')) {
+    return isMutation;
+  }
+
+  if (path === '/api/mate-posts' || path.startsWith('/api/mate-posts/')) {
+    if (isMutation) return true;
+    return /^\/api\/mate-posts\/[^/]+\/participants(?:\/|$)/.test(path);
+  }
+
+  if (path === '/api/reservations' || path.startsWith('/api/reservations/')) {
+    return true;
+  }
+
+  if (path === '/api/slots' || path.startsWith('/api/slots/')) {
+    return isMutation;
+  }
+
+  return false;
 };
 
 const extractTokens = (body: TokenResponseBody) => {
@@ -76,16 +102,23 @@ const extractTokens = (body: TokenResponseBody) => {
 
 const redirectToLogin = () => {
   if (typeof window === 'undefined') return;
-  const isProtectedPage = PROTECTED_PAGE_PATHS.some(
+  const protectedPrefix = PROTECTED_PAGE_PATHS.find(
     (prefix) => window.location.pathname === prefix || window.location.pathname.startsWith(`${prefix}/`),
   );
-  if (isProtectedPage && window.location.pathname !== '/login') window.location.replace('/login');
+  if (!protectedPrefix) return;
+
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+  const loginPath = protectedPrefix === '/admin' ? '/admin/login' : '/login';
+  window.location.replace(`${loginPath}?redirect=${encodeURIComponent(currentPath)}`);
 };
 
 const handleUnauthorizedOnce = () => {
   if (isHandlingUnauthorized) return;
   isHandlingUnauthorized = true;
-  useAuthStore.getState().logout();
+  const authState = useAuthStore.getState();
+  if (authState.isLoggedIn || authState.user || getToken() || getRefreshToken()) {
+    authState.logout();
+  }
   redirectToLogin();
   queueMicrotask(() => {
     isHandlingUnauthorized = false;
@@ -95,9 +128,12 @@ const handleUnauthorizedOnce = () => {
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = getToken();
-    if (!token && requiresAuth(config.url)) {
+    if (!token && requiresAuth(config)) {
+      const authState = useAuthStore.getState();
+      if (authState.isLoggedIn || authState.user) authState.logout();
+      redirectToLogin();
       return Promise.reject(
-        new axios.CanceledError('Authentication required: request skipped because no access token exists.'),
+        new axios.CanceledError('로그인이 필요한 기능입니다.'),
       );
     }
     if (token) {

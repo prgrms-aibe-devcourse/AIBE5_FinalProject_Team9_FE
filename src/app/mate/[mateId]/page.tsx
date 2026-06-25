@@ -224,6 +224,7 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   return (
     axiosError.response?.data?.message ??
     axiosError.response?.data?.data?.message ??
+    (axiosError.code === "ERR_CANCELED" ? axiosError.message : undefined) ??
     fallback
   );
 }
@@ -1116,6 +1117,10 @@ export default function MateDetailPage({
 
   const handleJoin = async () => {
     if (!post || isClosed || isAuthor) return;
+    if (!isLoggedIn || !getToken()) {
+      setActionError("로그인이 필요한 기능입니다.");
+      return;
+    }
     setIsJoining(true);
     setActionError("");
 

@@ -183,7 +183,14 @@ export default function ThemesPage() {
     if (difficulty > 0) list = list.filter((t) => t.difficulty === difficulty);
     if (horrorLevel > 0)
       list = list.filter((t) => t.horrorLevel === horrorLevel);
-    if (minPlayers > 0) list = list.filter((t) => t.maxPlayers >= minPlayers);
+    if (minPlayers > 0) {
+      list = list.filter((theme) => {
+        const minimum = theme.minPlayers > 0 ? theme.minPlayers : 1;
+        const maximum =
+          theme.maxPlayers > 0 ? theme.maxPlayers : Number.POSITIVE_INFINITY;
+        return minimum <= minPlayers && minPlayers <= maximum;
+      });
+    }
     if (minRating > 0) list = list.filter((t) => (t.rating ?? 0) >= minRating);
     if (sort === "default") list.sort((a, b) => a.id - b.id);
     else if (sort === "popular")
@@ -415,7 +422,7 @@ export default function ThemesPage() {
                         : "border-white/[0.1] text-[#8a8a8a] hover:border-white/20 hover:text-[#d8d8d8]",
                     ].join(" ")}
                   >
-                    {n === 0 ? "전체" : `${n}인+`}
+                    {n === 0 ? "전체" : `${n}인`}
                   </button>
                 ))}
               </div>

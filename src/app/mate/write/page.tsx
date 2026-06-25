@@ -37,6 +37,10 @@ const ALL_TAGS = [
 
 const OPEN_CHAT_PREFIX = 'https://open.kakao.com/o/';
 const MAX_TAG_COUNT = 5;
+const TITLE_MIN_LENGTH = 5;
+const TITLE_MAX_LENGTH = 50;
+const MIN_PEOPLE = 2;
+const MAX_PEOPLE = 6;
 
 const TIME_OPTIONS = Array.from({ length: 28 }, (_, index) => {
   const totalMinutes = 10 * 60 + index * 30;
@@ -732,7 +736,7 @@ export default function MateWritePage() {
         setMeetingTime(meeting.time);
         setDeadlineDate(deadlineValue.date);
         setDeadlineTime(deadlineValue.time);
-        setMaxPeople(Math.max(2, post.maxPeople));
+        setMaxPeople(Math.min(MAX_PEOPLE, Math.max(MIN_PEOPLE, post.maxPeople)));
         setExperienceLevel(post.experienceLevel);
         setTags(post.tags);
         setContent(post.content);
@@ -767,8 +771,14 @@ export default function MateWritePage() {
 
   const validationMessage = useMemo(() => {
     const todayValue = getTodayValue();
+    const trimmedTitle = title.trim();
     if (!themeId) return '테마를 선택해주세요.';
-    if (!title.trim()) return '제목을 입력해주세요.';
+    if (trimmedTitle.length < TITLE_MIN_LENGTH) {
+      return `제목은 ${TITLE_MIN_LENGTH}자 이상 입력해주세요.`;
+    }
+    if (trimmedTitle.length > TITLE_MAX_LENGTH) {
+      return `제목은 ${TITLE_MAX_LENGTH}자 이하로 입력해주세요.`;
+    }
     if (!content.trim()) return '내용을 입력해주세요.';
     if (!meetingDate || !meetingTime) return '모임 날짜와 시간을 입력해주세요.';
     if (!deadlineDate || !deadlineTime) return '모집 마감 날짜와 시간을 입력해주세요.';
@@ -778,7 +788,12 @@ export default function MateWritePage() {
     if (!isValidTimeValue(meetingTime) || !isValidTimeValue(deadlineTime)) {
       return '시간을 확인해주세요.';
     }
-    if (maxPeople < 2) return '최대 인원은 2명 이상이어야 합니다.';
+    if (deadlineDate === meetingDate && deadlineTime >= meetingTime) {
+      return '모집 마감 시간은 모임 시간보다 이전이어야 합니다.';
+    }
+    if (maxPeople < MIN_PEOPLE || maxPeople > MAX_PEOPLE) {
+      return `모집 인원은 ${MIN_PEOPLE}명 이상 ${MAX_PEOPLE}명 이하여야 합니다.`;
+    }
     if (!getOpenChatCode(openChatUrl).trim()) return '오픈채팅 코드를 입력해주세요.';
     return '';
   }, [content, deadlineDate, deadlineTime, maxPeople, meetingDate, meetingTime, openChatUrl, themeId, title]);
@@ -870,10 +885,13 @@ export default function MateWritePage() {
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="예) 강남점 공포 테마 같이 가실 분"
-              maxLength={80}
+              minLength={TITLE_MIN_LENGTH}
+              maxLength={TITLE_MAX_LENGTH}
               className="w-full rounded border border-[#2a2a2a] bg-[#0d0d0d] px-3 py-2.5 text-sm text-[#f5f5f5] outline-none placeholder:text-[#555] focus:border-[#e63946]"
             />
-            <p className="mt-1 text-right text-xs text-[#555]">{title.length}/80</p>
+            <p className="mt-1 text-right text-xs text-[#555]">
+              {title.length}/{TITLE_MAX_LENGTH} · 최소 {TITLE_MIN_LENGTH}자
+            </p>
           </div>
 
           <div className="mb-5">
@@ -896,10 +914,10 @@ export default function MateWritePage() {
           <div>
             <label className="mb-3 block text-xs text-[#888]">최대 인원 <span className="text-[#e63946]">*</span></label>
             <div className="flex items-center gap-2">
-              <button onClick={() => setMaxPeople((value) => Math.max(2, value - 1))} className="flex h-8 w-8 items-center justify-center rounded border border-[#2a2a2a] text-[#888] transition-colors hover:border-[#e63946] hover:text-[#e63946]">−</button>
+              <button type="button" onClick={() => setMaxPeople((value) => Math.max(MIN_PEOPLE, value - 1))} className="flex h-8 w-8 items-center justify-center rounded border border-[#2a2a2a] text-[#888] transition-colors hover:border-[#e63946] hover:text-[#e63946]">−</button>
               <span className="w-10 text-center text-sm font-bold text-[#f5f5f5]">{maxPeople}</span>
-              <button onClick={() => setMaxPeople((value) => Math.min(10, value + 1))} className="flex h-8 w-8 items-center justify-center rounded border border-[#2a2a2a] text-[#888] transition-colors hover:border-[#e63946] hover:text-[#e63946]">+</button>
-              <span className="text-xs text-[#555]">명</span>
+              <button type="button" onClick={() => setMaxPeople((value) => Math.min(MAX_PEOPLE, value + 1))} className="flex h-8 w-8 items-center justify-center rounded border border-[#2a2a2a] text-[#888] transition-colors hover:border-[#e63946] hover:text-[#e63946]">+</button>
+              <span className="text-xs text-[#555]">명 · 최대 {MAX_PEOPLE}명</span>
             </div>
           </div>
         </section>

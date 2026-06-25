@@ -211,6 +211,9 @@ export const getReviewReportErrorMessage = (error: unknown) => {
   );
 
   if (serverMessage) return serverMessage;
+  if (axiosError.code === 'ERR_CANCELED') {
+    return axiosError.message || '로그인이 필요한 기능입니다.';
+  }
   if (status === 401 || status === 403) return '로그인이 필요한 기능입니다.';
   if (status === 409) return '이미 신고한 후기입니다.';
   if (status && status >= 500) return '신고 처리 중 서버 오류가 발생했습니다.';

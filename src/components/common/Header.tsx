@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/hooks/useAuth';
 import { repairMojibake } from '@/lib/text';
 import {
   DEFAULT_PROFILE_AVATAR,
@@ -10,16 +11,22 @@ import {
 } from '@/lib/profileAvatar';
 import { getMyPageProfile } from '@/services/mypageService';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
-import { useRouter } from 'next/navigation';
 import { getToken } from '@/lib/token';
 
 export default function Header() {
-  const { isLoggedIn, hasHydrated, user, logout } = useAuthStore();
+  const { isLoggedIn, hasHydrated, user } = useAuthStore();
+  const { handleLogout } = useAuth();
   const showAuthenticatedUi = hasHydrated && isLoggedIn;
   const nickname = repairMojibake(user?.nickname);
   const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const avatarUrl = getProfileAvatar(profileImageUrl);
-  const router = useRouter();
+
+  const handleHeaderLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    await handleLogout();
+  };
 
   useEffect(() => {
     setProfileImageUrl(user?.profileImageUrl);
@@ -81,8 +88,13 @@ export default function Header() {
                   <span className="sr-only">{nickname}</span>
                 </div>
               </Link>
-              <button  onClick={() => { logout(); router.push('/'); }} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">
-                로그아웃
+              <button
+                type="button"
+                onClick={() => void handleHeaderLogout()}
+                disabled={isLoggingOut}
+                className="text-[#9a9a9a] transition-colors hover:text-[#cc2222] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isLoggingOut ? '로그아웃 중...' : '로그아웃'}
               </button>
             </>
           ) : (

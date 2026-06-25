@@ -204,25 +204,22 @@ export default function MyReviewsPage() {
   }, [deleteTarget, loadReviews]);
 
   useEffect(() => {
-    if (handledQueryAction.current || isLoading || reviews.length === 0) return;
+    if (handledQueryAction.current || isLoading) return;
 
     const action = searchParams.get('action');
-    const themeId = Number(searchParams.get('themeId') || 0);
-    const createdAt = searchParams.get('createdAt') || '';
+    const reviewId = Number(searchParams.get('reviewId') || 0);
     const created = searchParams.get('created');
 
     if (created === '1') {
       setActionMessage('후기가 등록되었습니다.');
     }
 
-    if (!action || !themeId || !createdAt) {
+    if (!action || !reviewId) {
       handledQueryAction.current = true;
       return;
     }
 
-    const target = reviews.find(
-      (review) => review.themeId === themeId && review.createdAt === createdAt,
-    );
+    const target = reviews.find((review) => review.reviewId === reviewId);
 
     handledQueryAction.current = true;
 
