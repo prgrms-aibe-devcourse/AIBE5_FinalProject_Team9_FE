@@ -89,18 +89,14 @@ export default function ReviewForm({
 
       <div className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-[#101010] p-3">
         <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg border border-white/[0.08] bg-[#1a1a1a]">
-          {themeImageUrl ? (
-            <ImageWithFallback
-              src={themeImageUrl}
-              fallbackSrc="/images/theme-placeholder.png"
-              alt={themeTitle}
-              fill
-              sizes="80px"
-              className="object-cover object-center"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-lg text-[#777]">□</div>
-          )}
+          <ImageWithFallback
+            src={themeImageUrl}
+            fallbackSrc="/images/theme-placeholder.png"
+            alt={themeTitle}
+            fill
+            sizes="80px"
+            className="object-cover object-center"
+          />
         </div>
         <div className="min-w-0">
           <p className="truncate text-base font-black text-[#f5f5f5]">{themeTitle}</p>

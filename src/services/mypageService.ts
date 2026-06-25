@@ -74,6 +74,7 @@ export interface MyPageAchievement {
 
 export interface MyPageReview {
   reviewId: number;
+  reservationId?: number;
   themeTitle: string;
   themeId: number;
   nickname: string;

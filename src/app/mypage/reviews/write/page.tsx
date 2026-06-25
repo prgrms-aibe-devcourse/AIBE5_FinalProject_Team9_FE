@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AxiosError } from 'axios';
 import ReviewForm from '@/components/review/ReviewForm';
 import { createReview, toCreateReviewRequest } from '@/services/reviewService';
+import { getThemeById, getThemes } from '@/services/themeService';
 import type { ReviewFormValues } from '@/types/review';
 
 function getApiErrorMessage(error: unknown, fallback: string) {
@@ -32,6 +33,42 @@ export default function MyReviewWritePage() {
   const themeTitle = searchParams.get('themeTitle') || '예약한 테마';
   const reservationDate = searchParams.get('reservationDate') || '예약 정보 확인';
   const [errorMessage, setErrorMessage] = useState('');
+  const [themeImageUrl, setThemeImageUrl] = useState('');
+
+  useEffect(() => {
+    if (!themeId) {
+      setThemeImageUrl('');
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadThemeImage = async () => {
+      try {
+        const theme = await getThemeById(themeId);
+        if (theme.imageUrl) {
+          if (isMounted) setThemeImageUrl(theme.imageUrl);
+          return;
+        }
+      } catch {
+        // 상세 조회가 실패하거나 이미지가 없으면 목록 데이터로 한 번 더 보강합니다.
+      }
+
+      try {
+        const themes = await getThemes();
+        const listTheme = themes.find((item) => item.id === themeId);
+        if (isMounted) setThemeImageUrl(listTheme?.imageUrl ?? '');
+      } catch {
+        if (isMounted) setThemeImageUrl('');
+      }
+    };
+
+    void loadThemeImage();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [themeId]);
 
   const handleSubmit = async (values: ReviewFormValues) => {
     setErrorMessage('');
@@ -110,6 +147,7 @@ export default function MyReviewWritePage() {
           <ReviewForm
             themeId={themeId}
             themeTitle={themeTitle}
+            themeImageUrl={themeImageUrl}
             reservationId={reservationId}
             reservationDate={reservationDate}
             errorMessage={errorMessage}

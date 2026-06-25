@@ -21,6 +21,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { getToken } from '@/lib/token';
 
 const REVIEW_ID_MISSING_MESSAGE = '후기 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.';
+type ReviewSortOrder = 'latest' | 'oldest';
 
 function getApiErrorMessage(error: unknown, fallback: string) {
   if (error instanceof AxiosError) {
@@ -45,6 +46,11 @@ function formatReviewDate(value: string) {
     String(date.getMonth() + 1).padStart(2, '0'),
     String(date.getDate()).padStart(2, '0'),
   ].join('.');
+}
+
+function getReviewCreatedTime(review: MyPageReview) {
+  const time = new Date(review.createdAt).getTime();
+  return Number.isNaN(time) ? 0 : time;
 }
 
 function ReviewEditModal({
@@ -121,6 +127,7 @@ export default function MyReviewsPage() {
   const [deleteTarget, setDeleteTarget] = useState<MyPageReview | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [sortOrder, setSortOrder] = useState<ReviewSortOrder>('latest');
   const handledQueryAction = useRef(false);
 
   const loadReviews = useCallback(async () => {
@@ -232,13 +239,22 @@ export default function MyReviewsPage() {
   }, [handleDelete, isLoading, openEditModal, reviews, searchParams]);
 
   const reviewCards = useMemo(
-    () =>
-      reviews.map((review) => ({
+    () => {
+      const sortedReviews = [...reviews].sort((a, b) => {
+        const dateDifference = getReviewCreatedTime(b) - getReviewCreatedTime(a);
+        const idDifference = (b.reviewId ?? 0) - (a.reviewId ?? 0);
+        const latestFirst = dateDifference || idDifference;
+
+        return sortOrder === 'latest' ? latestFirst : -latestFirst;
+      });
+
+      return sortedReviews.map((review) => ({
         ...review,
         parsedTags: parseReviewTags(review.tags),
         imageUrl: review.imageUrls[0] || '/images/theme-placeholder.png',
-      })),
-    [reviews],
+      }));
+    },
+    [reviews, sortOrder],
   );
 
   const handleUpdateSubmit = async (values: ReviewFormValues) => {
@@ -295,16 +311,42 @@ export default function MyReviewsPage() {
       </div>
 
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-6 flex items-center justify-between gap-4">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-[#f5f5f5]">내 후기</h1>
             <p className="mt-1 text-sm font-medium text-[#8a8a8a]">
               작성한 후기를 수정하거나 정리할 수 있습니다.
             </p>
           </div>
-          <span className="rounded-full border border-white/[0.08] bg-[#181818] px-3 py-1 text-xs font-black text-[#888]">
-            {reviews.length}개
-          </span>
+          <div className="flex items-center gap-2">
+            <div
+              className="inline-flex rounded-lg border border-white/[0.08] bg-[#141414] p-0.5"
+              aria-label="후기 정렬"
+            >
+              {([
+                ['latest', '최신순'],
+                ['oldest', '오래된순'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setSortOrder(value)}
+                  aria-pressed={sortOrder === value}
+                  className={[
+                    'h-7 rounded-md px-2.5 text-[11px] font-black transition-all',
+                    sortOrder === value
+                      ? 'bg-[#2a1718] text-[#ff6b72] shadow-[inset_0_0_0_1px_rgba(204,34,34,0.28)]'
+                      : 'text-[#777] hover:text-[#c8c8c8]',
+                  ].join(' ')}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="rounded-full border border-white/[0.08] bg-[#181818] px-3 py-1 text-xs font-black text-[#888]">
+              {reviews.length}개
+            </span>
+          </div>
         </div>
 
         {actionMessage && (

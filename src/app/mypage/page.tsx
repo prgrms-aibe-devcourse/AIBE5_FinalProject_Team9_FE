@@ -831,6 +831,7 @@ function mapReservationToUi(
   reservation: MyPageReservation,
   type: "UPCOMING" | "PAST",
   theme?: Theme,
+  reviewedReservationIds?: Set<number>,
 ): Reservation {
   const dateParts = getDateParts(reservation.reservationDate);
   const status: ReservationStatus =
@@ -857,7 +858,10 @@ function mapReservationToUi(
     clearTime: status === "cleared" ? formatClearTime(reservation.clearTime) : undefined,
     dday: type === "UPCOMING" ? getDDayLabel(reservation.reservationDate) : undefined,
     imageUrl: apiReservation.thumbnailUrl || apiReservation.imageUrl || theme?.imageUrl || THEME_PLACEHOLDER_IMAGE,
-    hasReview: reservation.hasReview,
+    hasReview:
+      reservation.hasReview ||
+      reviewedReservationIds?.has(reservation.reservationId) ||
+      false,
   };
 }
 
@@ -1525,9 +1529,7 @@ function getStatusStyle(reservation: Reservation) {
 
 function getActionText(reservation: Reservation) {
   if (reservation.status === "upcoming") return K.change;
-  if (reservation.status === "cleared")
-    return reservation.hasReview ? K.reviewView : K.reviewWrite;
-  return K.reviewWrite;
+  return reservation.hasReview ? K.reviewView : K.reviewWrite;
 }
 
 function ReservationTabContent() {
@@ -1544,13 +1546,19 @@ function ReservationTabContent() {
       setErrorMessage("");
 
       try {
-        const [upcoming, past, themes] = await Promise.all([
+        const [upcoming, past, themes, reviews] = await Promise.all([
           getMyPageReservations("UPCOMING"),
           getMyPageReservations("PAST"),
           getThemes().catch(() => [] as Theme[]),
+          getMyPageReviews().catch(() => [] as MyPageReview[]),
         ]);
 
         if (!isMounted) return;
+
+        const reviewedReservationIds = new Set<number>();
+        reviews.forEach((review) => {
+          if (review.reservationId) reviewedReservationIds.add(review.reservationId);
+        });
 
         setUpcomingReservations(
           upcoming.map((reservation) =>
@@ -1558,6 +1566,7 @@ function ReservationTabContent() {
               reservation,
               "UPCOMING",
               findThemeForReservation(reservation, themes),
+              reviewedReservationIds,
             ),
           ),
         );
@@ -1567,6 +1576,7 @@ function ReservationTabContent() {
               reservation,
               "PAST",
               findThemeForReservation(reservation, themes),
+              reviewedReservationIds,
             ),
           ),
         );
