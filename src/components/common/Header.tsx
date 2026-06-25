@@ -1,14 +1,43 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { repairMojibake } from '@/lib/text';
+import {
+  DEFAULT_PROFILE_AVATAR,
+  getProfileAvatar,
+} from '@/lib/profileAvatar';
+import { getMyPageProfile } from '@/services/mypageService';
+import ImageWithFallback from '@/components/common/ImageWithFallback';
 import { useRouter } from 'next/navigation';
 
 export default function Header() {
   const { isLoggedIn, user, logout } = useAuthStore();
   const nickname = repairMojibake(user?.nickname);
-    const router = useRouter();
+  const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl);
+  const avatarUrl = getProfileAvatar(profileImageUrl);
+  const router = useRouter();
+
+  useEffect(() => {
+    setProfileImageUrl(user?.profileImageUrl);
+    if (!isLoggedIn) return;
+
+    let isMounted = true;
+
+    getMyPageProfile()
+      .then((profile) => {
+        if (isMounted) setProfileImageUrl(profile.profileCharacterImageUrl);
+      })
+      .catch(() => {
+        if (isMounted) setProfileImageUrl(undefined);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isLoggedIn, user?.profileImageUrl]);
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#241414] bg-[#0c0c0c]/96 backdrop-blur">
       <div className="gg-container grid h-[52px] grid-cols-[1fr_auto_1fr] items-center">
@@ -36,11 +65,18 @@ export default function Header() {
             <>
               <Link href="/mypage" title={nickname}>
                 <div
-                  className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-[#1a1a1a] bg-cover bg-center text-[11px] text-[#f5f5f5]"
-                  style={user?.profileImageUrl ? { backgroundImage: `url('${user.profileImageUrl}')` } : undefined}
+                  className="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-black text-[11px] text-[#f5f5f5]"
                   aria-label={nickname}
                 >
-                  {user?.profileImageUrl ? <span className="sr-only">{nickname}</span> : nickname?.[0]?.toUpperCase() ?? 'U'}
+                  <ImageWithFallback
+                    src={avatarUrl}
+                    fallbackSrc={DEFAULT_PROFILE_AVATAR}
+                    alt=""
+                    fill
+                    sizes="28px"
+                    className="object-cover p-0.5"
+                  />
+                  <span className="sr-only">{nickname}</span>
                 </div>
               </Link>
               <button  onClick={() => { logout(); router.push('/'); }} className="text-[#9a9a9a] transition-colors hover:text-[#cc2222]">

@@ -21,6 +21,10 @@ import {
   type MyPageStats,
 } from "@/services/mypageService";
 import { getThemes } from "@/services/themeService";
+import {
+  DEFAULT_PROFILE_AVATAR,
+  getProfileAvatar,
+} from "@/lib/profileAvatar";
 import type { MyPageMatePost } from "@/types/mate";
 import type { Theme } from "@/types/theme";
 
@@ -1106,14 +1110,13 @@ function ProfileSummaryCard({
   errorMessage: string;
 }) {
   const [avatarSrc, setAvatarSrc] = useState(
-    "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
+    getProfileAvatar(profile.profileCharacterImageUrl),
   );
   const statsItems = getStatsItems(stats, isLoading);
 
   useEffect(() => {
     setAvatarSrc(
-      profile.profileCharacterImageUrl ||
-        "/images/%EB%A0%B9%EB%83%A5/ghost-cat-avatar.png",
+      getProfileAvatar(profile.profileCharacterImageUrl),
     );
   }, [profile.profileCharacterImageUrl]);
 
@@ -1128,11 +1131,7 @@ function ProfileSummaryCard({
               fill
               sizes="98px"
               className="object-cover p-3"
-              onError={() =>
-                setAvatarSrc(
-                  "/images/%EB%A0%B9%EB%83%A52_%ED%88%AC%EB%AA%85.png",
-                )
-              }
+              onError={() => setAvatarSrc(DEFAULT_PROFILE_AVATAR)}
             />
           </div>
           <div className="min-w-0">
