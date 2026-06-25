@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { OwnerReservation, OwnerReservationStats } from '@/types/reservation';
-import { getOwnerReservations, getOwnerReservationStats } from '@/services/ownerService';
+import { getOwnerReservations, getOwnerReservationStats} from '@/services/ownerService';
 import { getOwnerThemes } from '@/services/themeService';
 
 const STATUS_OPTS = ['상태 전체', '대기', '확정', '완료', '취소'];
@@ -40,21 +40,19 @@ export default function OwnerReservationsPage() {
     const [reservations, setReservations] = useState<OwnerReservation[]>([]);
     const [statsData, setStatsData] = useState<OwnerReservationStats | null>(null);
     const [totalElements, setTotalElements] = useState(0);
-    const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
         const fetchData = async () => {
             const [resData, stats] = await Promise.all([
-                getOwnerReservations({ page: page - 1, size: PAGE_SIZE }),
+                getOwnerReservations({ page:0, size: 9999 }),
                 getOwnerReservationStats(),
             ]);
             setReservations(resData.content);
             setTotalElements(resData.totalElements);
-            setTotalPages(resData.totalPages);
             setStatsData(stats);
         };
         fetchData();
-    }, [page]);
+    }, []);
 
     useEffect(() => {
         getOwnerThemes().then(themes => {
@@ -75,7 +73,7 @@ export default function OwnerReservationsPage() {
             return true;
         });
     }, [reservations, themeFilter, statusFilter, dateFrom, dateTo, search, activeTab]);
-
+    const totalPages = useMemo(() => Math.ceil(filtered.length / PAGE_SIZE), [filtered]);
     const tabCounts = useMemo(() => ({
         전체: reservations.length,
         완료: reservations.filter(r => r.status === 'COMPLETED').length,
