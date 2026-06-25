@@ -17,6 +17,8 @@ import {
 } from '@/services/reviewService';
 import type { ReviewFormValues } from '@/types/review';
 import { AxiosError } from 'axios';
+import { useAuthStore } from '@/stores/authStore';
+import { getToken } from '@/lib/token';
 
 const REVIEW_ID_MISSING_MESSAGE = '후기 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.';
 
@@ -109,6 +111,8 @@ function ReviewEditModal({
 
 export default function MyReviewsPage() {
   const searchParams = useSearchParams();
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [reviews, setReviews] = useState<MyPageReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pageError, setPageError] = useState('');
@@ -138,8 +142,13 @@ export default function MyReviewsPage() {
   }, []);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+    if (!isLoggedIn || !getToken()) {
+      setIsLoading(false);
+      return;
+    }
     void loadReviews();
-  }, [loadReviews]);
+  }, [hasHydrated, isLoggedIn, loadReviews]);
 
   const openEditModal = useCallback((review: MyPageReview) => {
     setModalError('');

@@ -34,6 +34,7 @@ import {
 import { Theme, ThemeDetail } from "@/types/theme";
 import { formatRelativeTime } from "@/lib/formatDate";
 import { useAuthStore } from "@/stores/authStore";
+import { getToken } from "@/lib/token";
 
 const STATUS_LABEL: Record<MatePostStatus, string> = {
   DRAFT: "임시저장",
@@ -953,6 +954,7 @@ export default function MateDetailPage({
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const postId = Number(mateId);
   const [post, setPost] = useState<MatePost | null>(null);
   const [participants, setParticipants] =
@@ -997,7 +999,9 @@ export default function MateDetailPage({
 
     Promise.allSettled([
       getMatePostById(postId),
-      isLoggedIn ? getMyMateParticipations() : Promise.resolve([]),
+      hasHydrated && isLoggedIn && getToken()
+        ? getMyMateParticipations()
+        : Promise.resolve([]),
     ])
       .then(([postResult, myParticipationsResult]) => {
         if (!isMounted) return;
@@ -1024,7 +1028,7 @@ export default function MateDetailPage({
     return () => {
       isMounted = false;
     };
-  }, [postId, isLoggedIn]);
+  }, [postId, hasHydrated, isLoggedIn]);
 
   useEffect(() => {
     if (!post) return;

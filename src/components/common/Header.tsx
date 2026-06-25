@@ -11,9 +11,11 @@ import {
 import { getMyPageProfile } from '@/services/mypageService';
 import ImageWithFallback from '@/components/common/ImageWithFallback';
 import { useRouter } from 'next/navigation';
+import { getToken } from '@/lib/token';
 
 export default function Header() {
-  const { isLoggedIn, user, logout } = useAuthStore();
+  const { isLoggedIn, hasHydrated, user, logout } = useAuthStore();
+  const showAuthenticatedUi = hasHydrated && isLoggedIn;
   const nickname = repairMojibake(user?.nickname);
   const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl);
   const avatarUrl = getProfileAvatar(profileImageUrl);
@@ -21,7 +23,7 @@ export default function Header() {
 
   useEffect(() => {
     setProfileImageUrl(user?.profileImageUrl);
-    if (!isLoggedIn) return;
+    if (!hasHydrated || !isLoggedIn || !getToken()) return;
 
     let isMounted = true;
 
@@ -36,7 +38,7 @@ export default function Header() {
     return () => {
       isMounted = false;
     };
-  }, [isLoggedIn, user?.profileImageUrl]);
+  }, [hasHydrated, isLoggedIn, user?.profileImageUrl]);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-[#241414] bg-[#0c0c0c]/96 backdrop-blur">
@@ -61,7 +63,7 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center justify-self-end gap-3 text-[12px] font-bold">
-          {isLoggedIn ? (
+          {showAuthenticatedUi ? (
             <>
               <Link href="/mypage" title={nickname}>
                 <div

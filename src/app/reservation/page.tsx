@@ -992,6 +992,7 @@ function PaymentStep({
   const agreeAll = requiredAgreed && agreeMarketing;
   const totalPlayers = adultCount + teenCount;
   const totalAmount = adultCount * (theme.price ?? 25000) + teenCount * TEEN_PRICE;
+  const displayPaymentAmount = readyResult?.amount ?? totalAmount;
   const displayTime = slot ? formatSlotRange(slot) : time;
   const selectedTimeSlotId = slot?.timeSlotId ?? timeSlotId ?? null;
   const meetsMinPlayers = totalPlayers >= minPlayers;
@@ -1189,7 +1190,12 @@ function PaymentStep({
   };
 
   return (
-    <div className="relative mx-auto max-w-5xl px-4 pb-28 pt-8 sm:px-6 lg:px-8 lg:pb-12">
+    <div
+      className={[
+        'relative mx-auto max-w-5xl px-4 pt-8 sm:px-6 lg:px-8 lg:pb-12',
+        readyResult ? 'pb-12' : 'pb-28',
+      ].join(' ')}
+    >
       <div className="mb-7">
         <p className="mb-2 text-[10px] font-black tracking-[0.32em] text-[#cc2222]">
           {'// RESERVATION CHECKOUT'}
@@ -1361,7 +1367,7 @@ function PaymentStep({
               <h2 className="mt-2 text-lg font-black text-[#f5f5f5]">최종 결제 금액</h2>
             </div>
             <span className="text-right text-[28px] font-black leading-none text-[#e63946] sm:text-[34px]">
-              {formatPrice(totalAmount)}
+              {formatPrice(displayPaymentAmount)}
             </span>
           </div>
           <div className="grid gap-2 text-sm font-bold text-[#9a9a9a] sm:grid-cols-3">
@@ -1391,23 +1397,20 @@ function PaymentStep({
 
         {readyResult && (
           <section className="rounded-[18px] border border-[#65d6aa]/25 bg-[#65d6aa]/10 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.24)] sm:p-6">
-            <SectionTitle>Toss 결제창</SectionTitle>
-            <div className="grid gap-2 text-sm font-bold text-[#9ad8c0] sm:grid-cols-2">
-              <div className="rounded-[12px] border border-white/[0.08] bg-[#0b0b0b]/60 px-4 py-3">
-                예약 ID <span className="ml-2 text-[#f5f5f5]">{readyResult.reservationId}</span>
-              </div>
-              <div className="rounded-[12px] border border-white/[0.08] bg-[#0b0b0b]/60 px-4 py-3">
-                결제 ID <span className="ml-2 text-[#f5f5f5]">{readyResult.paymentId}</span>
-              </div>
-              <div className="rounded-[12px] border border-white/[0.08] bg-[#0b0b0b]/60 px-4 py-3 sm:col-span-2">
-                주문 ID <span className="ml-2 break-all text-[#f5f5f5]">{readyResult.orderId}</span>
-              </div>
-            </div>
-            <div className="mt-5 rounded-[14px] border border-white/[0.08] bg-[#0b0b0b]/60 px-4 py-4">
-              <p className="text-sm font-black text-[#f5f5f5]">{readyResult.orderName}</p>
-              <p className="mt-2 text-xs font-bold leading-5 text-[#8aa99c]">
-                API 개별 연동 키용 Toss 결제창을 엽니다. 결제 인증이 성공하면 success callback에서 paymentKey, orderId, amount를 확인한 뒤 백엔드 confirm API를 호출합니다.
+            <SectionTitle>결제 진행</SectionTitle>
+            <div className="rounded-[14px] border border-white/[0.08] bg-[#0b0b0b]/60 px-4 py-4 sm:px-5">
+              <p className="text-sm font-black text-[#f5f5f5]">
+                결제창에서 결제를 완료하면 예약이 확정됩니다.
               </p>
+              <p className="mt-2 text-xs font-bold leading-5 text-[#8aa99c]">
+                결제를 진행하지 않으면 예약 대기 상태가 취소될 수 있습니다.
+              </p>
+              <div className="mt-4 flex items-end justify-between gap-4 border-t border-white/[0.08] pt-4">
+                <span className="text-xs font-bold text-[#7fae9b]">총 결제 금액</span>
+                <strong className="text-xl font-black leading-none text-[#ff6673] sm:text-2xl">
+                  {formatPrice(displayPaymentAmount)}
+                </strong>
+              </div>
             </div>
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <button
@@ -1429,46 +1432,50 @@ function PaymentStep({
                 disabled={isSubmitting || isRequestingPayment}
                 className="h-11 flex-1 rounded-[10px] border border-white/[0.12] px-4 text-xs font-black text-[#d8d8d8] transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:text-[#555]"
               >
-                예약 대기 취소
+                예약 취소
               </button>
             </div>
           </section>
         )}
 
-        <button
-          type="button"
-          onClick={handlePay}
-          disabled={!canPay}
-          className={[
-            'hidden w-full rounded-[14px] py-4 text-base font-black transition-all sm:block',
-            canPay
-              ? 'bg-[#e63946] text-white shadow-[0_18px_42px_rgba(230,57,70,0.18)] hover:bg-[#ff4654] hover:shadow-[0_20px_52px_rgba(230,57,70,0.28)]'
-              : 'cursor-not-allowed border border-white/[0.08] bg-[#1f1f1f] text-[#666]',
-          ].join(' ')}
-        >
-          {isSubmitting ? '처리 중...' : '결제 준비하기'}
-        </button>
-      </div>
-
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/[0.08] bg-[#090909]/94 px-4 py-3 shadow-[0_-18px_48px_rgba(0,0,0,0.38)] backdrop-blur sm:hidden">
-        <div className="mx-auto flex max-w-5xl items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold text-[#777]">총 {totalPlayers}명 · 성인 {adultCount} / 청소년 {teenCount}</p>
-            <p className="mt-0.5 text-lg font-black text-[#e63946]">{formatPrice(totalAmount)}</p>
-          </div>
+        {!readyResult && (
           <button
             type="button"
             onClick={handlePay}
             disabled={!canPay}
             className={[
-              'h-12 shrink-0 rounded-[12px] px-5 text-sm font-black transition-all',
-              canPay ? 'bg-[#e63946] text-white hover:bg-[#ff4654]' : 'cursor-not-allowed bg-[#242424] text-[#666]',
+              'hidden w-full rounded-[14px] py-4 text-base font-black transition-all sm:block',
+              canPay
+                ? 'bg-[#e63946] text-white shadow-[0_18px_42px_rgba(230,57,70,0.18)] hover:bg-[#ff4654] hover:shadow-[0_20px_52px_rgba(230,57,70,0.28)]'
+                : 'cursor-not-allowed border border-white/[0.08] bg-[#1f1f1f] text-[#666]',
             ].join(' ')}
           >
-            {isSubmitting ? '처리 중...' : '결제 준비'}
+            {isSubmitting ? '처리 중...' : '결제 준비하기'}
           </button>
-        </div>
+        )}
       </div>
+
+      {!readyResult && (
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/[0.08] bg-[#090909]/94 px-4 py-3 shadow-[0_-18px_48px_rgba(0,0,0,0.38)] backdrop-blur sm:hidden">
+          <div className="mx-auto flex max-w-5xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-[#777]">총 {totalPlayers}명 · 성인 {adultCount} / 청소년 {teenCount}</p>
+              <p className="mt-0.5 text-lg font-black text-[#e63946]">{formatPrice(totalAmount)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handlePay}
+              disabled={!canPay}
+              className={[
+                'h-12 shrink-0 rounded-[12px] px-5 text-sm font-black transition-all',
+                canPay ? 'bg-[#e63946] text-white hover:bg-[#ff4654]' : 'cursor-not-allowed bg-[#242424] text-[#666]',
+              ].join(' ')}
+            >
+              {isSubmitting ? '처리 중...' : '결제 준비'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={Boolean(loginRedirectUrl)}

@@ -8,6 +8,7 @@ import { changePassword, getAuthErrorMessage, getMe } from '@/services/authServi
 import { getMyPageProfile } from '@/services/mypageService';
 import { deleteMyAccount, updateMyProfile } from '@/services/userService';
 import { useAuthStore } from '@/stores/authStore';
+import { getToken } from '@/lib/token';
 
 function Toggle({ on, onToggle, disabled = false }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
   return (
@@ -41,6 +42,8 @@ const normalizeGender = (value?: string) => {
 export default function MySettingsPage() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const setUser = useAuthStore((state) => state.setUser);
   const logout = useAuthStore((state) => state.logout);
   const [nickname, setNickname] = useState('');
@@ -61,6 +64,12 @@ export default function MySettingsPage() {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+    if (!isLoggedIn || !getToken()) {
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     Promise.allSettled([getMyPageProfile(), getMe()])
@@ -99,7 +108,7 @@ export default function MySettingsPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [hasHydrated, isLoggedIn]);
 
   const handleSave = async () => {
     setStatusMessage('');

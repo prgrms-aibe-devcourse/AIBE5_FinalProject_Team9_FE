@@ -27,6 +27,8 @@ import {
 } from "@/lib/profileAvatar";
 import type { MyPageMatePost } from "@/types/mate";
 import type { Theme } from "@/types/theme";
+import { useAuthStore } from "@/stores/authStore";
+import { getToken } from "@/lib/token";
 
 type TabKey = "reservation" | "achievement" | "activity";
 type ReservationStatus = "upcoming" | "cleared" | "failed";
@@ -2360,6 +2362,8 @@ function MateStatusBadge({ status }: { status: MateActivityStatus }) {
 }
 
 export default function MyPage() {
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const hasHydrated = useAuthStore((state) => state.hasHydrated);
   const [tab, setTab] = useState<TabKey>("reservation");
   const [profile, setProfile] = useState<MyPageProfile>(DEFAULT_PROFILE);
   const [stats, setStats] = useState<MyPageStats>(DEFAULT_STATS);
@@ -2382,6 +2386,12 @@ export default function MyPage() {
   }, []);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+    if (!isLoggedIn || !getToken()) {
+      setIsProfileLoading(false);
+      return;
+    }
+
     let isMounted = true;
 
     setIsProfileLoading(true);
@@ -2416,13 +2426,32 @@ export default function MyPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [hasHydrated, isLoggedIn]);
 
   const handleTabChange = (nextTab: TabKey) => {
     setTab(nextTab);
     const url = nextTab === "reservation" ? "/mypage?tab=reservation" : `/mypage?tab=${nextTab}`;
     window.history.replaceState(null, "", url);
   };
+
+  if (!hasHydrated) return null;
+
+  if (!isLoggedIn || !getToken()) {
+    return (
+      <main className="flex min-h-[70vh] items-center justify-center bg-[#0b0b0b] px-5 text-[#f5f5f5]">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#141414] px-8 py-10 text-center">
+          <h1 className="text-xl font-black">로그인이 필요합니다</h1>
+          <p className="mt-2 text-sm text-[#888]">마이페이지는 로그인 후 이용할 수 있습니다.</p>
+          <Link
+            href="/login?redirect=%2Fmypage"
+            className="mt-6 inline-flex rounded-lg bg-[#cc2222] px-5 py-3 text-sm font-black text-white"
+          >
+            로그인하기
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#0b0b0b] text-[#f5f5f5]">
