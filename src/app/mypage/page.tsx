@@ -1043,16 +1043,29 @@ function mapAchievementToUi(
     typeof apiProgress === "number" &&
     typeof progressMeta.total === "number" &&
     progressMeta.total > 0;
+  const displayedProgress = hasApiProgress ? apiProgress : progressMeta.progress;
+  const total = progressMeta.total;
+  const totalPlayCompleted =
+    achievement.conditionType === "TOTAL_PLAY_COUNT" &&
+    typeof displayedProgress === "number" &&
+    typeof total === "number" &&
+    displayedProgress >= total;
+  const clearTimeCompleted =
+    achievement.conditionType === "CLEAR_TIME_UNDER" &&
+    typeof stats?.bestClearTime === "number" &&
+    typeof total === "number" &&
+    stats.bestClearTime <= total * 60;
+  const completed = acquired || totalPlayCompleted || clearTimeCompleted;
   const presentation = getAchievementPresentationMeta(achievement, index);
 
   return {
     id: achievement.id ?? achievement.achievementId ?? index,
     name: achievement.name || "업적",
     condition: achievement.description || achievement.conditionType || "업적 조건 정보가 없습니다.",
-    status: acquired ? "complete" : "progress",
+    status: completed ? "complete" : "progress",
     icon: presentation.icon,
-    progress: hasApiProgress ? apiProgress : progressMeta.progress,
-    total: progressMeta.total,
+    progress: displayedProgress,
+    total,
     progressLabel: hasApiProgress
       ? `${apiProgress}/${progressMeta.total}`
       : progressMeta.progressLabel,
@@ -1882,7 +1895,10 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
   return (
     <article
       className={[
-        "relative min-h-[132px] rounded-xl border border-white/[0.075] bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] p-5 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all",
+        "relative min-h-[132px] rounded-xl border bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.045),transparent_34%),linear-gradient(180deg,rgba(24,24,24,0.94),rgba(18,18,18,0.91)),rgba(18,18,18,0.9)] p-5 shadow-[0_18px_42px_rgba(0,0,0,0.28)] transition-all",
+        complete
+          ? "border-[#2ecc71]/30 shadow-[inset_0_0_28px_rgba(46,204,113,0.045),0_18px_42px_rgba(0,0,0,0.32)]"
+          : "border-white/[0.075]",
         locked
           ? "opacity-48"
           : "hover:border-white/[0.13] hover:bg-white/[0.018] hover:shadow-[inset_0_0_28px_rgba(204,34,34,0.025),0_18px_42px_rgba(0,0,0,0.32)]",
@@ -1916,10 +1932,27 @@ function AchievementCard({ achievement }: { achievement: AchievementItem }) {
           </p>
 
           {complete && (
-            <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-black text-[#b9c7bd]">
-              <span className="text-[#2ecc71]">{"\u2713"}</span>
-              {"\ud68d\ub4dd \uc644\ub8cc"}
-            </p>
+            <div className="mt-4">
+              <div className="mb-1.5 flex items-center justify-between gap-3 text-xs font-black">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-[#2ecc71]/35 bg-[#2ecc71]/10 px-2 py-0.5 text-[#65dc95]">
+                  <span>{"\u2713"}</span>
+                  {"획득 완료"}
+                </span>
+                {hasMeasuredProgress && (
+                  <span className="text-[#9bc8ab]">
+                    {achievement.progressLabel ?? `${achievement.progress}/${achievement.total}`}
+                  </span>
+                )}
+              </div>
+              {hasMeasuredProgress && (
+                <div className="h-1.5 overflow-hidden rounded-full bg-[#2ecc71]/10">
+                  <div
+                    className="h-full rounded-full bg-[#2ecc71] shadow-[0_0_12px_rgba(46,204,113,0.3)]"
+                    style={{ width: "100%" }}
+                  />
+                </div>
+              )}
+            </div>
           )}
           {inProgress && (
             <div className="mt-4">

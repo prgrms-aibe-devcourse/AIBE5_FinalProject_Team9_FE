@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/authStore';
+import { getToken } from '@/lib/token';
+import {
+    clearMinigame,
+    isMinigameAchievementAcquired,
+} from '@/services/minigameService';
 
 // ─── SOUND ───
 let _audioCtx: AudioContext | null = null;
@@ -260,6 +266,9 @@ export default function MinigamePage() {
     const [screen, setScreen] = useState<Screen>('calendar');
     const [transitioning, setTransitioning] = useState(false);
     const router = useRouter();
+    const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+    const hasHydrated = useAuthStore((state) => state.hasHydrated);
+    const clearReportStartedRef = useRef(false);
 
     // Timer
     const [secondsLeft, setSecondsLeft] = useState(TOTAL_SECONDS);
@@ -296,6 +305,43 @@ export default function MinigamePage() {
 
     // Ending
     const [clearTime, setClearTime] = useState(0);
+    const [achievementNotice, setAchievementNotice] = useState('');
+    const [achievementNoticeTone, setAchievementNoticeTone] =
+        useState<'success' | 'warning' | 'error' | ''>('');
+
+    const reportMinigameClear = useCallback(async () => {
+        if (clearReportStartedRef.current) return;
+        clearReportStartedRef.current = true;
+
+        if (!hasHydrated || !isLoggedIn || !getToken()) {
+            setAchievementNotice('업적을 계정에 저장하려면 로그인이 필요합니다.');
+            setAchievementNoticeTone('warning');
+            return;
+        }
+
+        try {
+            const result = await clearMinigame();
+
+            if (result.newAcquired) {
+                setAchievementNotice(`업적 획득: ${result.achievement.name}`);
+                setAchievementNoticeTone('success');
+            }
+
+            try {
+                const acquired = await isMinigameAchievementAcquired();
+                if (!acquired) {
+                    setAchievementNotice('클리어 기록은 전송됐지만 업적 반영을 확인하지 못했습니다.');
+                    setAchievementNoticeTone('error');
+                }
+            } catch {
+                setAchievementNotice('클리어 기록은 저장됐지만 업적 상태를 다시 확인하지 못했습니다.');
+                setAchievementNoticeTone('warning');
+            }
+        } catch {
+            setAchievementNotice('클리어 기록을 계정에 저장하지 못했습니다.');
+            setAchievementNoticeTone('error');
+        }
+    }, [hasHydrated, isLoggedIn]);
 
     // ─── SCREEN TRANSITION ───
     const goToScreen = useCallback((next: Screen) => {
@@ -378,6 +424,9 @@ export default function MinigamePage() {
         setMissingRevealed(false); setMsg2(''); setMsg2Type(''); setLock2(false); setChoicesDisabled(false);
         setCal3State(0); setDocStamped(false); setInput3(''); setMsg3(''); setMsg3Type(''); setLock3(false);
         setChoco1Open(false); setChoco2Open(false); setChoco3Open(false);
+        clearReportStartedRef.current = false;
+        setAchievementNotice('');
+        setAchievementNoticeTone('');
         goToScreen('opening');
     };
 
@@ -429,7 +478,7 @@ export default function MinigamePage() {
     };
 
     // ─── STAGE 3 ───
-    const checkAnswer3 = async () => {
+    const checkAnswer3 = () => {
         if (input3.trim() === '0702') {
             setMsg3('문이 열리는 소리가 들립니다.');
             setMsg3Type('success');
@@ -437,21 +486,7 @@ export default function MinigamePage() {
             playSound('correct');
             clearInterval(timerRef.current!);
             setClearTime(secondsLeft);
-
-            const token = localStorage.getItem('accessToken'); // ← 여기
-            if (token) {
-                try {
-                    await fetch('/api/minigames/clear', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                        },
-                    });
-                } catch (e) {
-                    console.error('업적 지급 실패', e);
-                }
-            }
-
+            void reportMinigameClear();
             setTimeout(() => { playSound('ending'); goToScreen('ending'); }, 2000);
         } else {
             setMsg3('아직 그날이 아닙니다. (−10초)');
@@ -844,6 +879,50 @@ export default function MinigamePage() {
                         }<br />
                         하지만 문 밖에는 또 다른 공포 테마들이 기다리고 있습니다.
                     </div>
+                    {achievementNotice && (
+                        <div
+                            style={{
+                                maxWidth: 460,
+                                border: `1px solid ${
+                                    achievementNoticeTone === 'success'
+                                        ? '#2ecc71'
+                                        : achievementNoticeTone === 'warning'
+                                          ? '#d7b46a'
+                                          : '#e63946'
+                                }`,
+                                borderRadius: 6,
+                                padding: '10px 14px',
+                                color:
+                                    achievementNoticeTone === 'success'
+                                        ? '#7ee2a7'
+                                        : achievementNoticeTone === 'warning'
+                                          ? '#f0c674'
+                                          : '#ff7777',
+                                background: 'rgba(12,12,12,0.88)',
+                                fontSize: 13,
+                                fontWeight: 700,
+                            }}
+                        >
+                            {achievementNotice}
+                            {achievementNoticeTone === 'warning' && (
+                                <button
+                                    type="button"
+                                    onClick={() => router.push('/login?redirect=%2Fminigame')}
+                                    style={{
+                                        marginLeft: 10,
+                                        border: 0,
+                                        background: 'transparent',
+                                        color: '#fff',
+                                        fontWeight: 800,
+                                        textDecoration: 'underline',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    로그인
+                                </button>
+                            )}
+                        </div>
+                    )}
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
                         <button className="ending-btn primary" onClick={() => router.push('/themes')}>추천 테마 보러가기</button>
                         <button className="ending-btn secondary" onClick={() => router.push('/')}>메인 페이지로 이동하기</button>

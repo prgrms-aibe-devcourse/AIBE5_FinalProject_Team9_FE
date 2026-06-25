@@ -41,6 +41,7 @@ const AUTH_REQUIRED_PATHS = [
   '/api/auth/password',
   '/api/auth/withdraw',
   '/api/mypage',
+  '/api/minigames',
   '/api/payments',
   '/api/owner',
   '/api/admin',
