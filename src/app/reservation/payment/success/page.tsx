@@ -20,6 +20,7 @@ function PaymentSuccessContent() {
     useReservationStore();
   const [message, setMessage] = useState('결제 승인을 확인하는 중입니다.');
   const [error, setError] = useState('');
+  const [isConfirmationUncertain, setIsConfirmationUncertain] = useState(false);
 
   useEffect(() => {
     if (didRunRef.current) return;
@@ -49,7 +50,10 @@ function PaymentSuccessContent() {
       }
 
       if (!pending || pending.orderId !== orderId) {
-        setError('진행 중인 결제 정보를 찾을 수 없습니다.');
+        setIsConfirmationUncertain(true);
+        setError(
+          '결제 확인 중 문제가 발생했습니다. 관리자에게 문의하거나 잠시 후 예약 내역을 확인해주세요.',
+        );
         return;
       }
 
@@ -78,9 +82,13 @@ function PaymentSuccessContent() {
 
         setMessage('결제 승인이 완료되었습니다. 예약 완료 화면으로 이동합니다.');
         router.replace('/reservation/complete');
-      } catch (confirmError) {
-        setError(confirmError instanceof Error ? confirmError.message : '결제 승인에 실패했습니다.');
-        await cancelPendingReservation();
+      } catch {
+        // success callback 이후에는 결제가 서버에서 승인됐지만 응답만 유실됐을 수 있습니다.
+        // 승인 상태가 불명확한 경우 예약을 취소하지 않고 백엔드 상태 확인을 기다립니다.
+        setIsConfirmationUncertain(true);
+        setError(
+          '결제 확인 중 문제가 발생했습니다. 관리자에게 문의하거나 잠시 후 예약 내역을 확인해주세요.',
+        );
       }
     };
 
@@ -97,10 +105,10 @@ function PaymentSuccessContent() {
         <p className="mt-3 text-sm font-bold text-[#999]">{error || message}</p>
         {error && (
           <Link
-            href="/reservation"
+            href={isConfirmationUncertain ? '/mypage?tab=reservation' : '/reservation'}
             className="mt-6 inline-flex h-11 items-center justify-center rounded-[10px] bg-[#e63946] px-5 text-sm font-black text-white"
           >
-            예약 다시 진행하기
+            {isConfirmationUncertain ? '예약 내역 확인하기' : '예약 다시 진행하기'}
           </Link>
         )}
       </div>
