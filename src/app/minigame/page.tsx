@@ -429,7 +429,7 @@ export default function MinigamePage() {
     };
 
     // ─── STAGE 3 ───
-    const checkAnswer3 = () => {
+    const checkAnswer3 = async () => {
         if (input3.trim() === '0702') {
             setMsg3('문이 열리는 소리가 들립니다.');
             setMsg3Type('success');
@@ -437,6 +437,21 @@ export default function MinigamePage() {
             playSound('correct');
             clearInterval(timerRef.current!);
             setClearTime(secondsLeft);
+
+            const token = localStorage.getItem('accessToken'); // ← 여기
+            if (token) {
+                try {
+                    await fetch('/api/minigames/clear', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        },
+                    });
+                } catch (e) {
+                    console.error('업적 지급 실패', e);
+                }
+            }
+
             setTimeout(() => { playSound('ending'); goToScreen('ending'); }, 2000);
         } else {
             setMsg3('아직 그날이 아닙니다. (−10초)');
@@ -446,7 +461,6 @@ export default function MinigamePage() {
             setTimeout(() => { setMsg3(''); setMsg3Type(''); }, 1200);
         }
     };
-
     // ─── KEYBOARD SHORTCUTS ───
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
@@ -598,6 +612,7 @@ export default function MinigamePage() {
                                 <div className="obj-card" onClick={(e) => (e.currentTarget.classList.add('flip-text'), setTimeout(() => e.currentTarget.classList.remove('flip-text'), 700))}>
                                     <span className="obj-icon">📄</span>
                                     <span className="obj-name">마지막 기록지</span>
+                                    <div></div>
                                     <div className="obj-hint" style={{ color: 'var(--red-bright)' }}>붉은 글씨로 17:51이 나타난다…</div>
                                 </div>
                                 <div className="obj-card" onClick={(e) => { setInput1Visible(true); e.currentTarget.classList.add('interacted'); }}>
@@ -823,6 +838,10 @@ export default function MinigamePage() {
                     <div style={styles.endingSub}>
                         당신은 <span style={{ color: 'var(--red-bright)' }}>예약되지 않은 첫 번째 방</span>에서 살아남았습니다.<br />
                         남은 시간: <span style={{ color: 'var(--green-neon)' }}>{formatTime(clearTime)}</span><br />
+                        {localStorage.getItem('accessToken')
+                            ? <span style={{ color: 'var(--green-neon)', fontSize: 14 }}>🏆 업적이 지급되었습니다!</span>
+                            : <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>💡 로그인 후 클리어하면 업적을 받을 수 있어요.</span>
+                        }<br />
                         하지만 문 밖에는 또 다른 공포 테마들이 기다리고 있습니다.
                     </div>
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -956,11 +975,11 @@ const css = `
   .stage-question { font-size:clamp(16px,2.5vw,20px); color:#e0e0e0; line-height:1.6; font-weight:500; }
   .kw { color:var(--red-bright); font-weight:700; }
 
-  .obj-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:14px; cursor:pointer; position:relative; transition:border-color 0.2s,background 0.2s; min-height:80px; display:flex; flex-direction:column; gap:6px; }
+  .obj-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:14px; cursor:pointer; position:relative; transition:border-color 0.2s,background 0.2s; min-height:100px; display:flex; flex-direction:column; gap:6px; }
   .obj-card:hover { border-color:var(--text-dim); background:var(--bg-panel); }
   .obj-icon { font-size:28px; }
   .obj-name { font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
-  .obj-hint { font-size:11px; color:var(--text-dim); opacity:0; transition:opacity 0.2s; position:absolute; bottom:8px; left:14px; right:14px; }
+  .obj-hint { font-size:11px; color:var(--text-dim); opacity:0; transition:opacity 0.2s; }
   .obj-card:hover .obj-hint { opacity:1; }
   .obj-card.stamped { animation:stamp 0.5s ease; }
   .obj-card.flip-text { animation:flicker 0.5s ease; }
