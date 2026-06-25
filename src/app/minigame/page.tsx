@@ -631,8 +631,8 @@ export default function MinigamePage() {
             {screen === 'stage1' && (
                 <div style={{ ...styles.screen, ...styles.roomScreen }}>
                     <HUD stage="예약되지 않은 첫 번째 방 — 1단계" locks={[lock1, false, false]} />
-                    <div style={styles.roomContent}>
-                        <div style={styles.roomLeft}>
+                    <div className="room-content" style={styles.roomContent}>
+                        <div className="room-left" style={styles.roomLeft}>
                             <div className="stage-label">STAGE 01 / 03 — 출입 기록</div>
                             <div className="stage-question">
                                 방 안에 낡은 <span className="kw">출입 기록기</span>가 있다.<br />
@@ -678,14 +678,18 @@ export default function MinigamePage() {
                                 </div>
                             )}
                         </div>
-                        <div style={styles.roomRight}>
+                        <div className="room-right" style={styles.roomRight}>
                             <div className="choco-card flex flex-col items-center" onClick={() => setChoco1Open(p => !p)}>
-                                <img src="/images/game/choco.png" alt="avatar" className="w-20 h-20 object-cover" />
+                                <div className="choco-role">동행 안내견 · 힌트 도우미</div>
+                                <div className="choco-portrait">
+                                    <img src="/images/game/choco.png" alt="힌트 도우미 초코" />
+                                </div>
                                 <div className="choco-name">초코</div>
-                                <div className="choco-necklace">✨ 목걸이가 빛난다</div>
+                                <div className="choco-necklace">목걸이의 붉은 빛이 단서를 가리킨다</div>
+                                <div className="choco-prompt">초코를 눌러 힌트 확인</div>
                                 {choco1Open && <div className="choco-bubble">처음 찍힌 시간과 마지막으로 남은 시간을 이어봐.</div>}
                             </div>
-                            <div style={styles.inputPanel}>
+                            <div className="clue-panel" style={styles.inputPanel}>
                                 <div className="input-label">현재 단서</div>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.8, fontFamily: 'var(--font-mono)' }}>
                                     입실 기록지 → <span style={{ color: 'var(--red-bright)' }}>08:50</span><br />
@@ -702,8 +706,8 @@ export default function MinigamePage() {
             {screen === 'stage2' && (
                 <div style={{ ...styles.screen, ...styles.roomScreen }}>
                     <HUD stage="예약되지 않은 첫 번째 방 — 2단계" locks={[true, lock2, false]} />
-                    <div style={styles.roomContent}>
-                        <div style={styles.roomLeft}>
+                    <div className="room-content" style={styles.roomContent}>
+                        <div className="room-left" style={styles.roomLeft}>
                             <div className="stage-label">STAGE 02 / 03 — 비어 있는 시간</div>
                             <div className="stage-question">
                                 낡은 <span className="kw">시간표</span>가 붙어 있다.<br />
@@ -769,14 +773,18 @@ export default function MinigamePage() {
                                 <div className={`input-msg${msg2Type ? ` ${msg2Type}` : ''}`}>{msg2}</div>
                             </div>
                         </div>
-                        <div style={styles.roomRight}>
+                        <div className="room-right" style={styles.roomRight}>
                             <div className="choco-card flex flex-col items-center" onClick={() => setChoco2Open(p => !p)}>
-                                <img src="/images/game/choco.png" alt="avatar" className="w-20 h-20 object-cover" />
+                                <div className="choco-role">동행 안내견 · 힌트 도우미</div>
+                                <div className="choco-portrait">
+                                    <img src="/images/game/choco.png" alt="힌트 도우미 초코" />
+                                </div>
                                 <div className="choco-name">초코</div>
-                                <div className="choco-necklace">✨ 목걸이가 빛난다</div>
+                                <div className="choco-necklace">목걸이의 붉은 빛이 단서를 가리킨다</div>
+                                <div className="choco-prompt">초코를 눌러 힌트 확인</div>
                                 {choco2Open && <div className="choco-bubble">다들 사라지는 시간. 배고픈 시간.</div>}
                             </div>
-                            <div style={styles.inputPanel}>
+                            <div className="clue-panel" style={styles.inputPanel}>
                                 <div className="input-label">힌트</div>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.8, fontFamily: 'var(--font-mono)' }}>
                                     12:00 이후 기록이 끊기고<br />
@@ -793,8 +801,8 @@ export default function MinigamePage() {
             {screen === 'stage3' && (
                 <div style={{ ...styles.screen, ...styles.roomScreen }}>
                     <HUD stage="예약되지 않은 첫 번째 방 — 3단계" locks={[true, true, lock3]} />
-                    <div style={styles.roomContent}>
-                        <div style={styles.roomLeft}>
+                    <div className="room-content" style={styles.roomContent}>
+                        <div className="room-left" style={styles.roomLeft}>
                             <div className="stage-label">STAGE 03 / 03 — 마지막 달력</div>
                             <div className="stage-question">
                                 낡은 <span className="kw">달력</span>이 걸려 있다.<br />
@@ -847,14 +855,18 @@ export default function MinigamePage() {
                                 <div className={`input-msg${msg3Type ? ` ${msg3Type}` : ''}`}>{msg3}</div>
                             </div>
                         </div>
-                        <div style={styles.roomRight}>
+                        <div className="room-right" style={styles.roomRight}>
                             <div className="choco-card flex flex-col items-center" onClick={() => setChoco3Open(p => !p)}>
-                                <img src="/images/game/choco.png" alt="avatar" className="w-20 h-20 object-cover" />
+                                <div className="choco-role">동행 안내견 · 힌트 도우미</div>
+                                <div className="choco-portrait">
+                                    <img src="/images/game/choco.png" alt="힌트 도우미 초코" />
+                                </div>
                                 <div className="choco-name">초코</div>
-                                <div className="choco-necklace">✨ 목걸이가 빛난다</div>
+                                <div className="choco-necklace">목걸이의 붉은 빛이 단서를 가리킨다</div>
+                                <div className="choco-prompt">초코를 눌러 힌트 확인</div>
                                 {choco3Open && <div className="choco-bubble">처음이 있으면 끝도 있어.</div>}
                             </div>
-                            <div style={styles.inputPanel}>
+                            <div className="clue-panel" style={styles.inputPanel}>
                                 <div className="input-label">힌트</div>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.8, fontFamily: 'var(--font-mono)' }}>
                                     달력을 클릭하면<br />날짜가 하나씩 지워진다.<br />
@@ -868,15 +880,12 @@ export default function MinigamePage() {
 
             {/* ENDING */}
             {screen === 'ending' && (
-                <div style={{ ...styles.screen, background: '#000', gap: 24, padding: '40px 20px', textAlign: 'center' }}>
+                <div className="ending-screen" style={{ ...styles.screen, gap: 24, padding: '40px 20px', textAlign: 'center' }}>
+                    <div className="ending-kicker">CASE CLOSED · 03 / 03</div>
                     <div className="ending-title">탈출 성공</div>
                     <div style={styles.endingSub}>
                         당신은 <span style={{ color: 'var(--red-bright)' }}>예약되지 않은 첫 번째 방</span>에서 살아남았습니다.<br />
-                        남은 시간: <span style={{ color: 'var(--green-neon)' }}>{formatTime(clearTime)}</span><br />
-                        {localStorage.getItem('accessToken')
-                            ? <span style={{ color: 'var(--green-neon)', fontSize: 14 }}>🏆 업적이 지급되었습니다!</span>
-                            : <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>💡 로그인 후 클리어하면 업적을 받을 수 있어요.</span>
-                        }<br />
+                        남은 시간: <span className="ending-time">{formatTime(clearTime)}</span><br />
                         하지만 문 밖에는 또 다른 공포 테마들이 기다리고 있습니다.
                     </div>
                     {achievementNotice && (
@@ -885,7 +894,7 @@ export default function MinigamePage() {
                                 maxWidth: 460,
                                 border: `1px solid ${
                                     achievementNoticeTone === 'success'
-                                        ? '#2ecc71'
+                                        ? '#cc3b45'
                                         : achievementNoticeTone === 'warning'
                                           ? '#d7b46a'
                                           : '#e63946'
@@ -894,11 +903,14 @@ export default function MinigamePage() {
                                 padding: '10px 14px',
                                 color:
                                     achievementNoticeTone === 'success'
-                                        ? '#7ee2a7'
+                                        ? '#ff9ca2'
                                         : achievementNoticeTone === 'warning'
                                           ? '#f0c674'
                                           : '#ff7777',
-                                background: 'rgba(12,12,12,0.88)',
+                                background:
+                                    achievementNoticeTone === 'success'
+                                        ? 'rgba(49,15,18,0.88)'
+                                        : 'rgba(12,12,12,0.88)',
                                 fontSize: 13,
                                 fontWeight: 700,
                             }}
@@ -965,12 +977,12 @@ const styles: Record<string, React.CSSProperties> = {
     hudLocks: { display: 'flex', gap: 8 },
     lockPip: { width: 28, height: 28, borderRadius: '50%', border: '2px solid #9a9a9a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-mono)', fontSize: 12, color: '#9a9a9a', background: 'var(--bg-card)', transition: 'all 0.4s' },
     lockUnlocked: { borderColor: 'var(--red-bright)', color: 'var(--red-bright)', boxShadow: '0 0 10px var(--red-glow)' },
-    roomContent: { flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 20px', gap: 24, overflowY: 'auto', width: '100%' },
-    roomLeft: { flex: 1, maxWidth: 480, display: 'flex', flexDirection: 'column', gap: 16 },
-    roomRight: { width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 },
-    objectGrid: { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 },
-    inputPanel: { background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 4, padding: 20, display: 'flex', flexDirection: 'column', gap: 12 },
-    endingSub: { fontSize: 16, color: 'var(--text-muted)', maxWidth: 480, lineHeight: 1.8 },
+    roomContent: { flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '34px 28px 48px', gap: 28, overflowY: 'auto', width: '100%' },
+    roomLeft: { flex: 1, maxWidth: 760, display: 'flex', flexDirection: 'column', gap: 20 },
+    roomRight: { width: 310, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 },
+    objectGrid: { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 14 },
+    inputPanel: { background: 'var(--bg-panel)', border: '1px solid var(--border)', borderRadius: 12, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 },
+    endingSub: { fontSize: 16, color: 'var(--text-muted)', maxWidth: 560, lineHeight: 1.9 },
 };
 
 // ─── CSS ───
@@ -980,11 +992,11 @@ const css = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg-deep: #08090B; --bg-dark: #0D0E11; --bg-card: #111318; --bg-panel: #161820;
-    --red-main: #CC1111; --red-bright: #E53E3E; --red-glow: rgba(204,17,17,0.4);
-    --green-neon: #39FF14;
-    --text-main: #D4D4D4; --text-muted: #6B7280; --text-dim: #3A3D45;
-    --border: #252830; --border-red: rgba(204,17,17,0.5);
+    --bg-deep: #080808; --bg-dark: #0d0d0d; --bg-card: #121212; --bg-panel: #171414;
+    --red-main: #cc2222; --red-bright: #ef414d; --red-glow: rgba(204,34,34,0.34);
+    --success-muted: #75b98e;
+    --text-main: #e4e4e4; --text-muted: #8d8888; --text-dim: #575252;
+    --border: rgba(255,255,255,0.09); --border-red: rgba(204,34,34,0.5);
     --font-mono: 'Share Tech Mono', monospace; --font-sans: 'Noto Sans KR', sans-serif;
   }
 
@@ -1005,7 +1017,7 @@ const css = `
   @keyframes fadeInUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
   @keyframes pulse-red { 0%,100%{box-shadow:0 0 8px var(--red-glow)} 50%{box-shadow:0 0 20px var(--red-glow),0 0 40px rgba(204,17,17,0.2)} }
   @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px)} 40%{transform:translateX(4px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
-  @keyframes neon-glow { 0%,100%{text-shadow:0 0 4px var(--green-neon),0 0 10px var(--green-neon)} 50%{text-shadow:0 0 8px var(--green-neon),0 0 20px var(--green-neon),0 0 40px rgba(57,255,20,0.3)} }
+  @keyframes success-glow { 0%,100%{text-shadow:0 0 12px rgba(204,34,34,0.22)} 50%{text-shadow:0 0 24px rgba(204,34,34,0.42)} }
   @keyframes timer-urgent { 0%,100%{color:var(--red-bright);text-shadow:0 0 8px var(--red-glow)} 50%{color:#FF6B6B;text-shadow:0 0 16px rgba(255,107,107,0.6)} }
   @keyframes stamp { 0%{transform:scale(1.5)rotate(-5deg);opacity:0} 60%{transform:scale(0.95)rotate(2deg);opacity:1} 100%{transform:scale(1)rotate(0);opacity:1} }
   @keyframes door-anim { from{transform:perspective(600px)rotateY(0)} to{transform:perspective(600px)rotateY(-80deg)} }
@@ -1050,38 +1062,40 @@ const css = `
   .door-progress-bar { height:100%; background:var(--red-main); width:0%; animation:door-bar 3s linear forwards; animation-delay:0.1s; }
   .door-text { font-family:var(--font-mono); font-size:14px; color:#555; text-align:center; animation:flicker 3s infinite; }
 
-  .stage-label { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); letter-spacing:0.15em; text-transform:uppercase; }
-  .stage-question { font-size:clamp(16px,2.5vw,20px); color:#e0e0e0; line-height:1.6; font-weight:500; }
+  .room-content { max-width:1180px; margin:0 auto; }
+  .room-left { border:1px solid var(--border); border-radius:18px; padding:26px; background:radial-gradient(circle at 8% 0%,rgba(204,34,34,0.1),transparent 31%),linear-gradient(145deg,rgba(22,22,22,0.97),rgba(11,11,11,0.96)); box-shadow:0 26px 70px rgba(0,0,0,0.38); }
+  .stage-label { font-family:var(--font-mono); font-size:12px; color:#b76b70; letter-spacing:0.17em; text-transform:uppercase; }
+  .stage-question { font-size:clamp(20px,2.6vw,28px); color:#f0eded; line-height:1.55; font-weight:800; letter-spacing:-0.025em; }
   .kw { color:var(--red-bright); font-weight:700; }
 
-  .obj-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:14px; cursor:pointer; position:relative; transition:border-color 0.2s,background 0.2s; min-height:100px; display:flex; flex-direction:column; gap:6px; }
-  .obj-card:hover { border-color:var(--text-dim); background:var(--bg-panel); }
-  .obj-icon { font-size:28px; }
-  .obj-name { font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
-  .obj-hint { font-size:11px; color:var(--text-dim); opacity:0; transition:opacity 0.2s; }
+  .obj-card { background:linear-gradient(150deg,rgba(25,25,25,0.96),rgba(13,13,13,0.96)); border:1px solid var(--border); border-radius:12px; padding:18px; cursor:pointer; position:relative; transition:all 0.22s; min-height:124px; display:flex; flex-direction:column; gap:8px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.025); }
+  .obj-card:hover { border-color:rgba(204,34,34,0.46); background:linear-gradient(150deg,rgba(36,19,20,0.95),rgba(15,15,15,0.98)); transform:translateY(-2px); }
+  .obj-icon { font-size:32px; }
+  .obj-name { font-size:13px; color:#d0caca; font-family:var(--font-mono); font-weight:700; }
+  .obj-hint { font-size:12px; color:#8b8585; opacity:0; transition:opacity 0.2s; line-height:1.55; }
   .obj-card:hover .obj-hint { opacity:1; }
   .obj-card.stamped { animation:stamp 0.5s ease; }
   .obj-card.flip-text { animation:flicker 0.5s ease; }
   .obj-card.interacted { border-color:var(--border-red); }
 
-  .input-label { font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
-  .input-field { background:var(--bg-dark); border:1px solid var(--border); border-radius:3px; padding:10px 14px; color:var(--text-main); font-family:var(--font-mono); font-size:16px; letter-spacing:0.15em; width:100%; outline:none; transition:border-color 0.2s; caret-color:var(--red-main); }
+  .input-label { font-size:13px; color:#b4aaaa; font-family:var(--font-mono); font-weight:700; letter-spacing:0.04em; }
+  .input-field { background:#090909; border:1px solid var(--border); border-radius:9px; padding:13px 15px; color:var(--text-main); font-family:var(--font-mono); font-size:17px; letter-spacing:0.15em; width:100%; outline:none; transition:border-color 0.2s; caret-color:var(--red-main); }
   .input-field:focus { border-color:var(--red-main); box-shadow:0 0 0 2px var(--red-glow); }
   .input-field.error { border-color:var(--red-bright); animation:shake 0.4s ease; }
-  .input-field.success { border-color:var(--green-neon); color:var(--green-neon); }
-  .input-btn { background:var(--red-main); color:#fff; border:none; border-radius:3px; padding:10px; font-family:var(--font-sans); font-size:13px; cursor:pointer; transition:background 0.2s; width:100%; }
+  .input-field.success { border-color:#6eaa83; color:#91c7a4; }
+  .input-btn { background:var(--red-main); color:#fff; border:1px solid rgba(255,255,255,0.04); border-radius:9px; padding:12px; font-family:var(--font-sans); font-size:14px; font-weight:800; cursor:pointer; transition:all 0.2s; width:100%; box-shadow:0 12px 28px rgba(204,34,34,0.14); }
   .input-btn:hover { background:var(--red-bright); }
   .input-msg { font-size:12px; font-family:var(--font-mono); text-align:center; min-height:18px; }
   .input-msg.error { color:var(--red-bright); }
-  .input-msg.success { color:var(--green-neon); animation:neon-glow 1s infinite; }
+  .input-msg.success { color:#91c7a4; }
 
-  .choice-btn { background:var(--bg-card); border:1px solid var(--border); border-radius:3px; padding:12px 16px; color:var(--text-main); font-family:var(--font-sans); font-size:13px; cursor:pointer; text-align:left; transition:all 0.2s; }
-  .choice-btn:hover:not(:disabled) { border-color:var(--text-dim); background:var(--bg-panel); }
+  .choice-btn { background:linear-gradient(145deg,#171717,#101010); border:1px solid var(--border); border-radius:10px; padding:14px 16px; color:var(--text-main); font-family:var(--font-sans); font-size:14px; font-weight:700; cursor:pointer; text-align:left; transition:all 0.2s; }
+  .choice-btn:hover:not(:disabled) { border-color:rgba(204,34,34,0.55); background:#211314; color:#fff; transform:translateX(3px); }
   .choice-btn:disabled { opacity:0.5; cursor:default; }
 
-  .timetable { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
-  .timetable-header { background:var(--bg-panel); padding:10px 16px; font-size:12px; color:var(--text-muted); font-family:var(--font-mono); border-bottom:1px solid var(--border); }
-  .timetable-row { display:flex; align-items:center; padding:8px 16px; gap:12px; border-bottom:1px solid var(--border); font-size:13px; transition:background 0.2s; }
+  .timetable { background:#101010; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 18px 40px rgba(0,0,0,0.24); }
+  .timetable-header { background:#1d1515; padding:13px 17px; font-size:13px; color:#c6baba; font-family:var(--font-mono); border-bottom:1px solid var(--border); }
+  .timetable-row { display:flex; align-items:center; padding:11px 17px; gap:14px; border-bottom:1px solid var(--border); font-size:14px; transition:background 0.2s; }
   .timetable-row:last-child { border-bottom:none; }
   .timetable-row:hover { background:var(--bg-panel); }
   .timetable-time { font-family:var(--font-mono); color:var(--text-muted); width:60px; flex-shrink:0; }
@@ -1089,34 +1103,45 @@ const css = `
   .timetable-row.missing .timetable-time { color:var(--red-bright); }
   .timetable-row.missing.revealed .timetable-note { animation:fadeInUp 0.3s ease; }
 
-  .choco-card { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:16px; text-align:center; cursor:pointer; position:relative; transition:border-color 0.2s; }
-  .choco-card:hover { border-color:var(--text-dim); }
-  .choco-avatar { font-size:40px; display:block; }
-  .choco-name { font-size:13px; font-weight:700; color:var(--text-main); margin-top:8px; }
-  .choco-necklace { font-size:11px; color:#9b59b6; margin-top:4px; }
-  .choco-bubble { background:#3d2a5a; border:1px solid #6b4d8a; border-radius:4px; padding:10px 12px; font-size:12px; color:#d4b8f0; margin-top:10px; line-height:1.5; animation:fadeInUp 0.3s ease; }
+  .choco-card { width:100%; background:radial-gradient(circle at 50% 20%,rgba(204,34,34,0.17),transparent 42%),linear-gradient(155deg,#191313,#0d0d0d 68%); border:1px solid rgba(204,34,34,0.34); border-radius:16px; padding:16px; text-align:center; cursor:pointer; position:relative; transition:all 0.24s; box-shadow:0 22px 54px rgba(0,0,0,0.34),inset 0 1px 0 rgba(255,255,255,0.035); overflow:hidden; }
+  .choco-card:hover { border-color:rgba(239,65,77,0.7); transform:translateY(-2px); box-shadow:0 24px 58px rgba(0,0,0,0.4),0 0 26px rgba(204,34,34,0.09); }
+  .choco-role { align-self:flex-start; border:1px solid rgba(204,34,34,0.35); border-radius:999px; background:rgba(204,34,34,0.09); padding:4px 8px; color:#d88d92; font-size:10px; font-weight:900; letter-spacing:0.06em; }
+  .choco-portrait { width:112px; height:112px; margin-top:14px; border-radius:50%; overflow:hidden; border:1px solid rgba(255,255,255,0.12); background:#090909; box-shadow:0 0 0 7px rgba(204,34,34,0.07),0 14px 28px rgba(0,0,0,0.4); }
+  .choco-portrait img { width:100%; height:100%; object-fit:cover; }
+  .choco-name { font-size:20px; font-weight:900; color:#f4eeee; margin-top:12px; }
+  .choco-necklace { font-size:11px; color:#bd777d; margin-top:3px; line-height:1.5; }
+  .choco-prompt { margin-top:11px; color:#777; font-family:var(--font-mono); font-size:10px; }
+  .choco-bubble { width:100%; background:#1d1213; border:1px solid rgba(204,34,34,0.36); border-radius:10px; padding:12px 13px; font-size:13px; color:#dfb2b5; margin-top:12px; line-height:1.65; animation:fadeInUp 0.3s ease; box-shadow:inset 0 0 18px rgba(204,34,34,0.05); }
+  .clue-panel { background:linear-gradient(145deg,#151313,#0c0c0c)!important; }
 
-  .old-calendar { background:var(--bg-card); border:1px solid var(--border); border-radius:4px; padding:16px; text-align:center; cursor:pointer; }
+  .old-calendar { background:linear-gradient(145deg,#171717,#0e0e0e); border:1px solid var(--border); border-radius:12px; padding:18px; text-align:center; cursor:pointer; box-shadow:0 18px 38px rgba(0,0,0,0.25); }
   .old-cal-month { font-family:var(--font-mono); font-size:14px; color:var(--text-muted); margin-bottom:12px; }
   .old-cal-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:12px; border-radius:2px; color:var(--text-dim); background:var(--bg-panel); }
   .old-cal-day.crossed { text-decoration:line-through; opacity:0.3; }
   .old-cal-day.highlight { color:var(--red-bright); background:rgba(204,17,17,0.15); border:1px solid var(--border-red); font-weight:700; }
 
-  .confirm-doc { background:#f5f0e8; border:1px solid #c8b89a; border-radius:3px; padding:16px; color:#2a1f0e; font-size:12px; line-height:1.7; position:relative; cursor:pointer; }
-  .doc-title { font-weight:700; font-size:13px; margin-bottom:8px; border-bottom:1px solid #c8b89a; padding-bottom:6px; }
+  .confirm-doc { background-color:#e9dfc9; background-image:linear-gradient(rgba(95,63,25,0.035) 1px,transparent 1px),radial-gradient(circle at 12% 18%,rgba(102,62,21,0.1),transparent 28%),radial-gradient(circle at 88% 80%,rgba(85,45,14,0.08),transparent 24%); background-size:100% 23px,100% 100%,100% 100%; border:1px solid #aa9470; border-radius:5px; padding:21px 22px; color:#342716; font-size:13px; line-height:1.85; position:relative; cursor:pointer; box-shadow:0 18px 38px rgba(0,0,0,0.38),inset 0 0 30px rgba(80,45,15,0.08); transform:rotate(-0.35deg); }
+  .confirm-doc::before { content:''; position:absolute; inset:5px; border:1px solid rgba(91,62,30,0.2); pointer-events:none; }
+  .doc-title { font-weight:900; font-size:15px; letter-spacing:0.1em; margin-bottom:10px; border-bottom:1px dashed #9f8865; padding-bottom:8px; }
   .doc-hidden { color:#f5f0e8; transition:color 0.3s; }
   .confirm-doc:hover .doc-hidden { color:#8b0000; }
   .red-stamp { position:absolute; bottom:12px; right:12px; font-size:32px; animation:stamp 0.5s ease forwards; }
 
-  .ending-title { font-family:var(--font-mono); font-size:clamp(32px,6vw,56px); font-weight:900; letter-spacing:0.1em; color:var(--green-neon); animation:neon-glow 2s infinite; }
-  .ending-btn { padding:12px 28px; border-radius:3px; font-family:var(--font-sans); font-size:14px; cursor:pointer; transition:all 0.2s; }
+  .ending-screen { background:radial-gradient(circle at 50% 22%,rgba(204,34,34,0.22),transparent 34%),linear-gradient(180deg,#080808,#0d0909 62%,#080808)!important; }
+  .ending-kicker { font-family:var(--font-mono); color:#9a686c; font-size:11px; font-weight:900; letter-spacing:0.24em; }
+  .ending-title { font-family:var(--font-sans); font-size:clamp(38px,6vw,68px); font-weight:900; letter-spacing:-0.04em; color:#f4eeee; animation:success-glow 2.4s infinite; }
+  .ending-time { color:#e0656d; font-family:var(--font-mono); font-size:1.1em; font-weight:900; }
+  .ending-btn { padding:13px 28px; border-radius:10px; font-family:var(--font-sans); font-size:14px; font-weight:800; cursor:pointer; transition:all 0.2s; }
   .ending-btn.primary { background:var(--red-main); color:#fff; border:none; }
   .ending-btn.primary:hover { background:var(--red-bright); }
   .ending-btn.secondary { background:transparent; color:var(--text-muted); border:1px solid var(--border); }
   .ending-btn.secondary:hover { border-color:var(--text-main); color:var(--text-main); }
 
   @media (max-width:640px) {
-    .room-content { flex-direction:column; }
-    .room-right { width:100%; }
+    .room-content { flex-direction:column; padding:20px 14px 36px!important; }
+    .room-left { width:100%; padding:20px; }
+    .room-right { width:100%!important; }
+    .choco-card { max-width:none; }
+    .stage-question { font-size:20px; }
   }
 `;
