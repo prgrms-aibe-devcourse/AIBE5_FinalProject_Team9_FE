@@ -12,7 +12,7 @@ import FooterCTA from "@/components/main/FooterCTA";
 import FloatingSectionNav from "@/components/main/FloatingSectionNav";
 import { Theme } from "@/types/theme";
 import { MatePost } from "@/types/mate";
-import { getThemes } from "@/services/themeService";
+import { getThemeById, getThemes } from "@/services/themeService";
 import { getMatePosts } from "@/services/mateService";
 
 const HOME_THEME_LIMIT = 4;
@@ -65,28 +65,44 @@ export default function HomePage() {
     setIsMatePostsLoading(true);
     setMatePostsError("");
 
-    getMatePosts({
-      status: "RECRUITING",
-      sort: "latest",
-      page: 0,
-      size: HOME_MATE_LIMIT,
-    })
-      .then((response) => {
+    const loadMatePosts = async () => {
+      try {
+        const response = await getMatePosts({
+          status: "RECRUITING",
+          sort: "latest",
+          page: 0,
+          size: HOME_MATE_LIMIT,
+        });
+
         if (!isMounted) return;
-        const nextPosts = response.items
+        const recruitingPosts = response.items
           .filter((post) => post.status === "RECRUITING")
           .slice(0, HOME_MATE_LIMIT);
 
-        setMatePosts(nextPosts);
-      })
-      .catch(() => {
+        const themeList = await getThemes().catch(() => [] as Theme[]);
+        const nextPosts = await Promise.all(
+          recruitingPosts.map(async (post) => {
+            if (!post.themeId) return post;
+
+            const detail = await getThemeById(post.themeId).catch(() => null);
+            const listTheme = themeList.find((theme) => theme.id === post.themeId);
+            const themeImageUrl = detail?.imageUrl || listTheme?.imageUrl;
+
+            return themeImageUrl ? { ...post, imageUrl: themeImageUrl } : post;
+          }),
+        );
+
+        if (isMounted) setMatePosts(nextPosts);
+      } catch {
         if (!isMounted) return;
         setMatePosts([]);
         setMatePostsError("메이트 모집 글을 불러오지 못했습니다.");
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) setIsMatePostsLoading(false);
-      });
+      }
+    };
+
+    void loadMatePosts();
 
     return () => {
       isMounted = false;

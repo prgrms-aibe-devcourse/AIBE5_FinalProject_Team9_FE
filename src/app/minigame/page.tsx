@@ -577,39 +577,60 @@ export default function MinigamePage() {
 
             {/* CALENDAR */}
             {screen === 'calendar' && (
-                <div style={{ ...styles.screen, gap: 24, padding: '40px 20px', background: 'var(--bg-deep)' }}>
-                    <div className="cal-title">예약 날짜 선택</div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>2026년 7월</div>
-                    <div style={styles.calSubtitle}>
-                        대부분의 날짜는 접근이 불가합니다.<br />
-                        <span style={{ color: 'var(--red-bright)', fontWeight: 700 }}>이 날짜를 선택하면 되돌아갈 수 없습니다.</span>
-                    </div>
-                    <div className="calendar-grid">
-                        {['일','월','화','수','목','금','토'].map(d => (
-                            <div key={d} className="cal-day-header">{d}</div>
-                        ))}
-                        {/* 2026년 7월: 1일 = 수요일, 공백 3칸 */}
-                        <div className="cal-day empty" /><div className="cal-day empty" /><div className="cal-day empty" />
-                        <div className="cal-day blocked" title="예약 마감">1</div>
-                        <div className="cal-day available" onClick={selectDate}>2</div>
-                        {[
-                            { d: 3, s: '예약 마감' }, { d: 4, s: '예약 마감' },
-                            { d: 5, s: '접근 불가' }, { d: 6, s: '접근 불가' }, { d: 7, s: '예약 마감' }, { d: 8, s: '예약 마감' },
-                            { d: 9, s: '예약 마감' }, { d: 10, s: '기록 없음' }, { d: 11, s: '예약 마감' }, { d: 12, s: '예약 마감' },
-                            { d: 13, s: '예약 마감' }, { d: 14, s: '삭제된 예약' }, { d: 15, s: '접근 불가' }, { d: 16, s: '예약 마감' },
-                            { d: 17, s: '예약 마감' }, { d: 18, s: '기록 없음' }, { d: 19, s: '예약 마감' }, { d: 20, s: '삭제된 예약' },
-                            { d: 21, s: '예약 마감' }, { d: 22, s: '접근 불가' }, { d: 23, s: '예약 마감' }, { d: 24, s: '예약 마감' },
-                            { d: 25, s: '기록 없음' }, { d: 26, s: '예약 마감' }, { d: 27, s: '삭제된 예약' }, { d: 28, s: '접근 불가' },
-                            { d: 29, s: '예약 마감' }, { d: 30, s: '예약 마감' }, { d: 31, s: '예약 마감' },
-                        ].map(({ d, s }) => (
-                            <div key={d} className="cal-day blocked" title={s}>{d}</div>
-                        ))}
-                        {[0,1,2].map(i => <div key={`e${i}`} className="cal-day empty" />)}
-                    </div>
-                    <div className="cal-warning">
-                        누구도 예약하지 않은 첫 번째 날짜입니다.<br />
-                        7월 2일만 선택 가능합니다.
-                    </div>
+                <div className="calendar-screen" style={{ ...styles.screen, padding: '38px 20px' }}>
+                    <section className="calendar-shell">
+                        <div className="calendar-heading">
+                            <div>
+                                <p className="calendar-kicker">GRIMGATE ARCHIVE · RESTRICTED DATE</p>
+                                <h1 className="cal-title">예약 날짜 선택</h1>
+                            </div>
+                            <span className="calendar-status">기록 접근 제한</span>
+                        </div>
+                        <div className="calendar-intro">
+                            <div>
+                                <p className="calendar-month">2026년 7월</p>
+                                <p className="calendar-caption">삭제된 예약 기록에서 접근 가능한 날짜를 찾으세요.</p>
+                            </div>
+                            <div className="calendar-legend">
+                                <span><i className="legend-dot blocked" /> 접근 불가</span>
+                                <span><i className="legend-dot available" /> 선택 가능</span>
+                            </div>
+                        </div>
+                        <div className="calendar-frame">
+                            <div className="calendar-grid">
+                                {['일','월','화','수','목','금','토'].map(d => (
+                                    <div key={d} className="cal-day-header">{d}</div>
+                                ))}
+                                {/* 2026년 7월: 1일 = 수요일, 공백 3칸 */}
+                                <div className="cal-day empty" /><div className="cal-day empty" /><div className="cal-day empty" />
+                                <div className="cal-day blocked" title="예약 마감">1</div>
+                                <button type="button" className="cal-day available" onClick={selectDate} aria-label="7월 2일 선택">
+                                    <span>2</span>
+                                    <small>OPEN</small>
+                                </button>
+                                {[
+                                    { d: 3, s: '예약 마감' }, { d: 4, s: '예약 마감' },
+                                    { d: 5, s: '접근 불가' }, { d: 6, s: '접근 불가' }, { d: 7, s: '예약 마감' }, { d: 8, s: '예약 마감' },
+                                    { d: 9, s: '예약 마감' }, { d: 10, s: '기록 없음' }, { d: 11, s: '예약 마감' }, { d: 12, s: '예약 마감' },
+                                    { d: 13, s: '예약 마감' }, { d: 14, s: '삭제된 예약' }, { d: 15, s: '접근 불가' }, { d: 16, s: '예약 마감' },
+                                    { d: 17, s: '예약 마감' }, { d: 18, s: '기록 없음' }, { d: 19, s: '예약 마감' }, { d: 20, s: '삭제된 예약' },
+                                    { d: 21, s: '예약 마감' }, { d: 22, s: '접근 불가' }, { d: 23, s: '예약 마감' }, { d: 24, s: '예약 마감' },
+                                    { d: 25, s: '기록 없음' }, { d: 26, s: '예약 마감' }, { d: 27, s: '삭제된 예약' }, { d: 28, s: '접근 불가' },
+                                    { d: 29, s: '예약 마감' }, { d: 30, s: '예약 마감' }, { d: 31, s: '예약 마감' },
+                                ].map(({ d, s }) => (
+                                    <div key={d} className="cal-day blocked" title={s}>{d}</div>
+                                ))}
+                                {[0,1,2].map(i => <div key={`e${i}`} className="cal-day empty" />)}
+                            </div>
+                        </div>
+                        <div className="cal-warning">
+                            <span className="warning-mark">!</span>
+                            <div>
+                                <strong>누구도 예약하지 않은 첫 번째 날짜</strong>
+                                <p>7월 2일만 선택할 수 있으며, 선택 후에는 되돌아갈 수 없습니다.</p>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             )}
 
@@ -1048,16 +1069,34 @@ const css = `
   .hidden-btn { display:block; margin-top:10px; background:transparent; color:var(--red-bright); border:1px solid var(--border-red); border-radius:2px; padding:7px 0; width:100%; font-size:12px; cursor:pointer; transition:all 0.2s; }
   .hidden-btn:hover { background:rgba(204,17,17,0.15); }
 
-  .calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; max-width:420px; width:100%; }
-  .cal-day-header { text-align:center; font-size:11px; color:var(--text-dim); padding:4px 0; font-family:var(--font-mono); }
-  .cal-day { aspect-ratio:1; display:flex; align-items:center; justify-content:center; border-radius:3px; font-size:13px; cursor:default; transition:all 0.2s; }
-  .cal-day.blocked { background:var(--bg-card); color:var(--text-dim); border:1px solid var(--border); }
-  .cal-day.available { background:rgba(204,17,17,0.1); color:var(--red-bright); border:1px solid var(--border-red); cursor:pointer; animation:pulse-red 2s infinite; font-weight:700; }
-  .cal-day.available:hover { background:rgba(204,17,17,0.25); transform:scale(1.08); }
+  .calendar-screen { background:radial-gradient(circle at 50% 12%,rgba(204,34,34,0.13),transparent 34%),linear-gradient(180deg,#080808,#0d0b0b 58%,#080808)!important; }
+  .calendar-shell { width:min(760px,100%); border:1px solid rgba(255,255,255,0.09); border-radius:20px; padding:28px; background:radial-gradient(circle at 10% 0%,rgba(204,34,34,0.1),transparent 32%),linear-gradient(145deg,rgba(22,22,22,0.97),rgba(10,10,10,0.98)); box-shadow:0 34px 90px rgba(0,0,0,0.52),0 0 42px rgba(204,34,34,0.055); }
+  .calendar-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; padding-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.07); }
+  .calendar-kicker { color:#a9666b; font-family:var(--font-mono); font-size:10px; font-weight:900; letter-spacing:0.18em; }
+  .calendar-status { flex-shrink:0; border:1px solid rgba(204,34,34,0.38); border-radius:999px; background:rgba(204,34,34,0.09); padding:6px 10px; color:#d8888e; font-size:10px; font-weight:900; }
+  .calendar-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:20px 0 16px; }
+  .calendar-month { color:#ece7e7; font-family:var(--font-mono); font-size:18px; font-weight:900; letter-spacing:0.08em; }
+  .calendar-caption { margin-top:6px; color:#807a7a; font-size:12px; font-weight:700; }
+  .calendar-legend { display:flex; gap:12px; color:#777; font-size:10px; font-weight:700; white-space:nowrap; }
+  .calendar-legend span { display:inline-flex; align-items:center; gap:5px; }
+  .legend-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .legend-dot.blocked { background:#393636; }
+  .legend-dot.available { background:#e43e49; box-shadow:0 0 10px rgba(228,62,73,0.42); }
+  .calendar-frame { border:1px solid rgba(255,255,255,0.065); border-radius:15px; background:#0b0b0b; padding:18px; box-shadow:inset 0 0 32px rgba(0,0,0,0.42); }
+  .calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; width:100%; }
+  .cal-day-header { text-align:center; font-size:11px; color:#686363; padding:5px 0 8px; font-family:var(--font-mono); font-weight:700; }
+  .cal-day { aspect-ratio:1.1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; border-radius:9px; font-size:13px; cursor:default; transition:all 0.2s; font-family:var(--font-mono); }
+  .cal-day.blocked { background:linear-gradient(145deg,#151515,#101010); color:#514d4d; border:1px solid rgba(255,255,255,0.07); }
+  .cal-day.available { background:linear-gradient(145deg,rgba(204,34,34,0.27),rgba(68,13,17,0.45)); color:#ff747d; border:1px solid rgba(239,65,77,0.75); cursor:pointer; animation:pulse-red 2s infinite; font-weight:900; box-shadow:inset 0 0 20px rgba(204,34,34,0.08); }
+  .cal-day.available small { font-size:7px; color:#d4878c; letter-spacing:0.12em; }
+  .cal-day.available:hover { background:linear-gradient(145deg,rgba(239,65,77,0.38),rgba(91,15,21,0.55)); transform:translateY(-2px) scale(1.03); color:#fff; }
   .cal-day.empty { background:transparent; border:none; }
   .cal-day.selected { background:var(--red-main); color:#fff; animation:shake 0.4s ease; }
-  .cal-warning { font-size:12px; color:var(--text-muted); text-align:center; max-width:360px; font-family:var(--font-mono); border:1px solid var(--border); padding:12px 20px; border-radius:3px; background:var(--bg-card); }
-  .cal-title { font-family:var(--font-mono); font-size:clamp(18px,3vw,26px); color:var(--red-bright); text-align:center; letter-spacing:0.08em; }
+  .cal-warning { margin-top:16px; display:flex; align-items:center; gap:12px; color:#8f8989; border:1px solid rgba(204,34,34,0.22); padding:13px 15px; border-radius:11px; background:rgba(204,34,34,0.055); }
+  .cal-warning strong { color:#d8cdcd; font-size:12px; }
+  .cal-warning p { margin-top:2px; color:#7d7676; font-size:11px; line-height:1.5; }
+  .warning-mark { display:flex; width:28px; height:28px; flex-shrink:0; align-items:center; justify-content:center; border-radius:50%; border:1px solid rgba(204,34,34,0.5); color:#ef535c; font-family:var(--font-mono); font-weight:900; }
+  .cal-title { margin-top:8px; font-family:var(--font-sans); font-size:clamp(25px,4vw,36px); color:#f2eded; font-weight:900; letter-spacing:-0.035em; }
 
   .door-progress-bar { height:100%; background:var(--red-main); width:0%; animation:door-bar 3s linear forwards; animation-delay:0.1s; }
   .door-text { font-family:var(--font-mono); font-size:14px; color:#555; text-align:center; animation:flicker 3s infinite; }
@@ -1138,6 +1177,13 @@ const css = `
   .ending-btn.secondary:hover { border-color:var(--text-main); color:var(--text-main); }
 
   @media (max-width:640px) {
+    .calendar-shell { padding:20px 14px; border-radius:16px; }
+    .calendar-heading,.calendar-intro { align-items:flex-start; flex-direction:column; }
+    .calendar-status { align-self:flex-start; }
+    .calendar-legend { white-space:normal; }
+    .calendar-frame { padding:10px; }
+    .calendar-grid { gap:5px; }
+    .cal-day { border-radius:7px; font-size:12px; }
     .room-content { flex-direction:column; padding:20px 14px 36px!important; }
     .room-left { width:100%; padding:20px; }
     .room-right { width:100%!important; }

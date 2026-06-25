@@ -37,12 +37,6 @@ function formatDateTime(value: string) {
   return `${year}-${month}-${day} / ${hour}:${minute}`;
 }
 
-const mateImages = [
-  "/images/horror/theme-clown.png",
-  "/images/horror/theme-smoke.png",
-  "/images/horror/theme-pumpkin.png",
-];
-
 export default function MateSection({
   posts,
   isLoading = false,
@@ -95,13 +89,13 @@ export default function MateSection({
         <SectionStatusMessage>현재 모집 중인 메이트 글이 없습니다.</SectionStatusMessage>
       ) : (
         <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {visiblePosts.map((post, index) => {
+          {visiblePosts.map((post) => {
           const progress = Math.min(
             100,
             (post.currentPeople / Math.max(post.maxPeople, 1)) * 100,
           );
           const place = [post.storeName, post.branchName, post.region].filter(Boolean).join(" · ");
-          const cardImage = post.imageUrl || mateImages[index % mateImages.length];
+          const cardImage = post.imageUrl || "/images/theme-placeholder.png";
 
           return (
             <Link
