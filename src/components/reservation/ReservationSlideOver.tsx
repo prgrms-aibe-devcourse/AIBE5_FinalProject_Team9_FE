@@ -45,14 +45,14 @@ export default function ReservationSlideOver({
   const router = useRouter();
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   const [loginRedirectUrl, setLoginRedirectUrl] = useState("");
-  const { setTheme, setLocation, setDateTime, setHeadcount } =
+  const { setTheme, setLocation, setDateTime, setPeopleCount } =
     useReservationStore();
   const minPlayers = Math.max(1, theme.minPlayers || 1);
   const maxPlayers = Math.max(minPlayers, theme.maxPlayers || minPlayers);
   const selectedHeadcount = minPlayers;
   const totalPrice = theme.price * selectedHeadcount;
   const canReserve = Boolean(selectedDate && selectedTime);
-  const reservationHref = `/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${theme.id}&tab=reservation`)}`;
+  const reservationHref = `/reservation?themeId=${theme.id}&date=${selectedDate}&time=${selectedTime}&peopleCount=${selectedHeadcount}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${theme.id}&tab=reservation`)}`;
 
   const handleReserve = () => {
     if (!canReserve) return;
@@ -60,7 +60,7 @@ export default function ReservationSlideOver({
     setTheme(theme.id, theme.title, theme.imageUrl);
     setLocation(theme.locationName ?? "", theme.branchName ?? "");
     setDateTime(selectedDate, selectedTime);
-    setHeadcount(selectedHeadcount, 0);
+    setPeopleCount(selectedHeadcount);
   };
 
   const handleReserveClick = (event: MouseEvent<HTMLAnchorElement>) => {

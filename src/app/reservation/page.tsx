@@ -36,7 +36,6 @@ const SORT_OPTIONS = [
   { value: 'latest', label: '최신순' },
 ] as const;
 const PER_PAGE = 5;
-const TEEN_PRICE = 20000;
 const TOSS_CLIENT_KEY = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
 const TOSS_CUSTOMER_KEY = 'ANONYMOUS';
 
@@ -932,8 +931,7 @@ function PaymentStep({
   time,
   slot,
   timeSlotId,
-  initialAdultCount,
-  initialTeenCount,
+  initialPeopleCount,
   onBack,
 }: {
   theme: Theme;
@@ -941,8 +939,7 @@ function PaymentStep({
   time: string;
   slot?: AvailableThemeSlot | null;
   timeSlotId?: number | null;
-  initialAdultCount?: number | null;
-  initialTeenCount?: number | null;
+  initialPeopleCount?: number | null;
   onBack: () => void;
 }) {
   const router = useRouter();
@@ -951,24 +948,19 @@ function PaymentStep({
     setTheme,
     setLocation,
     setDateTime,
-    setHeadcount,
+    setPeopleCount,
     setReservationResult,
   } = useReservationStore();
 
   const minPlayers = Math.max(1, theme.minPlayers || 1);
   const maxPlayers = Math.max(minPlayers, theme.maxPlayers || minPlayers);
-  const defaultAdultCount = Math.min(maxPlayers, Math.max(2, minPlayers));
-  const normalizedInitialAdultCount = Math.min(
+  const defaultPeopleCount = Math.min(maxPlayers, Math.max(2, minPlayers));
+  const normalizedInitialPeopleCount = Math.min(
     maxPlayers,
-    Math.max(0, initialAdultCount ?? defaultAdultCount),
-  );
-  const normalizedInitialTeenCount = Math.min(
-    maxPlayers - normalizedInitialAdultCount,
-    Math.max(0, initialTeenCount ?? 0),
+    Math.max(1, initialPeopleCount ?? defaultPeopleCount),
   );
 
-  const [adultCount, setAdultCount] = useState(normalizedInitialAdultCount);
-  const [teenCount, setTeenCount] = useState(normalizedInitialTeenCount);
+  const [peopleCount, setPeopleCountState] = useState(normalizedInitialPeopleCount);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreePrivacy, setAgreePrivacy] = useState(false);
   const [agreeCancellation, setAgreeCancellation] = useState(false);
@@ -990,17 +982,14 @@ function PaymentStep({
 
   const requiredAgreed = agreeTerms && agreePrivacy && agreeCancellation;
   const agreeAll = requiredAgreed && agreeMarketing;
-  const totalPlayers = adultCount + teenCount;
-  const totalAmount = adultCount * (theme.price ?? 25000) + teenCount * TEEN_PRICE;
+  const totalAmount = peopleCount * (theme.price ?? 25000);
   const displayPaymentAmount = readyResult?.amount ?? totalAmount;
   const displayTime = slot ? formatSlotRange(slot) : time;
   const selectedTimeSlotId = slot?.timeSlotId ?? timeSlotId ?? null;
-  const meetsMinPlayers = totalPlayers >= minPlayers;
-  const withinMaxPlayers = totalPlayers <= maxPlayers;
+  const meetsMinPlayers = peopleCount >= minPlayers;
+  const withinMaxPlayers = peopleCount <= maxPlayers;
   const minPeopleMessage = `이 테마는 최소 ${minPlayers}명부터 예약할 수 있습니다.`;
   const displayThemeTitle = theme.title?.trim() || '선택한 테마';
-  const adultSubtotal = adultCount * (theme.price ?? 25000);
-  const teenSubtotal = teenCount * TEEN_PRICE;
   const canPay =
     requiredAgreed &&
     meetsMinPlayers &&
@@ -1034,8 +1023,7 @@ function PaymentStep({
         date,
         time: slot?.startTime ? formatSlotTime(slot.startTime) : time,
         source: 'reservation-login',
-        adultCount: String(adultCount),
-        teenCount: String(teenCount),
+        peopleCount: String(peopleCount),
       });
 
       params.set('timeSlotId', String(selectedTimeSlotId));
@@ -1056,7 +1044,7 @@ function PaymentStep({
       const reservation = await createReservation({
         timeSlotId: selectedTimeSlotId,
         holdToken,
-        peopleCount: totalPlayers,
+        peopleCount,
         termsAgreed: agreeTerms,
       });
       reservationId = reservation.reservationId;
@@ -1069,7 +1057,7 @@ function PaymentStep({
       setTheme(theme.id, displayThemeTitle, theme.imageUrl);
       setLocation(theme.locationName ?? '', theme.branchName ?? '');
       setDateTime(date, displayTime, selectedTimeSlotId);
-      setHeadcount(adultCount, teenCount);
+      setPeopleCount(peopleCount);
       setReservationResult({
         reservationId: reservation.reservationId,
         paymentId: paymentReady.paymentId,
@@ -1096,8 +1084,7 @@ function PaymentStep({
         timeSlotId: selectedTimeSlotId,
         date,
         time: displayTime,
-        adultCount,
-        teenCount,
+        peopleCount,
       });
     } catch (error) {
       if (reservationId) {
@@ -1279,49 +1266,46 @@ function PaymentStep({
         </section>
 
         <section className="rounded-[18px] border border-white/[0.08] bg-[#151515]/92 p-5 shadow-[0_18px_48px_rgba(0,0,0,0.28)] sm:p-6">
-          <SectionTitle>입장 인원</SectionTitle>
-          <div className="space-y-3">
-            {[
-              { label: '성인', sub: `1인 ${formatPrice(theme.price ?? 25000)}`, count: adultCount, set: setAdultCount, min: 0, subtotal: adultSubtotal },
-              { label: '청소년', sub: `1인 ${formatPrice(TEEN_PRICE)} · 만 14~18세`, count: teenCount, set: setTeenCount, min: 0, subtotal: teenSubtotal },
-            ].map((row) => (
-              <div key={row.label} className="grid gap-4 rounded-[14px] border border-white/[0.08] bg-[#0f0f0f] p-4 sm:grid-cols-[1fr_auto] sm:items-center">
-                <div>
-                  <p className="text-base font-black text-[#f5f5f5]">{row.label}</p>
-                  <p className="mt-1 text-sm font-semibold text-[#8a8a8a]">{row.sub}</p>
-                </div>
-                <div className="flex items-center justify-between gap-4 sm:justify-end">
-                  <div className="flex items-center overflow-hidden rounded-[10px] border border-white/[0.1] bg-[#080808]">
-                    <button
-                      type="button"
-                      onClick={() => row.set(Math.max(row.min, row.count - 1))}
-                      disabled={row.count <= row.min || totalPlayers <= minPlayers}
-                      className="flex h-9 w-9 items-center justify-center text-lg leading-none text-[#d8d8d8] transition-colors hover:bg-[#e63946]/12 hover:text-white disabled:cursor-not-allowed disabled:text-[#444]"
-                    >
-                      -
-                    </button>
-                    <span className="flex h-9 w-10 items-center justify-center border-x border-white/[0.08] text-sm font-black text-[#f5f5f5]">
-                      {row.count}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => row.set(row.count + 1)}
-                      disabled={totalPlayers >= maxPlayers}
-                      className="flex h-9 w-9 items-center justify-center text-lg leading-none text-[#d8d8d8] transition-colors hover:bg-[#e63946]/12 hover:text-white disabled:cursor-not-allowed disabled:text-[#444]"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <p className="min-w-[96px] text-right text-sm font-black text-[#f5f5f5]">
-                    {formatPrice(row.subtotal)}
-                  </p>
-                </div>
+          <SectionTitle>예약 인원</SectionTitle>
+          <div className="grid gap-4 rounded-[14px] border border-white/[0.08] bg-[#0f0f0f] p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+            <div>
+              <p className="text-base font-black text-[#f5f5f5]">예약 인원</p>
+              <p className="mt-1 text-sm font-semibold text-[#8a8a8a]">
+                1인 {formatPrice(theme.price ?? 25000)}
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 sm:justify-end">
+              <div className="flex items-center overflow-hidden rounded-[10px] border border-white/[0.1] bg-[#080808]">
+                <button
+                  type="button"
+                  onClick={() => setPeopleCountState(Math.max(minPlayers, peopleCount - 1))}
+                  disabled={peopleCount <= minPlayers}
+                  className="flex h-9 w-9 items-center justify-center text-lg leading-none text-[#d8d8d8] transition-colors hover:bg-[#e63946]/12 hover:text-white disabled:cursor-not-allowed disabled:text-[#444]"
+                  aria-label="예약 인원 줄이기"
+                >
+                  -
+                </button>
+                <span className="flex h-9 w-12 items-center justify-center border-x border-white/[0.08] text-sm font-black text-[#f5f5f5]">
+                  {peopleCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPeopleCountState(Math.min(maxPlayers, peopleCount + 1))}
+                  disabled={peopleCount >= maxPlayers}
+                  className="flex h-9 w-9 items-center justify-center text-lg leading-none text-[#d8d8d8] transition-colors hover:bg-[#e63946]/12 hover:text-white disabled:cursor-not-allowed disabled:text-[#444]"
+                  aria-label="예약 인원 늘리기"
+                >
+                  +
+                </button>
               </div>
-            ))}
+              <p className="min-w-[96px] text-right text-sm font-black text-[#f5f5f5]">
+                {formatPrice(totalAmount)}
+              </p>
+            </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-white/[0.07] bg-[#101010] px-4 py-3 text-xs font-bold text-[#888]">
             <span>최소 {minPlayers}명 · 최대 {maxPlayers}명</span>
-            <span>총 <span className="text-[#f5f5f5]">{totalPlayers}</span>명</span>
+            <span>총 <span className="text-[#f5f5f5]">{peopleCount}</span>명</span>
           </div>
           {!meetsMinPlayers && (
             <p className="mt-3 rounded-[12px] border border-[#e4b660]/25 bg-[#e4b660]/10 px-4 py-3 text-xs font-black text-[#f0c674]">
@@ -1370,15 +1354,12 @@ function PaymentStep({
               {formatPrice(displayPaymentAmount)}
             </span>
           </div>
-          <div className="grid gap-2 text-sm font-bold text-[#9a9a9a] sm:grid-cols-3">
+          <div className="grid gap-2 text-sm font-bold text-[#9a9a9a] sm:grid-cols-2">
             <div className="rounded-[12px] border border-white/[0.08] bg-[#0b0b0b]/70 px-4 py-3">
-              총 인원 <span className="ml-2 text-[#f5f5f5]">{totalPlayers}명</span>
+              예약 인원 <span className="ml-2 text-[#f5f5f5]">{peopleCount}명</span>
             </div>
             <div className="rounded-[12px] border border-white/[0.08] bg-[#0b0b0b]/70 px-4 py-3">
-              성인 <span className="ml-2 text-[#f5f5f5]">{adultCount}명</span>
-            </div>
-            <div className="rounded-[12px] border border-white/[0.08] bg-[#0b0b0b]/70 px-4 py-3">
-              청소년 <span className="ml-2 text-[#f5f5f5]">{teenCount}명</span>
+              1인 기본가 <span className="ml-2 text-[#f5f5f5]">{formatPrice(theme.price ?? 25000)}</span>
             </div>
           </div>
         </section>
@@ -1459,7 +1440,7 @@ function PaymentStep({
         <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-white/[0.08] bg-[#090909]/94 px-4 py-3 shadow-[0_-18px_48px_rgba(0,0,0,0.38)] backdrop-blur sm:hidden">
           <div className="mx-auto flex max-w-5xl items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-bold text-[#777]">총 {totalPlayers}명 · 성인 {adultCount} / 청소년 {teenCount}</p>
+              <p className="text-[11px] font-bold text-[#777]">예약 인원 {peopleCount}명</p>
               <p className="mt-0.5 text-lg font-black text-[#e63946]">{formatPrice(totalAmount)}</p>
             </div>
             <button
@@ -1499,8 +1480,7 @@ function ReservationContent() {
   const urlDate = searchParams.get('date');
   const urlTime = searchParams.get('time');
   const urlTimeSlotId = searchParams.get('timeSlotId');
-  const urlAdultCount = parseNonNegativeInteger(searchParams.get('adultCount'));
-  const urlTeenCount = parseNonNegativeInteger(searchParams.get('teenCount'));
+  const urlPeopleCount = parseNonNegativeInteger(searchParams.get('peopleCount'));
   const source = searchParams.get('source');
   const returnTo = searchParams.get('returnTo');
   const rawTimeSlotId = urlTimeSlotId ? Number(urlTimeSlotId) : null;
@@ -1654,8 +1634,7 @@ function ReservationContent() {
           time={selectedTime}
           slot={selectedSlot}
           timeSlotId={parsedUrlTimeSlotId}
-          initialAdultCount={urlAdultCount}
-          initialTeenCount={urlTeenCount}
+          initialPeopleCount={urlPeopleCount}
           onBack={handleChangeTime}
         />
       )}

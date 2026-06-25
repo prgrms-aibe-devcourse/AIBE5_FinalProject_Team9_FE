@@ -106,8 +106,7 @@ export default function ReservationCompletePage() {
   const branchName = store.branchName || completeSession?.branchName || '';
   const date = store.date || completeSession?.date || '';
   const time = store.time || completeSession?.time || '';
-  const adultCount = store.adultCount ?? completeSession?.adultCount ?? 2;
-  const teenCount = store.teenCount ?? completeSession?.teenCount ?? 0;
+  const peopleCount = store.peopleCount ?? completeSession?.peopleCount ?? 2;
   const totalAmount = store.totalAmount ?? completeSession?.amount ?? 0;
 
   const userName = repairMojibake(user?.nickname) || '예약자';
@@ -143,7 +142,7 @@ export default function ReservationCompletePage() {
     { label: '날짜', value: dateLabel || '날짜 확인 필요' },
     { label: '시간', value: time || '시간 확인 필요', accent: true },
     { label: '지점', value: branchName || locationName },
-    { label: '인원', value: `성인 ${adultCount}명${teenCount > 0 ? ` · 청소년 ${teenCount}명` : ''}` },
+    { label: '인원', value: `${peopleCount}명` },
   ];
 
   const reservationRows = [

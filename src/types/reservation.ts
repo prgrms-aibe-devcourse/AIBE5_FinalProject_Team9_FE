@@ -10,8 +10,7 @@ export interface Reservation {
   branchName?: string;
   date: string;
   time: string;
-  adultCount: number;
-  teenCount?: number;
+  peopleCount: number;
   totalAmount: number;
   status: ReservationStatus;
   paymentStatus?: 'PAID' | 'UNPAID' | 'REFUNDED';

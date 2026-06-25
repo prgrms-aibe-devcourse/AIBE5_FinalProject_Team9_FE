@@ -15,8 +15,7 @@ export interface ReservationPaymentDisplay {
   timeSlotId: number;
   date: string;
   time: string;
-  adultCount: number;
-  teenCount: number;
+  peopleCount: number;
 }
 
 export interface PendingPaymentSession extends ReservationPaymentDisplay {
@@ -100,8 +99,7 @@ export const saveCompletePaymentSession = (
     timeSlotId: pending.timeSlotId,
     date: pending.date,
     time: pending.time,
-    adultCount: pending.adultCount,
-    teenCount: pending.teenCount,
+    peopleCount: pending.peopleCount,
     reservationId: confirm.reservationId,
     paymentId: confirm.paymentId,
     orderId: confirm.orderId,

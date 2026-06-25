@@ -16,7 +16,7 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const didRunRef = useRef(false);
-  const { setTheme, setLocation, setDateTime, setHeadcount, setReservationResult } =
+  const { setTheme, setLocation, setDateTime, setPeopleCount, setReservationResult } =
     useReservationStore();
   const [message, setMessage] = useState('결제 승인을 확인하는 중입니다.');
   const [error, setError] = useState('');
@@ -67,7 +67,7 @@ function PaymentSuccessContent() {
         setTheme(pending.themeId, pending.themeTitle, pending.themeImageUrl);
         setLocation(pending.locationName ?? '', pending.branchName ?? '');
         setDateTime(pending.date, pending.time, pending.timeSlotId);
-        setHeadcount(pending.adultCount, pending.teenCount);
+        setPeopleCount(pending.peopleCount);
         setReservationResult({
           reservationId: confirmed.reservationId,
           paymentId: confirmed.paymentId,
@@ -85,7 +85,7 @@ function PaymentSuccessContent() {
     };
 
     runConfirm();
-  }, [router, searchParams, setDateTime, setHeadcount, setLocation, setReservationResult, setTheme]);
+  }, [router, searchParams, setDateTime, setLocation, setPeopleCount, setReservationResult, setTheme]);
 
   return (
     <div className="min-h-screen bg-[#0d0d0d] px-4 py-16 text-[#f5f5f5]">

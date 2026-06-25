@@ -11,8 +11,7 @@ interface ReservationState {
   timeSlotId: number | null;
   date: string;
   time: string;
-  adultCount: number;
-  teenCount: number;
+  peopleCount: number;
   reservationId: number | null;
   paymentId: number | null;
   orderId: string;
@@ -21,7 +20,7 @@ interface ReservationState {
   setTheme: (themeId: number, themeTitle: string, imageUrl?: string) => void;
   setLocation: (locationName: string, branchName: string) => void;
   setDateTime: (date: string, time: string, timeSlotId?: number | null) => void;
-  setHeadcount: (adultCount: number, teenCount: number) => void;
+  setPeopleCount: (peopleCount: number) => void;
   setReservationResult: (payload: {
     reservationId: number;
     paymentId?: number | null;
@@ -41,8 +40,7 @@ const initialState = {
   timeSlotId: null,
   date: '',
   time: '',
-  adultCount: 2,
-  teenCount: 0,
+  peopleCount: 2,
   reservationId: null,
   paymentId: null,
   orderId: '',
@@ -57,7 +55,7 @@ export const useReservationStore = create<ReservationState>()((set) => ({
   setLocation: (locationName, branchName) =>
     set({ locationName, branchName }),
   setDateTime: (date, time, timeSlotId = null) => set({ date, time, timeSlotId }),
-  setHeadcount: (adultCount, teenCount) => set({ adultCount, teenCount }),
+  setPeopleCount: (peopleCount) => set({ peopleCount }),
   setReservationResult: ({
     reservationId,
     paymentId = null,

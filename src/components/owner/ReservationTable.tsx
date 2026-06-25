@@ -34,7 +34,7 @@ export default function ReservationTable({ reservations, onStatusChange }: Reser
                 <td className="px-3 py-3 font-medium">{r.themeTitle}</td>
                 <td className="px-3 py-3">{r.id}</td>
                 <td className="px-3 py-3 text-[#888]">-</td>
-                <td className="px-3 py-3">{r.adultCount}명</td>
+                <td className="px-3 py-3">{r.peopleCount}명</td>
                 <td className="px-3 py-3">
                   <span className={['text-xs font-medium', s.color].join(' ')}>{s.text}</span>
                 </td>

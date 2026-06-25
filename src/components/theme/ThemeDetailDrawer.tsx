@@ -307,7 +307,7 @@ export default function ThemeDetailDrawer({
   const [reportedReviewIds, setReportedReviewIds] = useState<Set<number>>(() => new Set());
   const [reviewReportMessage, setReviewReportMessage] = useState("");
   const [loginRedirectUrl, setLoginRedirectUrl] = useState("");
-  const { setTheme, setLocation, setDateTime, setHeadcount } = useReservationStore();
+  const { setTheme, setLocation, setDateTime, setPeopleCount } = useReservationStore();
   const displayTheme = detailTheme ?? theme;
   const displayThemeId = displayTheme.id || theme.id;
   const displayRating =
@@ -466,12 +466,12 @@ export default function ThemeDetailDrawer({
     setTheme(displayThemeId, displayTheme.title, displayTheme.imageUrl);
     setLocation(displayRegion ?? "", displayBranchName ?? "");
     setDateTime(selectedDate, selectedTime);
-    setHeadcount(displayTheme.minPlayers || 1, 0);
+    setPeopleCount(displayTheme.minPlayers || 1);
   };
 
   const reservationHref =
     selectedDate && selectedTime && selectedTimeSlotId
-      ? `/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}&timeSlotId=${selectedTimeSlotId}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${displayThemeId}&tab=reservation`)}`
+      ? `/reservation?themeId=${displayThemeId}&date=${selectedDate}&time=${selectedTime}&timeSlotId=${selectedTimeSlotId}&peopleCount=${displayTheme.minPlayers || 1}&source=theme-detail&returnTo=${encodeURIComponent(`/themes?themeId=${displayThemeId}&tab=reservation`)}`
       : "";
 
   const handleReservationClick = (event: MouseEvent<HTMLAnchorElement>) => {
