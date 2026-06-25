@@ -33,6 +33,7 @@ import {
 } from "@/types/mate";
 import { Theme, ThemeDetail } from "@/types/theme";
 import { formatRelativeTime } from "@/lib/formatDate";
+import { getEffectiveMateStatus, isMatePostClosed } from "@/lib/mateStatus";
 import { useAuthStore } from "@/stores/authStore";
 import { getToken } from "@/lib/token";
 
@@ -1098,16 +1099,16 @@ export default function MateDetailPage({
     user?.id &&
     participants.items.some((participant) => participant.memberId === user.id),
   );
+  const effectiveStatus = post
+    ? getEffectiveMateStatus({ ...post, currentPeople, maxPeople })
+    : "CLOSED";
   const isClosed =
-    !post ||
-    post.status === "CLOSED" ||
-    post.status === "MATCHED" ||
-    post.status === "DELETED" ||
-    currentPeople >= maxPeople;
+    !post || isMatePostClosed({ ...post, currentPeople, maxPeople });
   const canClosePost = Boolean(
     post &&
     isAuthor &&
-    (post.status === "RECRUITING" || post.status === "CLOSING_SOON"),
+    (effectiveStatus === "RECRUITING" ||
+      effectiveStatus === "CLOSING_SOON"),
   );
   const remaining = Math.max(maxPeople - currentPeople, 0);
   const progress =
@@ -1283,8 +1284,8 @@ export default function MateDetailPage({
             <div className="mb-5 rounded-xl border border-white/[0.08] bg-[#171717]/92 p-5 shadow-[0_16px_42px_rgba(0,0,0,0.25)]">
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.055] pb-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge className={getStatusClass(post.status)}>
-                    {STATUS_LABEL[post.status]}
+                  <Badge className={getStatusClass(effectiveStatus)}>
+                    {STATUS_LABEL[effectiveStatus]}
                   </Badge>
                   {isAuthor && (
                     <Badge className="border-[#e63946]/30 bg-[#e63946]/10 text-[#ff8b8b]">
@@ -1433,7 +1434,7 @@ export default function MateDetailPage({
               </h2>
               <div className="grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2">
                 <SummaryItem label="작성자" value={post.authorNickname} />
-                <SummaryItem label="상태" value={STATUS_LABEL[post.status]} />
+                <SummaryItem label="상태" value={STATUS_LABEL[effectiveStatus]} />
                 <SummaryItem
                   label="오픈채팅"
                   value={

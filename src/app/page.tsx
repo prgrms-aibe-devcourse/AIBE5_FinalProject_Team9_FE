@@ -14,9 +14,11 @@ import { Theme } from "@/types/theme";
 import { MatePost } from "@/types/mate";
 import { getThemeById, getThemes } from "@/services/themeService";
 import { getMatePosts } from "@/services/mateService";
+import { getEffectiveMateStatus } from "@/lib/mateStatus";
 
 const HOME_THEME_LIMIT = 4;
 const HOME_MATE_LIMIT = 3;
+const HOME_MATE_FETCH_SIZE = 12;
 
 export default function HomePage() {
   const [popularThemes, setPopularThemes] = useState<Theme[]>([]);
@@ -71,12 +73,14 @@ export default function HomePage() {
           status: "RECRUITING",
           sort: "latest",
           page: 0,
-          size: HOME_MATE_LIMIT,
+          size: HOME_MATE_FETCH_SIZE,
         });
 
         if (!isMounted) return;
         const recruitingPosts = response.items
-          .filter((post) => post.status === "RECRUITING")
+          .filter(
+            (post) => getEffectiveMateStatus(post) === "RECRUITING",
+          )
           .slice(0, HOME_MATE_LIMIT);
 
         const themeList = await getThemes().catch(() => [] as Theme[]);

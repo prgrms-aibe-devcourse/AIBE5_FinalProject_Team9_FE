@@ -21,7 +21,7 @@ import {
   type MyPageStats,
 } from "@/services/mypageService";
 import { getMatePostById } from "@/services/mateService";
-import { getThemes } from "@/services/themeService";
+import { getThemeById, getThemes } from "@/services/themeService";
 import {
   DEFAULT_PROFILE_AVATAR,
   getProfileAvatar,
@@ -1100,7 +1100,11 @@ function mapMatePostToActivityPost(post: MyPageMatePost): ActivityPost {
   };
 }
 
-function mapMatePostToActivityMate(post: MyPageMatePost, isAuthor = false): ActivityMate {
+function mapMatePostToActivityMate(
+  post: MyPageMatePost,
+  isAuthor = false,
+  themeImageUrl?: string,
+): ActivityMate {
   const isClosed = ["CLOSED", "MATCHED", "DELETED"].includes(post.status);
 
   return {
@@ -1114,11 +1118,14 @@ function mapMatePostToActivityMate(post: MyPageMatePost, isAuthor = false): Acti
     totalMembers: post.maxPeople,
     status: isAuthor ? (isClosed ? "closed" : "open") : "joined",
     isAuthor,
-    imageUrl: post.imageUrl || THEME_PLACEHOLDER_IMAGE,
+    imageUrl: themeImageUrl || post.imageUrl || THEME_PLACEHOLDER_IMAGE,
   };
 }
 
-function mapMateDetailToActivityMate(post: MatePost): ActivityMate {
+function mapMateDetailToActivityMate(
+  post: MatePost,
+  themeImageUrl?: string,
+): ActivityMate {
   const isClosed = ["CLOSED", "MATCHED", "DELETED"].includes(post.status);
   const location = [post.storeName, post.branchName, post.region].filter(Boolean).join(" · ");
 
@@ -1132,7 +1139,7 @@ function mapMateDetailToActivityMate(post: MatePost): ActivityMate {
     currentMembers: post.currentPeople,
     totalMembers: post.maxPeople,
     status: isClosed ? "closed" : "joined",
-    imageUrl: post.imageUrl || THEME_PLACEHOLDER_IMAGE,
+    imageUrl: themeImageUrl || post.imageUrl || THEME_PLACEHOLDER_IMAGE,
   };
 }
 
@@ -2055,9 +2062,29 @@ function ActivityTabContent() {
       getMyPageReviews(),
       getMyPageMatePosts(),
       getMyPageMateParticipations(),
+      getThemes(),
     ])
-      .then(async([reviewResult, postResult, participationResult]) => {
+      .then(async([
+        reviewResult,
+        postResult,
+        participationResult,
+        themeResult,
+      ]) => {
         if (!isMounted) return;
+
+        const themes =
+          themeResult.status === "fulfilled" ? themeResult.value : [];
+        const getThemeImageUrl = async (themeId?: number) => {
+          if (!themeId) return undefined;
+
+          const listImageUrl = themes.find(
+            (theme) => theme.id === themeId,
+          )?.imageUrl;
+          if (listImageUrl) return listImageUrl;
+
+          const detail = await getThemeById(themeId).catch(() => null);
+          return detail?.imageUrl;
+        };
 
           if (reviewResult.status === "fulfilled") {
               const enriched = await enrichMyPageReviewsWithThemeImages(reviewResult.value);
@@ -2075,9 +2102,20 @@ function ActivityTabContent() {
             participationResult.value.map(async (participation) => {
               try {
                 const detail = await getMatePostById(participation.matePostId);
-                return mapMateDetailToActivityMate(detail);
+                const themeImageUrl = await getThemeImageUrl(detail.themeId);
+                return mapMateDetailToActivityMate(
+                  detail,
+                  themeImageUrl,
+                );
               } catch {
-                return mapMatePostToActivityMate(participation);
+                const themeImageUrl = await getThemeImageUrl(
+                  participation.themeId,
+                );
+                return mapMatePostToActivityMate(
+                  participation,
+                  false,
+                  themeImageUrl,
+                );
               }
             }),
           );

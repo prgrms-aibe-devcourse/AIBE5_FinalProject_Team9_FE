@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { getEffectiveMateStatus, isMatePostClosed } from "@/lib/mateStatus";
 import { getMatePosts } from "@/services/mateService";
 import {
   MateExperienceLevel,
@@ -119,7 +120,8 @@ function MemberDots({ current, total }: { current: number; total: number }) {
 }
 
 function PostCard({ post }: { post: MatePost }) {
-  const isFull = post.status === "CLOSED" || post.status === "MATCHED" || post.currentPeople >= post.maxPeople;
+  const effectiveStatus = getEffectiveMateStatus(post);
+  const isFull = isMatePostClosed(post);
   const remains = Math.max(post.maxPeople - post.currentPeople, 0);
   const place = getPlaceLabel(post);
 
@@ -133,7 +135,7 @@ function PostCard({ post }: { post: MatePost }) {
                 {post.authorNickname[0] ?? "?"}
               </div>
               <span className="mr-1 text-sm font-bold text-[#d8d8d8]">{post.authorNickname}</span>
-              <Badge className={getStatusClass(post.status)}>{STATUS_LABEL[post.status]}</Badge>
+              <Badge className={getStatusClass(effectiveStatus)}>{STATUS_LABEL[effectiveStatus]}</Badge>
               <Badge className={getExperienceClass(post.experienceLevel)}>{EXPERIENCE_LABEL[post.experienceLevel]}</Badge>
             </div>
 
@@ -262,11 +264,17 @@ export default function MatePage() {
   }, [experienceLevel, keyword, page, sort, status, tab]);
 
   const recruitingCount = useMemo(
-    () => response.items.filter((post) => post.status === "RECRUITING").length,
+    () =>
+      response.items.filter(
+        (post) => getEffectiveMateStatus(post) === "RECRUITING",
+      ).length,
     [response.items],
   );
   const closingSoonCount = useMemo(
-    () => response.items.filter((post) => post.status === "CLOSING_SOON").length,
+    () =>
+      response.items.filter(
+        (post) => getEffectiveMateStatus(post) === "CLOSING_SOON",
+      ).length,
     [response.items],
   );
 

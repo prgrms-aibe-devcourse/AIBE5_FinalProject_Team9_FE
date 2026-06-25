@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getEffectiveMateStatus, isMatePostClosed } from "@/lib/mateStatus";
 import { MatePost, MatePostStatus } from "@/types/mate";
 
 interface MateSectionProps {
@@ -42,7 +43,9 @@ export default function MateSection({
   isLoading = false,
   errorMessage = "",
 }: MateSectionProps) {
-  const visiblePosts = posts.slice(0, 3);
+  const visiblePosts = posts
+    .filter((post) => !isMatePostClosed(post))
+    .slice(0, 3);
 
   return (
     <div>
@@ -90,6 +93,7 @@ export default function MateSection({
       ) : (
         <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {visiblePosts.map((post) => {
+          const effectiveStatus = getEffectiveMateStatus(post);
           const progress = Math.min(
             100,
             (post.currentPeople / Math.max(post.maxPeople, 1)) * 100,
@@ -114,7 +118,7 @@ export default function MateSection({
 
                 <div className="absolute left-5 top-5 flex gap-2">
                   <span className="rounded-[5px] border border-[#cc2222]/45 bg-[#cc2222]/85 px-3 py-1.5 text-[11px] font-black text-white">
-                    {statusLabel[post.status] ?? post.status}
+                    {statusLabel[effectiveStatus] ?? effectiveStatus}
                   </span>
                   <span className="rounded-[5px] border border-white/25 bg-black/50 px-3 py-1.5 text-[11px] font-bold text-[#d2d2d2]">
                     {levelLabel[post.experienceLevel] ?? "무관"}
