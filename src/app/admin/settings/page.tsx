@@ -2,51 +2,105 @@
 
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
-import {changePassword} from "@/services/authService";
+import { changePassword, getAuthErrorMessage } from "@/services/authService";
+import { updateMyProfile } from '@/services/userService';
 
-function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+function Toggle({ on, onToggle, disabled = false }: { on: boolean; onToggle: () => void; disabled?: boolean }) {
     return (
-        <button type="button" onClick={onToggle}
-                className={['relative w-11 h-6 rounded-full transition-colors shrink-0', on ? 'bg-[#e63946]' : 'bg-[#2a2a2a]'].join(' ')}>
+        <button type="button" onClick={onToggle} disabled={disabled}
+                className={['relative w-11 h-6 rounded-full transition-colors shrink-0 disabled:cursor-not-allowed disabled:opacity-45', on ? 'bg-[#e63946]' : 'bg-[#2a2a2a]'].join(' ')}>
             <span className={['absolute top-1 w-4 h-4 rounded-full bg-white transition-all', on ? 'left-6' : 'left-1'].join(' ')} />
         </button>
     );
 }
 
 export default function AdminSettingsPage() {
-    const { user } = useAuthStore()
+    const { user, setUser } = useAuthStore()
     const [nickname, setNickname] = useState(user?.nickname ?? '');
     const [storeName] = useState('');
     const [email, setEmail] = useState(user?.email ?? '');
     const [currentPw, setCurrentPw] = useState('');
     const [newPw, setNewPw] = useState('');
     const [newPwConfirm, setNewPwConfirm] = useState('');
-    const [emailPrivate, setEmailPrivate] = useState(true);
-    const [agePrivate, setAgePrivate] = useState(false);
-    const [genderPrivate, setGenderPrivate] = useState(false);
-    const [age, setAge] = useState('24');
-    const [gender, setGender] = useState('여자');
-    const [saved, setSaved] = useState(false);
-    const [showModal, setShowModal] = useState(false);
+    const [emailPrivate, setEmailPrivate] = useState(user?.isEmailPublic === undefined ? true : !user.isEmailPublic);
+    const [agePrivate, setAgePrivate] = useState(user?.isAgePublic === undefined ? false : !user.isAgePublic);
+    const [genderPrivate, setGenderPrivate] = useState(user?.isGenderPublic === undefined ? false : !user.isGenderPublic);
+    const [age, setAge] = useState(user?.age ? String(user.age) : '');
+    const [gender, setGender] = useState(user?.gender ?? '');
+    const [isSaving, setIsSaving] = useState(false);
+    const [statusMessage, setStatusMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handleSave = async () => {
-        if (newPw && newPw !== newPwConfirm) {
-            alert('새 비밀번호가 일치하지 않습니다.');
+        if (isSaving) return;
+        setStatusMessage('');
+        setErrorMessage('');
+
+        const nextNickname = nickname.trim();
+        if (!nextNickname) {
+            setErrorMessage('닉네임을 입력해주세요.');
             return;
         }
-        if (newPw) {
-            await changePassword({ currentPassword: currentPw, newPassword: newPw });
+
+        const parsedAge = age.trim() ? Number(age) : undefined;
+        if (parsedAge !== undefined && (!Number.isInteger(parsedAge) || parsedAge < 1 || parsedAge > 99)) {
+            setErrorMessage('나이는 1~99 사이의 숫자로 입력해주세요.');
+            return;
+        }
+
+        const shouldChangePassword = Boolean(currentPw || newPw || newPwConfirm);
+        if (shouldChangePassword && (!currentPw || !newPw || !newPwConfirm)) {
+            setErrorMessage('비밀번호 변경 항목을 모두 입력해주세요.');
+            return;
+        }
+        if (shouldChangePassword && newPw !== newPwConfirm) {
+            setErrorMessage('새 비밀번호가 일치하지 않습니다.');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            await updateMyProfile({
+                nickname: nextNickname,
+                age: parsedAge,
+                gender: gender || undefined,
+                emailVisible: !emailPrivate,
+                ageVisible: !agePrivate,
+                genderVisible: !genderPrivate,
+            });
+            if (shouldChangePassword) {
+                await changePassword({ currentPassword: currentPw, newPassword: newPw });
+            }
             setCurrentPw('');
             setNewPw('');
             setNewPwConfirm('');
+            if (user) {
+                setUser({
+                    ...user,
+                    nickname: nextNickname,
+                    age: parsedAge,
+                    gender: gender || undefined,
+                    isEmailPublic: !emailPrivate,
+                    isAgePublic: !agePrivate,
+                    isGenderPublic: !genderPrivate,
+                });
+            }
+            setStatusMessage(shouldChangePassword ? '계정 정보와 비밀번호가 저장되었습니다.' : '계정 정보가 저장되었습니다.');
+        } catch (error) {
+            setErrorMessage(getAuthErrorMessage(error, '설정을 저장하지 못했습니다.'));
+        } finally {
+            setIsSaving(false);
         }
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
     };
 
     useEffect(() => {
         if (user?.nickname) setNickname(user.nickname);
         if(user?.email) setEmail(user?.email ?? '');
+        setAge(user?.age ? String(user.age) : '');
+        setGender(user?.gender ?? '');
+        setEmailPrivate(user?.isEmailPublic === undefined ? true : !user.isEmailPublic);
+        setAgePrivate(user?.isAgePublic === undefined ? false : !user.isAgePublic);
+        setGenderPrivate(user?.isGenderPublic === undefined ? false : !user.isGenderPublic);
     }, [user]);
 
     return (
@@ -112,7 +166,7 @@ export default function AdminSettingsPage() {
                                 </svg>
                                 <span className="text-sm text-[#888]">이메일 비공개</span>
                             </div>
-                            <Toggle on={emailPrivate} onToggle={() => setEmailPrivate(p => !p)} />
+                            <Toggle on={emailPrivate} disabled={isSaving} onToggle={() => setEmailPrivate(p => !p)} />
                         </div>
                     </section>
 
@@ -132,9 +186,10 @@ export default function AdminSettingsPage() {
                                 <p className="text-xs text-[#555] mb-1.5">성별</p>
                                 <select value={gender} onChange={e => setGender(e.target.value)}
                                         className="w-full bg-[#111] border border-[#2a2a2a] text-[#f5f5f5] text-sm rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946] transition-colors">
-                                    <option value="여자">여자</option>
-                                    <option value="남자">남자</option>
-                                    <option value="기타">기타</option>
+                                    <option value="">선택 안 함</option>
+                                    <option value="FEMALE">여자</option>
+                                    <option value="MALE">남자</option>
+                                    <option value="OTHER">기타</option>
                                 </select>
                             </div>
                         </div>
@@ -150,19 +205,22 @@ export default function AdminSettingsPage() {
                                         </svg>
                                         <span className="text-sm text-[#888]">{f.label}</span>
                                     </div>
-                                    <Toggle on={f.v} onToggle={f.toggle} />
+                                    <Toggle on={f.v} disabled={isSaving} onToggle={f.toggle} />
                                 </div>
                             ))}
                         </div>
 
                         {/* 여기 추가 */}
                         <div className="flex justify-end pt-4 mt-4 border-t border-[#222]">
+                            <div className="mr-auto self-center">
+                                {statusMessage && <p className="text-xs font-bold text-[#2ecc71]">{statusMessage}</p>}
+                                {errorMessage && <p className="text-xs font-bold text-[#ff727b]">{errorMessage}</p>}
+                            </div>
                             <button
                                 onClick={handleSave}
-                                className={['px-6 py-2.5 rounded-lg text-sm font-bold transition-all',
-                                    saved ? 'bg-[#2ecc71] text-white' : 'bg-[#e63946] hover:bg-[#c1121f] text-white'
-                                ].join(' ')}>
-                                {saved ? '✓ 저장됨' : '저장하기'}
+                                disabled={isSaving}
+                                className="px-6 py-2.5 rounded-lg text-sm font-bold transition-all bg-[#e63946] hover:bg-[#c1121f] text-white disabled:cursor-not-allowed disabled:opacity-50">
+                                {isSaving ? '저장 중...' : '저장하기'}
                             </button>
                         </div>
 

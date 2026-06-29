@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { OwnerReservation, OwnerReservationStats } from '@/types/reservation';
-import { getOwnerReservations, getOwnerReservationStats} from '@/services/ownerService';
+import {
+  getOwnerReservations,
+  getOwnerReservationStats,
+  recordOwnerReservationResult,
+} from '@/services/ownerService';
 import { getOwnerThemes } from '@/services/themeService';
 
-const STATUS_OPTS = ['상태 전체', '대기', '확정', '완료', '취소'];
-const STATUS_CODES: Record<string, string> = {
-    '전체': '',
-    '대기': 'PENDING_PAYMENT',
-    '확정': 'CONFIRMED',
-    '완료': 'COMPLETED',
-    '취소': 'CANCELLED'
-};
+const STATUS_OPTIONS = [
+  { value: '', label: '상태 전체' },
+  { value: 'PENDING_PAYMENT', label: '대기' },
+  { value: 'CONFIRMED', label: '확정' },
+  { value: 'COMPLETED', label: '완료' },
+  { value: 'CANCELLED', label: '취소' },
+] as const;
 
 const STATUS_MAP: Record <string,{ label: string; cls: string }> = {
   PENDING_PAYMENT:   { label: '대기',  cls: 'bg-[#888]/15 text-[#888]' },
@@ -27,8 +30,8 @@ const formatReservationNo = (id: number, date: string) =>
     `RE${date.replace(/-/g, '').slice(2)}-${String(id).padStart(3, '0')}`;
 
 export default function OwnerReservationsPage() {
-  const [themeFilter, setThemeFilter] = useState('전체');
-  const [statusFilter, setStatusFilter] = useState('전체');
+  const [themeFilter, setThemeFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -40,9 +43,16 @@ export default function OwnerReservationsPage() {
     const [reservations, setReservations] = useState<OwnerReservation[]>([]);
     const [statsData, setStatsData] = useState<OwnerReservationStats | null>(null);
     const [totalElements, setTotalElements] = useState(0);
+    const [resultTarget, setResultTarget] = useState<OwnerReservation | null>(null);
+    const [isCleared, setIsCleared] = useState(true);
+    const [clearTime, setClearTime] = useState('');
+    const [isSavingResult, setIsSavingResult] = useState(false);
+    const [resultError, setResultError] = useState('');
+    const [pageError, setPageError] = useState('');
 
-    useEffect(() => {
-        const fetchData = async () => {
+    const fetchData = useCallback(async () => {
+        setPageError('');
+        try {
             const [resData, stats] = await Promise.all([
                 getOwnerReservations({ page:0, size: 9999 }),
                 getOwnerReservationStats(),
@@ -50,9 +60,14 @@ export default function OwnerReservationsPage() {
             setReservations(resData.content);
             setTotalElements(resData.totalElements);
             setStatsData(stats);
-        };
-        fetchData();
+        } catch {
+            setPageError('예약 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        }
     }, []);
+
+    useEffect(() => {
+        void fetchData();
+    }, [fetchData]);
 
     useEffect(() => {
         getOwnerThemes().then(themes => {
@@ -62,8 +77,8 @@ export default function OwnerReservationsPage() {
 
     const filtered = useMemo(() => {
         return reservations.filter(r => {
-            if (themeFilter !== '전체' && r.themeTitle !== themeFilter) return false;
-            if (statusFilter !== '전체' && r.status !== STATUS_CODES[statusFilter]) return false;
+            if (themeFilter && r.themeTitle !== themeFilter) return false;
+            if (statusFilter && r.status !== statusFilter) return false;
             if (dateFrom && r.reservationDate < dateFrom) return false;
             if (dateTo && r.reservationDate > dateTo) return false;
             if (search && !r.nickname.includes(search) && !r.themeTitle.includes(search)) return false;
@@ -84,7 +99,54 @@ export default function OwnerReservationsPage() {
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const handleSearch = () => { setSearch(searchInput); setPage(1); };
-  const handleReset = () => { setThemeFilter('전체'); setStatusFilter('전체'); setDateFrom(''); setDateTo(''); setSearch(''); setSearchInput(''); setActiveTab('전체'); setPage(1); };
+  const handleReset = () => { setThemeFilter(''); setStatusFilter(''); setDateFrom(''); setDateTo(''); setSearch(''); setSearchInput(''); setActiveTab('전체'); setPage(1); };
+
+  const openResultModal = (reservation: OwnerReservation) => {
+    setResultTarget(reservation);
+    const successfulResult = reservation.escapeResult?.startsWith('성공');
+    setIsCleared(successfulResult || !reservation.escapeResult || reservation.escapeResult === '결과 미입력');
+    setClearTime(
+      successfulResult
+        ? reservation.escapeResult.replace('성공 (', '').replace(')', '')
+        : '',
+    );
+    setResultError('');
+  };
+
+  const closeResultModal = () => {
+    if (isSavingResult) return;
+    setResultTarget(null);
+    setResultError('');
+  };
+
+  const handleSaveResult = async () => {
+    if (!resultTarget || isSavingResult) return;
+
+    const normalizedClearTime = clearTime.trim();
+    if (isCleared) {
+      const match = normalizedClearTime.match(/^(\d{1,3}):([0-5]\d)$/);
+      if (!match) {
+        setResultError('클리어 기록을 분:초 형식으로 입력해주세요. 예: 55:10');
+        return;
+      }
+    }
+
+    setIsSavingResult(true);
+    setResultError('');
+    try {
+      await recordOwnerReservationResult(resultTarget.reservationId, {
+        isCleared,
+        clearTime: isCleared ? normalizedClearTime : undefined,
+      });
+      await fetchData();
+      setResultTarget(null);
+      setClearTime('');
+    } catch {
+      setResultError('결과를 저장하지 못했습니다. 입력값과 예약 상태를 확인해주세요.');
+    } finally {
+      setIsSavingResult(false);
+    }
+  };
 
   const stats = {
       total: statsData?.total_count ?? 0,
@@ -96,6 +158,11 @@ export default function OwnerReservationsPage() {
 
   return (
     <div className="p-6 space-y-5">
+      {pageError && (
+        <div className="rounded-lg border border-[#e63946]/35 bg-[#e63946]/10 px-4 py-3 text-sm text-[#ff7b84]">
+          {pageError}
+        </div>
+      )}
       {/* Stat cards */}
       <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
         {[
@@ -136,7 +203,11 @@ export default function OwnerReservationsPage() {
             <div className="relative">
                 <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
                         className="appearance-none bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 pr-8 py-2 focus:outline-none focus:border-[#ffffff40] cursor-pointer">
-                    {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
+                    {STATUS_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                 </select>
                 <svg className="w-3 h-3 text-[#666] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -145,7 +216,8 @@ export default function OwnerReservationsPage() {
             <div className="relative">
                 <select value={themeFilter} onChange={e => { setThemeFilter(e.target.value); setPage(1); }}
                         className="appearance-none bg-[#111] border border-[#2a2a2a] text-xs text-[#ccc] rounded px-3 pr-8 py-2 focus:outline-none focus:border-[#ffffff40] cursor-pointer">
-                    {themeOpts.map(t => <option key={t}>{t}</option>)}
+                    <option value="">테마 전체</option>
+                    {themeOpts.filter(t => t !== '테마 전체').map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
                 <svg className="w-3 h-3 text-[#666] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -176,11 +248,16 @@ export default function OwnerReservationsPage() {
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 text-xs text-[#555] hover:text-[#888] transition-colors">
+          <button
+            type="button"
+            disabled
+            title="준비 중인 기능입니다."
+            className="flex cursor-not-allowed items-center gap-1.5 text-xs text-[#444] opacity-60"
+          >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            엑셀 다운로드
+            엑셀 다운로드 · 준비 중
           </button>
         </div>
 
@@ -197,7 +274,14 @@ export default function OwnerReservationsPage() {
               {paged.length === 0 ? (
                 <tr><td colSpan={9} className="px-4 py-10 text-center text-sm text-[#555]">검색 결과가 없습니다.</td></tr>
               ) : paged.map(r => {
-                const st = STATUS_MAP[r.status];
+                const st = STATUS_MAP[r.status] ?? {
+                  label: r.status || '알 수 없음',
+                  cls: 'bg-white/5 text-[#888]',
+                };
+                const canRecordResult =
+                  r.status === 'CONFIRMED' ||
+                  (r.status === 'COMPLETED' &&
+                    (!r.escapeResult || r.escapeResult === '결과 미입력'));
                 return (
                   <tr key={r.reservationId} className="border-b border-[#171717] last:border-b-0 hover:bg-[#1f1f1f] transition-colors">
                     <td className="px-4 py-3 text-xs text-[#888] font-mono whitespace-nowrap">{formatReservationNo(r.reservationId, r.reservationDate)}</td>
@@ -211,6 +295,7 @@ export default function OwnerReservationsPage() {
                       <span className={['text-[11px] px-2 py-0.5 rounded font-medium whitespace-nowrap', st.cls].join(' ')}>{st.label}</span>
                     </td>
                       <td className="px-4 py-3 text-xs">
+                        <div className="flex min-w-[120px] items-center justify-between gap-2">
                           {r.escapeResult === '결과 미입력' || !r.escapeResult ? (
                               <span className="text-[#444]">—</span>
                           ) : r.escapeResult.startsWith('성공') ? (
@@ -221,6 +306,16 @@ export default function OwnerReservationsPage() {
                           ) : (
                               <span className="text-[#e63946] font-medium">{r.escapeResult}</span>
                           )}
+                          {canRecordResult && (
+                            <button
+                              type="button"
+                              onClick={() => openResultModal(r)}
+                              className="shrink-0 rounded border border-[#e63946]/55 px-2.5 py-1.5 text-[11px] font-bold text-[#ef5353] transition-colors hover:bg-[#e63946]/10"
+                            >
+                              결과 입력
+                            </button>
+                          )}
+                        </div>
                       </td>
                   </tr>
                 );
@@ -249,6 +344,92 @@ export default function OwnerReservationsPage() {
           </div>
         </div>
       </div>
+
+      {resultTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={closeResultModal}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-white/[0.1] bg-[#171717] shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="border-b border-white/[0.07] px-6 py-5">
+              <p className="text-xs font-black tracking-[0.18em] text-[#e63946]">RESERVATION RESULT</p>
+              <h2 className="mt-2 text-xl font-black text-white">예약 결과 입력</h2>
+              <p className="mt-1 text-sm text-[#777]">
+                {resultTarget.themeTitle} · {resultTarget.reservationDate} {resultTarget.reservationTime}
+              </p>
+            </div>
+
+            <div className="space-y-5 px-6 py-5">
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold text-[#888]">클리어 여부</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: true, label: '클리어' },
+                    { value: false, label: '실패' },
+                  ].map((option) => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      onClick={() => setIsCleared(option.value)}
+                      disabled={isSavingResult}
+                      className={[
+                        'rounded-lg border px-4 py-3 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                        isCleared === option.value
+                          ? 'border-[#e63946] bg-[#e63946]/12 text-[#ff727b]'
+                          : 'border-white/[0.08] bg-[#101010] text-[#777] hover:border-white/[0.18]',
+                      ].join(' ')}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <label className="block">
+                <span className="mb-2 block text-xs font-bold text-[#888]">
+                  클리어 기록 {isCleared && <span className="text-[#e63946]">*</span>}
+                </span>
+                <input
+                  value={clearTime}
+                  onChange={(event) => setClearTime(event.target.value)}
+                  disabled={!isCleared || isSavingResult}
+                  placeholder="예: 55:10"
+                  className="w-full rounded-lg border border-white/[0.1] bg-[#0f0f0f] px-4 py-3 text-sm text-white outline-none transition-colors placeholder:text-[#444] focus:border-[#e63946] disabled:cursor-not-allowed disabled:opacity-35"
+                />
+                <span className="mt-1.5 block text-[11px] text-[#555]">분:초 형식으로 입력해주세요.</span>
+              </label>
+
+              {resultError && (
+                <p className="rounded-lg border border-[#e63946]/30 bg-[#e63946]/10 px-3 py-2 text-xs text-[#ff727b]">
+                  {resultError}
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-white/[0.07] px-6 py-4">
+              <button
+                type="button"
+                onClick={closeResultModal}
+                disabled={isSavingResult}
+                className="rounded-lg border border-white/[0.1] px-4 py-2.5 text-sm font-bold text-[#888] hover:border-white/[0.2] disabled:opacity-40"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveResult}
+                disabled={isSavingResult}
+                className="min-w-[96px] rounded-lg bg-[#e63946] px-4 py-2.5 text-sm font-black text-white transition-colors hover:bg-[#c1121f] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSavingResult ? '저장 중...' : '결과 저장'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

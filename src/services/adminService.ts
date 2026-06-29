@@ -26,8 +26,11 @@ export const getAdminReviewStats = async () => {
 };
 
 // 후기 엑셀 다운로드
-export const exportAdminReviews = async () => {
-    const response = await axiosInstance.get('/api/admin/reviews/export', { responseType: 'blob' });
+export const exportAdminReviews = async (params?: Record<string, unknown>) => {
+    const response = await axiosInstance.get('/api/admin/reviews/export', {
+        params,
+        responseType: 'blob',
+    });
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
     link.href = url;
@@ -35,6 +38,7 @@ export const exportAdminReviews = async () => {
     document.body.appendChild(link);
     link.click();
     link.remove();
+    window.URL.revokeObjectURL(url);
 };
 
 // 신고 목록 조회

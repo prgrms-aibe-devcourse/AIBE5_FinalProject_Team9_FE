@@ -1,10 +1,15 @@
 'use client';
 
-import { getAdminReviewReports, approveReviewReport, rejectReviewReport } from '@/services/adminService';
+import {
+    getAdminReviewReports,
+    approveReviewReport,
+    rejectReviewReport,
+    exportAdminReviews,
+} from '@/services/adminService';
 import { AdminReviewReportItem } from '@/types/admin';
 import { useAdminStore } from '@/stores/adminStore';
 import { formatDate } from '@/lib/formatDate';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import RatingStars from '@/components/common/RatingStars';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -35,20 +40,30 @@ export default function AdminReviewsPage() {
     const { setPendingCount } = useAdminStore();
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    const [processingAction, setProcessingAction] = useState<'approve' | 'reject' | null>(null);
+    const [actionError, setActionError] = useState('');
+    const [isExporting, setIsExporting] = useState(false);
+    const [pageError, setPageError] = useState('');
 
     const pending = reports.filter(r => r.status === 'REQUESTED_ADMIN_REVIEW').length;
     const approved = reports.filter(r => r.status === 'ADMIN_APPROVED').length;
     const rejected = reports.filter(r => r.status === 'ADMIN_REJECTED').length;
 
-    useEffect(() => {
+    const fetchData = useCallback(async () => {
         if (!user || user.role !== 'ADMIN') return;
-        const fetchData = async () => {
+        setPageError('');
+        try {
             const reportData = await getAdminReviewReports(0, 100);
             setReports(reportData.content);
             setPendingCount(reportData.content.filter((r: AdminReviewReportItem) => r.status === 'REQUESTED_ADMIN_REVIEW').length);
-        };
-        fetchData();
-    }, []);
+        } catch {
+            setPageError('신고 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        }
+    }, [setPendingCount, user]);
+
+    useEffect(() => {
+        void fetchData();
+    }, [fetchData]);
 
     const filtered = useMemo(() => reports.filter(r => {
         if (statusFilter === '대기' && r.status !== 'REQUESTED_ADMIN_REVIEW') return false;
@@ -67,24 +82,76 @@ export default function AdminReviewsPage() {
     const handleReset = () => { setStatusFilter('전체'); setSearch(''); setSearchInput(''); setPage(1); setDateFrom('');
         setDateTo('');};
 
-    const handleApprove = async () => {
-        if (!viewTarget) return;
-        await approveReviewReport(viewTarget.id, adminReason);
-        setReports(prev => prev.map(r => r.id === viewTarget.id ? { ...r, status: 'ADMIN_APPROVED' } : r));
-        setViewTarget(null);
-        setAdminReason('');
+    const handleDecision = async (action: 'approve' | 'reject') => {
+        if (!viewTarget || processingAction) return;
+        if (viewTarget.status !== 'REQUESTED_ADMIN_REVIEW') {
+            setActionError('이미 처리된 신고입니다.');
+            return;
+        }
+
+        const reason = adminReason.trim();
+        if (!reason) {
+            setActionError('관리자 처리 사유를 입력해주세요.');
+            return;
+        }
+
+        setProcessingAction(action);
+        setActionError('');
+        try {
+            if (action === 'approve') {
+                await approveReviewReport(viewTarget.id, reason);
+            } else {
+                await rejectReviewReport(viewTarget.id, reason);
+            }
+            await fetchData();
+            setViewTarget(null);
+            setAdminReason('');
+        } catch {
+            setActionError('신고를 처리하지 못했습니다. 잠시 후 다시 시도해주세요.');
+        } finally {
+            setProcessingAction(null);
+        }
     };
 
-    const handleReject = async () => {
-        if (!viewTarget) return;
-        await rejectReviewReport(viewTarget.id, adminReason);
-        setReports(prev => prev.map(r => r.id === viewTarget.id ? { ...r, status: 'ADMIN_REJECTED' } : r));
+    const closeModal = () => {
+        if (processingAction) return;
         setViewTarget(null);
         setAdminReason('');
+        setActionError('');
+    };
+
+    const handleExport = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        setPageError('');
+        try {
+            await exportAdminReviews({
+                status:
+                    statusFilter === '대기'
+                        ? 'REQUESTED_ADMIN_REVIEW'
+                        : statusFilter === '승인'
+                          ? 'ADMIN_APPROVED'
+                          : statusFilter === '반려'
+                            ? 'ADMIN_REJECTED'
+                            : undefined,
+                dateFrom: dateFrom || undefined,
+                dateTo: dateTo || undefined,
+                keyword: search || undefined,
+            });
+        } catch {
+            setPageError('엑셀 파일을 다운로드하지 못했습니다.');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     return (
         <div className="p-6 space-y-5">
+            {pageError && (
+                <div className="rounded-lg border border-[#e63946]/35 bg-[#e63946]/10 px-4 py-3 text-sm text-[#ff7b84]">
+                    {pageError}
+                </div>
+            )}
             {/* Stat cards */}
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-4">
                 {[
@@ -168,11 +235,16 @@ export default function AdminReviewsPage() {
         {/* Table meta */}
         <div className="px-5 py-3 border-b border-[#1f1f1f] flex items-center justify-between">
           <span className="text-xs text-[#888]">전체 <span className="text-[#f5f5f5] font-bold">{filtered.length}건</span></span>
-          <button className="flex items-center gap-1.5 text-xs text-[#555] hover:text-[#888] transition-colors">
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 text-xs text-[#777] transition-colors hover:text-[#ddd] disabled:cursor-not-allowed disabled:opacity-45"
+          >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            엑셀 다운로드
+            {isExporting ? '다운로드 중...' : '엑셀 다운로드'}
           </button>
         </div>
 
@@ -208,7 +280,7 @@ export default function AdminReviewsPage() {
                                         <span className={['text-[11px] px-2 py-0.5 rounded font-medium whitespace-nowrap', st.cls].join(' ')}>{st.label}</span>
                                     </td>
                                     <td className="px-4 py-3">
-                                        <button onClick={() => { setViewTarget(r); setAdminReason(''); }}
+                                        <button onClick={() => { setViewTarget(r); setAdminReason(''); setActionError(''); }}
                                                 className="text-xs border border-[#2a2a2a] text-[#888] hover:border-[#e63946] hover:text-[#e63946] px-3 py-1.5 rounded transition-colors">보기</button>
                                     </td>
                                 </tr>
@@ -244,11 +316,11 @@ export default function AdminReviewsPage() {
 
             {/* Detail modal */}
             {viewTarget && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setViewTarget(null)}>
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={closeModal}>
                     <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="text-sm font-bold text-gray-900">신고 상세</h3>
-                            <button onClick={() => setViewTarget(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                            <button onClick={closeModal} disabled={Boolean(processingAction)} className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -284,6 +356,7 @@ export default function AdminReviewsPage() {
                                     <textarea
                                         value={adminReason}
                                         onChange={e => setAdminReason(e.target.value)}
+                                        disabled={Boolean(processingAction)}
                                         placeholder="처리 사유를 입력해주세요."
                                         className="w-full border border-gray-200 text-xs text-gray-800 rounded-lg px-3 py-2.5 outline-none focus:border-[#e63946] resize-none h-20"
                                     />
@@ -295,17 +368,26 @@ export default function AdminReviewsPage() {
                                     <p className="text-sm text-gray-600">{viewTarget.adminReason}</p>
                                 </div>
                             )}
+                            {actionError && (
+                                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-[#c1121f]">
+                                    {actionError}
+                                </p>
+                            )}
                         </div>
                         <div className="px-6 py-4 border-t border-gray-100 flex justify-between gap-2">
-                            <button onClick={() => setViewTarget(null)}
-                                    className="text-sm border border-gray-300 text-gray-600 hover:border-gray-400 px-5 py-2 rounded-lg transition-colors">닫기</button>
+                            <button onClick={closeModal} disabled={Boolean(processingAction)}
+                                    className="text-sm border border-gray-300 text-gray-600 hover:border-gray-400 disabled:opacity-40 px-5 py-2 rounded-lg transition-colors">닫기</button>
                             <div className="flex gap-2">
                             {viewTarget.status === 'REQUESTED_ADMIN_REVIEW' && (
                                 <>
-                                    <button onClick={handleReject} disabled={false}
-                                            className="text-sm border border-gray-300 text-gray-600 hover:border-gray-400 disabled:opacity-40 px-5 py-2 rounded-lg transition-colors">거절</button>
-                                    <button onClick={handleApprove} disabled={false}
-                                            className="text-sm bg-[#e63946] hover:bg-[#c1121f] disabled:opacity-40 text-white font-bold px-5 py-2 rounded-lg transition-colors">승인</button>
+                                    <button onClick={() => handleDecision('reject')} disabled={Boolean(processingAction)}
+                                            className="min-w-[72px] text-sm border border-gray-300 text-gray-600 hover:border-gray-400 disabled:cursor-not-allowed disabled:opacity-40 px-5 py-2 rounded-lg transition-colors">
+                                        {processingAction === 'reject' ? '처리 중...' : '거절'}
+                                    </button>
+                                    <button onClick={() => handleDecision('approve')} disabled={Boolean(processingAction)}
+                                            className="min-w-[72px] text-sm bg-[#e63946] hover:bg-[#c1121f] disabled:cursor-not-allowed disabled:opacity-40 text-white font-bold px-5 py-2 rounded-lg transition-colors">
+                                        {processingAction === 'approve' ? '처리 중...' : '승인'}
+                                    </button>
                                 </>
                             )}
                         </div>

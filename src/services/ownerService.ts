@@ -1,5 +1,10 @@
 import axiosInstance from '@/lib/axios';
-import { OwnerReservation, OwnerReservationStats} from '@/types/reservation';
+import {
+  OwnerReservation,
+  OwnerReservationResultRequest,
+  OwnerReservationResultResponse,
+  OwnerReservationStats,
+} from '@/types/reservation';
 import { Review } from '@/types/review';
 import { getToken } from '@/lib/token';
 import { ReviewReportItem  } from '@/types/review';
@@ -33,6 +38,18 @@ export const getOwnerReservations = async (params?: Record<string, unknown>): Pr
 export const getOwnerReservationStats = async (): Promise<OwnerReservationStats> => {
     const { data } = await axiosInstance.get('/api/owner/reservations/stats');
     return data.data;
+};
+
+export const recordOwnerReservationResult = async (
+  reservationId: number,
+  payload: OwnerReservationResultRequest,
+): Promise<OwnerReservationResultResponse> => {
+  const { data } = await axiosInstance.post(
+    `/api/owner/reservations/${reservationId}/result`,
+    payload,
+  );
+
+  return data.data ?? data;
 };
 
 

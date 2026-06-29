@@ -54,6 +54,18 @@ export interface OwnerReservation {
     escapeResult: string;
 }
 
+export interface OwnerReservationResultRequest {
+    isCleared: boolean;
+    clearTime?: string;
+}
+
+export interface OwnerReservationResultResponse {
+    reservationId: number;
+    status: OwnerReservation['status'];
+    isCleared: boolean;
+    clearTime?: string;
+}
+
 export interface OwnerReservationStats {
     total_count: number;
     today_count: number;
